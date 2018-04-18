@@ -1,0 +1,4 @@
+B ../_build/default/lib/.hpdr.objs
+FLG -open Hpdr__ -w -40
+FLG -ppx '/Users/ksuenaga/work/HybridPDR/src/_build/default/.ppx/ppx_inline_test+ppx_jane+ppx_deriving/ppx.exe --as-ppx --cookie '\''library-name="hpdr"'\'''
+S .

@@ -1,14 +1,12 @@
-
-type stateId = int
-type state =
-  { id : stateId;
+type 'a stateId = 'a
+type 'a state =
+  { id : 'a stateId;
     inv : Guard.t;
     dynamics : Dynamics.t
   }
-type transition =
-  { src : state;
+type 'a transition =
+  { src : 'a state;
     target : state;
     guard : Guard.t;
     action : Action.t
   }
-
