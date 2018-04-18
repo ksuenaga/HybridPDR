@@ -1,0 +1,10 @@
+(jbuild_version 1)
+
+(executable
+ (
+ (name hpdr)
+ (libraries (core sexplib hpdr))
+ (public_name hpdr)
+ (preprocess (pps (ppx_inline_test ppx_jane)))
+ )
+)

@@ -5,6 +5,7 @@ homepage: "https://github.com/SoftwareFoundationGroupAtKyotoU/HybridPDR"
 bug-reports: "https://github.com/SoftwareFoundationGroupAtKyotoU/HybridPDR/issues"
 dev-repo: "https://github.com/SoftwareFoundationGroupAtKyotoU/HybridPDR.git"
 license: "Apache-2.0"
-build: [["jbuilder" "build" "-p" name "-j" jobs]]
+build: [[ "jbuilder" "build" "--only-packages" "%{name}%" "--root" "." "-j" jobs "@install" ]]
+# build: [["jbuilder" "build" "-p" name "-j" jobs]]
 build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
 available: [ ocaml-version >= "4.06.1" ]

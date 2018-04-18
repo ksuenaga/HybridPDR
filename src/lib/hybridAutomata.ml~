@@ -1,0 +1,14 @@
+
+type stateId = int [@@deriving show]
+type state =
+  { id : stateId;
+    inv : Guard.t;
+    dynamics : Dynamics.t
+  } [@@deriving show]
+type transition =
+  { src : state;
+    target : state;
+    guard : Guard.t;
+    action : Action.t
+  } [@@deriving show]
+
