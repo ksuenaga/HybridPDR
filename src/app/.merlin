@@ -1,4 +1,0 @@
-B ../_build/default/app/.hpdr.eobjs
-FLG -ppx '/Users/ksuenaga/work/HybridPDR/src/_build/default/.ppx/ppx_inline_test+ppx_jane/ppx.exe --as-ppx'
-FLG -w -40
-S .
