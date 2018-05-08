@@ -191,29 +191,61 @@ $\der{\vars} \DEFEQ
 \set{\der{\var_1},\dots,\der{\var_N}}$ of the variables
 that denote the time derivatives of the variables in $\vars$.
 
-We write $\setfml$ for the set of logical formulas over $\vars$; its
-element is ranged over by $\fml$.  \todo{Explain the logic.} We call
-an element of the set $\VALUATIONS \DEFEQ \vars \ra \REAL$ a
-\emph{valuation}; they are represented by metavariable $\valuation$.
-We write $\valuation \models \fml$ if $\valuation$ is a model of
-$\fml$; $\valuation \not\models \fml$ if $\valuation \models \fml$ does
-not hold; $\models \fml$ if $\valuation \models \fml$ for any
+\todo{Only variables in $\vars$ are allowed to be free.}  We write
+$\setfml$ for the set of logical formulas over $\vars$; its element is
+ranged over by $\fml$.  \todo{Explain the logic.} We call an element
+of the set $\VALUATIONS \DEFEQ \vars \ra \REAL$ a \emph{valuation};
+they are represented by metavariable $\valuation$.  We write
+$\valuation \models \fml$ if $\valuation$ is a model of $\fml$;
+$\valuation \not\models \fml$ if $\valuation \models \fml$ does not
+hold; $\models \fml$ if $\valuation \models \fml$ for any
 $\valuation$; and $\not\models \fml$ if there exists
-$\valuation \models \fml$.
+$\valuation \models \fml$.  \todo{Definition of $\sem{\fml}$.}
+
+\todo{We may want to limit the end time $T$.}  An ODE is a set of
+equations of the form
+$\der{\var_1} = f_1(\var_1,\dots,\var_N), \dots, \der{\var_N} =
+f_N(\var_1,\dots,\var_N)$, where $f_1,\dots,f_N : \REAL^N \ra \REAL$
+determines the derivatives of each variable.  Given a valuation
+$\valuation_0$ on $\var_1,\dots,\var_N$ that determines their initial
+values and a formula $\fml$, a set of $C^1$ functions
+$\sol_1,\dots,\sol_N \COL \NONNEGREAL \ra \REAL$ that satisfy the
+following conditions are said to be a \emph{solution} of ODE
+$\der{\var_1} = f_1(\var_1,\dots,\var_N), \dots, \der{\var_N} =
+f_N(\var_1,\dots,\var_N)$ that \emph{keeps satisfying} $\fml$:
+\begin{itemize}
+\item
+  $\sol_1(0) = \valuation(\var_1),\dots,\sol_N(0) =
+  \valuation(\var_N)$,
+\item for any $t \in \NONNEGREAL$ and $i \in \set{1,\dots,N}$,
+  $\DDT{\sol_i}(t) = f_i(\sol_1(t),\dots,\sol_N(t))$, and
+\item for any $t \in \NONNEGREAL$,
+  $\set{\var_1 \mapsto \sol_1(t),\dots,\var_N \mapsto \sol_N(t)}
+  \models \fml$.
+\end{itemize}
+\todo{Check whether this definition of ODE is correct.}  In this
+paper, we focus on ODE where each $f_i$ is Lipschitz continuous.  We
+use metavariable $\ODE$ for an ODE.  Intuitively, a solution of an ODE
+$\ODE$ keeps satisfying $\fml$ if its trajectory stays in
+$\sem{\fml}$.  The standard notion of the solution of an ODE is
+obtained by setting $\fml$ to $\semtrue$.  We write
+$\valuation_0 \CONTIREACH{\fml} \valuation$ if $\valuation$ is
+reachable form $\valuation_0$ if there is a solution of $\ODE$ that
+keeps satisfying $\fml$: There is $T \in \NONNEGREAL$ and a solution
+$\set{\sol_1,\dots,\sol_N}$ of $\ODE$ from the initial valuation
+$\valuation_0$ such that $\valuation(\var_i) = \sol_i(T)$.
 
 We consider the hybrid systems specified by \emph{hybrid automata}
 whose definition is as follows.
 \begin{definition}[Hybrid automaton]
   A \emph{hybrid automaton} is a tuple
-  $\tuple{\states,\init,\flow,\inv,\trans}$ where
-  \begin{itemize}
-  \item $\states = \set{\st_0,\st_1,\st_2,\dots}$ is a set of
-    \emph{locations},
-  % \item $\vars = \set{\var_0,\var_1,\var_2,\dots}$ is a set of
-  %   \emph{continuous variables},
-  \item $\flow \in \states \times \vars \ra f(\vec\vars)$,
-  \item $\inv \in \states \ra \power{\REAL^n}$,
-  \end{itemize}
+  $\tuple{\states,\init,\flow,\inv,\trans}$.  Here,
+  $\states = \set{\st_0,\st_1,\st_2,\dots}$ is a set of
+  \emph{locations}.  $\init \in \states \times \setfml$ represents the
+  initial state.
+
+  $\flow \in \states \times \vars \ra f(\vec\vars)$,
+  $\inv \in \states \ra \power{\REAL^n}$,
 \end{definition}
 
 \input{body}
