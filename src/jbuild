@@ -11,8 +11,9 @@
 (library
  (
  (name hpdr)
- (libraries (ounit core sexplib mock))
+ (libraries (ounit core sexplib xml-light camlon))
  (inline_tests)
- (preprocess (pps (ppx_inline_test ppx_jane)))
+  ; [XXX] use camlon
+ (preprocess (pps (ppx_inline_test ppx_deriving.show)))
  )
 )
