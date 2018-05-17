@@ -137,7 +137,7 @@ and component (xml : Xml.xml) : t =
         | "location" -> location x t
         | "transition" -> transition x t
         | "note" -> t (* ignored *)
-        | "bind" -> eprintf "[XXX] Bindings are currently ignored.@\n"; t
+        | "bind" -> t (* [XXX] Bindings are currently ignored *)
         | _ ->
            malformed_error_xml "component" x)
     children
