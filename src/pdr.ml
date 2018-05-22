@@ -31,7 +31,11 @@ let rec exploreCE (candidates : Z3.Model.model list) (t : frames) =
   E.raise (E.of_string "exploreCE: not implemented")  
 
 (* [XXX] Not tested *)
-let rec verify (model : SpaceexComponent.t) (safe : Cnf.t) (candidates : Z3.Model.model list) ((n,frames) as t) =
+let rec verify
+          (hybridSystem : SpaceexComponent.t)
+          (safe : Cnf.t)
+          (candidates : Z3.Model.model list)
+          ((n,frames) as t) =
   let t = induction t in
   if is_valid t then
     Ok t
@@ -44,7 +48,7 @@ let rec verify (model : SpaceexComponent.t) (safe : Cnf.t) (candidates : Z3.Mode
          | `Expandable (n',frame') ->
             assert(n' = n + 1);
             assert(List.length frame' = n');
-            verify model safe candidates (n',frame')
+            verify hybridSystem safe candidates (n',frame')
          | `NonExpandable model ->
             let res = exploreCE candidates t in
             begin
