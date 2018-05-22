@@ -18,22 +18,20 @@ let init i s =
   | Some m ->
      raise (Unsafe [m])
 
-let rec induction t =
+let rec induction (t : frames) =
   E.raise (E.of_string "induction: not implemneted")
 
-let is_expandable t =
-  E.raise (E.of_string "is_expandable: not implemneted")
-
-let is_valid t =
+let is_valid (t : frames) =
   E.raise (E.of_string "is_valid: not implemneted")
 
-let expand t =
+let expand (t : frames) =
   E.raise (E.of_string "expand: not implemneted")
 
-let rec exploreCE candidates t =
+let rec exploreCE (candidates : Z3.Model.model list) (t : frames) =
   E.raise (E.of_string "exploreCE: not implemented")  
-    
-let rec verify model safe candidates ((n,frames) as t) =
+
+(* [XXX] Not tested *)
+let rec verify (model : SpaceexComponent.t) (safe : Cnf.t) (candidates : Z3.Model.model list) ((n,frames) as t) =
   let t = induction t in
   if is_valid t then
     Ok t
@@ -48,7 +46,7 @@ let rec verify model safe candidates ((n,frames) as t) =
             assert(List.length frame' = n');
             verify model safe candidates (n',frame')
          | `NonExpandable model ->
-            let res = exploreCE [candidates] t in
+            let res = exploreCE candidates t in
             begin
               match res with
               | `CEFound trace -> Ng trace
