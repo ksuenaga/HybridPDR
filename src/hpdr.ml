@@ -8,80 +8,108 @@ open Format
 module E = Error
 
 (**************** Commandline args ****************)
-let input_file = ref ""
-(* let config_file = ref "" *)
-let input_stream = ref In_channel.stdin
-(* let config_stream = ref In_channel.stdin *)
-let initial_condition = ref Fml.fml_true
-let safety_region = ref Fml.fml_true
    
 (**************** Main ****************)
    
 (* Parse command-line arguments
    [XXX] Not tested
  *)
-let parse_commandline_arg () : unit =
-  let open Arg in
-  parse
-    [("model", String (fun s -> input_file := s), "SpaceEx xml file");
-     ("init", String (fun s -> initial_condition := Fml.parse s), "Initial conditions");
-     ("safereg", String (fun s -> safety_region := Fml.parse s), "Safety region")]
-    (fun s -> raise (Bad "Anonymous argument is not allowed."))
-    "";
-  let _ =
-  input_stream :=
-    try In_channel.create !input_file
+let parse_verif_task_from_file ?(initial_condition=Cnf.cnf_true) ?(safety_region=Cnf.cnf_true) input_file =
+  let input_file = input_file in
+  (* let input_stream = ref In_channel.stdin in *)
+  let initial_condition = ref initial_condition in
+  let safety_region = ref safety_region in
+  let input_stream =
+    try In_channel.create input_file
     with Not_found_s _ -> E.raise (E.of_string "Input model not found.")
   in
-  (*
-  let _ =
-    config_stream :=
-      try In_channel.create !config_file
-      with Not_found_s _ -> E.raise (E.of_string "Config file not found")
-  in
-   *)
-  ()
-
-  (*
-let parse_config_from_channel filename =
-  let open Config_file in
-  let g = new group in
-  let _ = g#read filename in
-  let _ = g#write "hoge" in
-  ()
-   *)
+  let model = SpaceexComponent.parse_from_channel input_stream in
+  (model, initial_condition, safety_region)
   
 (* Verifier core *)
 let verify model init safe =
   (* Setup frames *)
-  let frames = Pdr.init init safe in
-  (* *)
-  let result = Pdr.verify frames in 
+  let t = Pdr.init init safe in
+  let result = Pdr.verify model safe [] t in 
   result
-  
+
 (* Output the result *)
 let printResult result =
-  assert false
+  E.raise (E.of_string "printResult: not implemented.")
   
+(* Tests *)
+let%test _ =
+  let model = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
+  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let _ = printResult res in
+  true
+
+let%test _ =
+  let model = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball/bball.xml")) in
+  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let _ = printResult res in
+  true
+
+let%test _ =
+  let model = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball_nondet/bball_nondet.xml")) in
+  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let _ = printResult res in
+  true
+
+let%test _ =
+  let model = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball_timed/bball_timed.xml")) in
+  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let _ = printResult res in
+  true
+
+let%test _ =
+  let model = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator/filtered_oscillator.xml")) in
+  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let _ = printResult res in
+  true
+
+let%test _ =
+  let model = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator_16/filtered_oscillator_16.xml")) in
+  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let _ = printResult res in
+  true
+
+let%test _ =
+  let model = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator_32/filtered_oscillator_32.xml")) in
+  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let _ = printResult res in
+  true
+
 let _ =
   let open SpaceexComponent in
-  (* Parse command-line arguments *)
-  let _ = parse_commandline_arg () in
-  (* Parse the input *)
-  let t = SpaceexComponent.parse_from_channel !input_stream in
-  (* Parse the config file *)
-  (* let cfg = parse_config_from_channel !config_file in *)
-  (* Pass the model to the verifier core routine *)
-  let result = verify t !initial_condition !safety_region in
-  (* Output the result *)
+  let input_file = ref None in
+  let init_cond = ref None in
+  let safety_region = ref None in
+  let _ =
+    Arg.parse
+      ["model", String (fun s -> input_file := Some s), "Model file in SpaceEx format";
+       "init", String (fun s -> init_cond := Some s), "Initial condition in SpaceEx format. (Whole space if omitted.)";
+       "safe", String (fun s -> safety_region := Some s), "Safety region in SpaceEx format. (Whole space if omitted.)"]
+      (fun s -> E.raise (E.of_string "Anonymous argument is not allowed"))
+  in
+  let t =
+    match !input_file with
+      None -> E.raise (E.of_string "Model file not specified")
+    | Some s -> parse_verif_task_from_file s
+  in
+  let init_cond =
+    match !init_cond with
+      None -> Cnf.cnf_true
+    | Some s -> Cnf.parse s
+  in
+  let safety_region =
+    match !safety_region with
+      None -> Cnf.cnf_true
+    | Some s -> Cnf.parse s
+  in
+  let result = verify t init_cond safety_region in
   let _ = printResult result in
   ()
 
 (**************** Commandline args ****************)
   
-(* Tests *)
-let%test_module _ =
-  (module struct
-     let circleComponentTest =
-       SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml"))
-   end)
