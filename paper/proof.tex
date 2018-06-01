@@ -1,11 +1,76 @@
 \documentclass[a4paper]{jarticle}
 
 \usepackage{amsmath,amsthm,amssymb}
+\usepackage{stmaryrd}
+
+\theoremstyle{definition}
+\newtheorem{theorem}{定理}
+\newtheorem{lemma}{補題}
 
 \input{local}
 
 \begin{document}
 
-a
+\begin{theorem}
+  $\CONSISTENT$はHybridPDRの全ての規則の不変条件となっている
+\end{theorem}
+
+\begin{proof}
+  GPDRの証明に準ずる
+\end{proof}
+
+\begin{lemma} \label{lem:1}
+  任意の$n \in \mathbb{N}, \valuation \in \VALUATIONS, \st \in \states$について
+  $(\valuation, \st) \in \REACH{n}$ならば$\valuation \models R_n$となる
+\end{lemma}
+
+\begin{proof}
+  $n$に関する数学的帰納法で示す．
+  $n=0$のとき，$R_0 = \predtrans(\FALSE) = \fml_0, \REACH{0} = \{(\valuation, \st) | \valuation \models \fml_0 \}$より成り立つ．
+
+  $n=k$のとき成り立つと仮定すると，帰納法の仮定と$\mathit{Reach}$の定義より
+  $(\valuation,\st) \in \REACH{k} \Rightarrow [\predtrans(R_k)]_{\valuation}$
+  が成り立つ．
+  $\CONSISTENT$が成り立つことより$\predtrans(R_k) \Rightarrow R_{k+1}$なので，
+  これらより$(\valuation,\st) \in \REACH{k+1} \Rightarrow [R_{k+1}]_\valuation$
+  が成り立つ．
+\end{proof}
+
+\begin{lemma} \label{lem:2}
+  任意の$n \in \mathbb{N}, \valuation \in \VALUATIONS, \st \in \states$について，
+  $(\valuation,\st) \in \REACH{n}$のとき，またそのときに限り，
+  ある$n$-length run $(\valuation_0,\st_0) \dots (\valuation_n, \st_n)$が存在し，
+  $(\valuation, \st) = (\valuation_n, \st_n)$を満たすか，
+  ある$k < n$が存在し，$q_k = q$となる$q_k$に対し，$\valuation_k \CONTIREACH{F(q_k)}{ inv(q_k)} \valuation$を満たす．
+\end{lemma}
+
+\begin{proof}
+  $n$に関する数学的帰納法で証明する．$n=0$のときは自明．
+  $n=m$で成り立つ時，
+  \begin{itemize}
+  \item ($\Rightarrow$)を示す．
+  \item ($\Leftarrow$)を示す．
+    $(\valuation,\st) = (\valuation_{m+1}, \st_{m+1})$のとき，帰納法の仮定より
+    $(\valuation_m,\st_m) \in \REACH{m}$であること，
+    runの定義よりある$\sigma_m'$が存在して，$\sigma_m \CONTIREACHD{inv(\st_m)} \valuation_m', \valuation_m' \models \GUARD_\delta(\st_m,\st_{m+1}), \valuation_{m+1} = \sem{\CMD_\delta(\st_m,\st_{m+1})}$が成り立つことと$\mathit{Reach}$の定義より，
+    $(\valuation,\st) \in \REACH{m+1}$が成り立つ.
+
+    $(\valuation,\st) \not= (\valuation_{m+1},\st_{m+1})$のとき，
+    仮定より$k<m+1$で$q_k=q,\valuation_k \CONTIREACHD{inv(q_k)} \valuation$となる
+    $k$が存在する．
+    $k < m$のとき，帰納法の仮定より$(\valuation,\st) \in \REACH{m}$となり，
+    $\REACH{m} \subseteq \REACH{m+1}$より，$(\valuation,\st) \in \REACH{m+1}$．
+    $k = m$のとき，帰納法の仮定より$(\valuation_m,\st_m) \in \REACH{m}$なので，
+    これと仮定と$\mathit{Reach}$の定義より，$(\valuation, \st) \in \REACH{m+1}$．
+  \end{itemize}
+\end{proof}
+
+\begin{theorem}
+  HybridPDRがunsafeならば，unsafeな状態を通るrunが存在する．
+\end{theorem}
+
+\begin{proof}
+  補題\ref{lem:1},\ref{lem:2}より直ちに示される．
+\end{proof}
 
 \end{document}
