@@ -1,4 +1,3 @@
-
 \newcommand\tuple[1]{\left\langle {#1} \right\rangle}
 \newcommand\states{Q}
 \newcommand\st{q}
@@ -7,13 +6,17 @@
 \newcommand\init{I}
 \newcommand\flow{F}
 \newcommand\inv{\mathit{inv}}
-\newcommand\cmd{c}
+\newcommand\predtrans{\mathcal{F}}
+\newcommand\transrel{\mathcal{T}}
+
 \newcommand\set[1]{\left\{{#1}\right\}}
 \newcommand\REAL{\mathbb{R}}
 \newcommand\todo[1]{\textbf{TODO: {#1}}}
 \newcommand\POWER{\mathcal{p}}
 \newcommand\power[1]{2^{#1}}
 \newcommand\ra{\rightarrow}
+\newcommand\la{\leftarrow}
+\newcommand\Lra{\Longrightarrow}
 \newcommand\VALUATIONS{\Sigma}
 \newcommand\valuation{\sigma}
 \DeclareMathOperator{\COL}{{:}}
@@ -32,7 +35,44 @@
 
 \newcommand\semtrue{\top}
 
-\newcommand\CONTIREACH[1]{\operatorname{\rightarrow_{\ODE,{#1}}}}
+\newcommand\INITIALIZE{\mathrm{Initialize}}
+\newcommand\VALID{\mathrm{Valid}}
+\newcommand\UNFOLD{\mathrm{Unfold}}
+\newcommand\INDUCTION{\mathrm{Induction}}
+\newcommand\CANDIDATE{\mathrm{Candidate}}
+\newcommand\DECIDE{\mathrm{Decide}}
+\newcommand\MODEL{\mathrm{Model}}
+\newcommand\CONFLICT{\mathrm{Conflict}}
+
+\newcommand\State[2]{#1\> || \> #2}
+\newcommand\cetrace{M}
+\newcommand\abstraction{A}
+\newcommand\safe{S}
+\newcommand\ce{\mathcal{M}}
+\newcommand\rel{R}
+
+\newcommand\cmd{c}
+\newcommand\SKIP{\mathbf{skip}}
+\DeclareMathOperator\ASSIGN{:=}
+\DeclareMathOperator\SEQ{;}
+\DeclareMathOperator\IF{\mathbf{if}}
+\DeclareMathOperator\THEN{\mathbf{then}}
+\DeclareMathOperator\ELSE{\mathbf{else}}
+\newcommand\expr{e}
+
+\newcommand\TRUE{\mathit{true}}
+\newcommand\FALSE{\mathit{false}}
+
+\newcommand\GUARD{\mathbf{guard}}
+\newcommand\CMD{\mathbf{cmd}}
+
+\newcommand\HYBRIDPDR{\mathit{HybridPDR}}
+
+\newcommand\CONTIREACH[2]{\operatorname{\rightarrow}_{{#1},{#2}}}
+\newcommand\CONTIREACHD[1]{\CONTIREACH{\ODE}{#1}}
+
+\newcommand\CONSISTENT{\mathbf{CON}}
+\newcommand\REACH[1]{\mathit{Reach}_{#1}(\ODE)}
 
 %%% Local Variables:
 %%% mode: japanese-latex
