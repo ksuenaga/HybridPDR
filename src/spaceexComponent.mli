@@ -1,6 +1,6 @@
 type id [@@deriving show]
 type typ = Int | Real | Label [@@deriving show]
-type fml [@@deriving show]
+type fml = Cnf.t [@@deriving show]
 type flow [@@deriving show]
 type command [@@deriving show]
 type loc =
@@ -29,3 +29,8 @@ type t =
 
 val parse_from_channel : Core.In_channel.t -> t list
 
+val wp_command : command -> Cnf.t -> Cnf.t
+
+val locations : t -> id list
+
+val id_of_string : string -> id

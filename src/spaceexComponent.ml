@@ -9,7 +9,7 @@ module E = Error
 type id = string [@@deriving show]
 type exp = string [@@deriving show]
 type typ = Int | Real | Label [@@deriving show]
-type fml = string [@@deriving show]
+type fml = Cnf.t [@@deriving show]
 type flow = string [@@deriving show]
 type command = string [@@deriving show]
 type loc =
@@ -89,14 +89,14 @@ and param (xml : Xml.xml) (t : t) : t =
 and location (xml : Xml.xml) (t : t) : t =
   let id = Xml.attrib xml "id" in
   let name = Xml.attrib xml "name" in
-  let loc = { name; inv = ""; flow = "" } in
+  let loc = { name; inv = Cnf.cnf_true; flow = "" } in
   let loc =
     List.fold_left ~init:loc
       ~f:(fun (t : loc) x ->
         match Xml.tag x with
         | "invariant" ->
            let s = get_child_pcdata x in
-           let r = add_invariant s t in
+           let r = add_invariant (Cnf.parse s) t in
            r
         | "flow" ->
            let s = get_child_pcdata x in
@@ -110,14 +110,14 @@ and location (xml : Xml.xml) (t : t) : t =
 and transition (xml : Xml.xml) (t : t) : t =
   let source = Xml.attrib xml "source" in
   let target = Xml.attrib xml "target" in
-  let trans = { source; target; guard = ""; label = ""; command = "" } in
+  let trans = { source; target; guard = Cnf.cnf_true; label = ""; command = "" } in
   let trans =
     List.fold_left
       ~init:trans
       ~f:(fun t x ->
         match Xml.tag x with
         | "label" -> add_label (get_child_pcdata x) t
-        | "guard" -> add_guard (get_child_pcdata x) t
+        | "guard" -> add_guard (Cnf.parse (get_child_pcdata x)) t
         | "assignment" -> add_command (get_child_pcdata x) t
         | "labelposition" -> t (* ignored *)
         | _ -> malformed_error_xml "transition" x
@@ -144,7 +144,10 @@ and component (xml : Xml.xml) : t =
   else
     malformed_error_xml "component" xml
 
-       
+(**************** Operators ****************)
+  
+let locations (t:t) = Env.domain t.locations
+
 (**************** Main ****************)
   
 let rec parse_from_channel (inchan : In_channel.t) : t list =
@@ -226,17 +229,24 @@ let%test_module _ =
      let%test _ =
        let loc1 = Env.find_exn circleTLocs "1" in
        (loc1.name = "p" &&
-          loc1.inv = "y>=0" &&
+          loc1.inv = Cnf.parse "y>=0" &&
             loc1.flow = "x'==-y & y'==x")
      let%test _ =
        let loc2 = Env.find_exn circleTLocs "2" in
-       (loc2.name = "n" && loc2.inv = "y<=0" && loc2.flow = "x'==-y & y'==x")
+       (loc2.name = "n" && loc2.inv = Cnf.parse "y<=0" && loc2.flow = "x'==-y & y'==x")
      (* [XXX] Complete the test *)
      let circleTTrans = circleTComp.transitions
      let%test _ =
        let trans12 = MySet.find_exn circleTTrans ~f:(fun t -> t.source = "1" && t.target = "2") in
-       trans12.label = "hop" && trans12.guard = "y<=0" && trans12.command = ""
+       trans12.label = "hop" && trans12.guard = Cnf.parse "y<=0" && trans12.command = ""
      let%test _ =
        let trans21 = MySet.find_exn circleTTrans ~f:(fun t -> t.source = "2" && t.target = "1") in
-       trans21.label = "hop" && trans21.guard = "y>=0" && trans21.command = ""
+       trans21.label = "hop" && trans21.guard = Cnf.parse "y>=0" && trans21.command = ""
    end)
+
+(**************** WP computation ****************)
+
+let wp_command cmd cnf =
+  Error.raise (Error.of_string "wp_command: not implemented")
+
+let id_of_string s = s

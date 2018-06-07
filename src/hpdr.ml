@@ -30,10 +30,12 @@ let parse_verif_task_from_file ?(initial_condition=Cnf.cnf_true) ?(safety_region
   model
   
 (* Verifier core *)
-let verify model init safe =
+let verify (model:SpaceexComponent.t) ?(init_id=SpaceexComponent.id_of_string "1") init safe =
+  let open SpaceexComponent in
   (* Setup frames *)
-  let t = Pdr.init init safe in
-  let result = Pdr.verify model safe [] t in 
+  let t = Pdr.init (locations model) init_id init safe in
+  (* let result = Pdr.verify (Pdr.to_transformer model) safe [] t in  *)
+  let result = E.raise (E.of_string "not implemented.") in
   result
 
 (* Output the result *)
@@ -95,11 +97,14 @@ let _ =
   let input_file = ref None in
   let init_cond = ref None in
   let safety_region = ref None in
+  let init_id = ref None in
   let _ =
     Arg.parse
       ["model", String (fun s -> input_file := Some s), "Model file in SpaceEx format";
        "init", String (fun s -> init_cond := Some s), "Initial condition in SpaceEx format. (Whole space if omitted.)";
-       "safe", String (fun s -> safety_region := Some s), "Safety region in SpaceEx format. (Whole space if omitted.)"]
+       "safe", String (fun s -> safety_region := Some s), "Safety region in SpaceEx format. (Whole space if omitted.)";
+       "initid", String (fun s -> init_id := Some s), "ID of the initial location.";
+      ]
       (fun s -> E.raise (E.of_string "Anonymous argument is not allowed"))
   in
   let ts =
@@ -118,7 +123,12 @@ let _ =
       None -> Cnf.cnf_true
     | Some s -> Cnf.parse s
   in
-  let result = verify t init_cond safety_region in
+  let init_id =
+    match !init_id with
+      None -> id_of_string "1"
+    | Some s -> id_of_string s
+  in
+  let result = verify t ~init_id:init_id init_cond safety_region in
   let _ = printResult result in
   ()
 
