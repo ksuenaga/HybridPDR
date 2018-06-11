@@ -11,7 +11,7 @@
 (library
  (
  (name hpdr)
- (libraries (core xml-light z3))
+ (libraries (core xml-light z3 mparser sexplib mparser.re))
  (inline_tests)
   ; [XXX] use camlon
  (preprocess (pps (camlon ppx_inline_test ppx_deriving.show)))

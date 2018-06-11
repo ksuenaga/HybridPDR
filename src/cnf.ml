@@ -11,46 +11,19 @@ type cnf = disj list [@@deriving show]
 type t = cnf [@@deriving show]
 (* [] is true *)
 (* [[]] is false *)
-
+       
 let parse s =
-  Error.raise (E.of_string "parse: not implemented")
-      
-let ctx = ref (Z3.mk_context [])
-let solver = ref (Z3.Solver.mk_simple_solver !ctx)
-let set_context param = ctx := Z3.mk_context param
+  ParseFml.parse s;
+  E.raise (E.of_string "not implemented: parse")
 
-module Z3Intf =
-  struct
-    let callZ3 z3expr =
-      Z3.Solver.push !solver;
-      Z3.Solver.add !solver [z3expr];
-      let st = Z3.Solver.check !solver [] in
-      let res =
-        match st with
-        | Z3.Solver.UNSATISFIABLE ->
-           `Unsat
-        | Z3.Solver.SATISFIABLE ->
-           let m = Z3.Solver.get_model !solver in
-           begin
-             match m with
-               Some m' -> `Sat m'
-             | None ->
-                E.raise (E.of_string "sat_andneg: cannot happen")
-           end
-        | Z3.Solver.UNKNOWN ->
-           `Unknown
-      in
-      Z3.Solver.pop !solver 1;
-      res
-  end
-                      
+let set_context = Z3Intf.set_context
+let ctx = Z3Intf.ctx
+
 (* [] is true *)
 let cnf_true = []
 (* [[]] is false *)
 let cnf_false = [[]]
 
-let parse s =
-  E.raise (Error.of_string "parse: not implemented.")
 
 (* [XXX] not tested *)
 let disj_to_z3 (t:disj) : Z3.Expr.expr =
