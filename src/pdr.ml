@@ -45,7 +45,7 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen : vcgen) (((n,fs) : fra
        List.fold_left
          ~init:[]
          ~f:(fun l d ->
-           let vc = vcgen ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_disj d)) ~post:(frame_lift locs (Cnf.cnf_lift_disj d)) in
+           let vc = vcgen ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
            vc)
          disjuncts
      in

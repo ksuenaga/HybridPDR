@@ -9,7 +9,7 @@
     <param name="hop" type="label" local="false" />
     <param name="w1" type="real" local="false" d1="1" d2="1" dynamics="any" />
     <param name="w2" type="real" local="false" d1="1" d2="1" dynamics="any" />    <location id="1" name="always" x="195.5" y="224.0" width="177.0" height="70.0">
-      <invariant>x &gt;= 0 &amp; -0.05 &lt;= w1 &lt;= 0.05 &amp; -0.1 &lt;= w2 &lt;= 0.1 </invariant>
+      <invariant>x &gt;= 0 &amp; -0.05 &lt;= w1 &amp; w1 &lt;= 0.05 &amp; -0.1 &lt;= w2 &amp; w2 &lt;= 0.1 </invariant>
       <flow>x' == v &amp; v' == -g + w1</flow>
     </location>
     <transition source="1" target="1">

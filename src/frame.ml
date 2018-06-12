@@ -5,7 +5,7 @@ type frame = (SpaceexComponent.id,Cnf.t) Env.t
 let extract_disjuncts (f:frame) =
   Env.fold
     ~init:[]
-    ~f:(fun l (_,c) -> (Cnf.extract_disjuncts c) @ l)
+    ~f:(fun l (_,c) -> (Cnf.extract_atomics c) @ l)
     f
     
 let frame_and_cnf frame d =

@@ -4,30 +4,39 @@ open Format
 module E = Error
 
 let ctx = ref (Z3.mk_context [])
-let solver = ref (Z3.Solver.mk_simple_solver !ctx)
+let solver =
+  let solver = Z3.Solver.mk_simple_solver !ctx in
+  Z3.enable_trace "hpdr";
+  ref solver
+
 let set_context param = ctx := Z3.mk_context param
                       
 let callZ3 z3expr =
+  let open Format in
+  (* let _ = printf "callZ3: %s@." (Z3.Expr.to_string z3expr) in *)
   Z3.Solver.push !solver;
-      Z3.Solver.add !solver [z3expr];
-      let st = Z3.Solver.check !solver [] in
-      let res =
-        match st with
-        | Z3.Solver.UNSATISFIABLE ->
-           `Unsat
-        | Z3.Solver.SATISFIABLE ->
-           let m = Z3.Solver.get_model !solver in
-           begin
-             match m with
-               Some m' -> `Sat m'
-             | None ->
-                E.raise (E.of_string "sat_andneg: cannot happen")
-           end
-        | Z3.Solver.UNKNOWN ->
-           `Unknown
-      in
-      Z3.Solver.pop !solver 1;
-      res
+  (* let _ = printf "pushed@." in *)
+  Z3.Solver.add !solver [z3expr];
+  (* let _ = printf "added@." in *)
+  let st = Z3.Solver.check !solver [] in
+  (* let _ = printf "checked@." in *)
+  let res =
+    match st with
+    | Z3.Solver.UNSATISFIABLE ->
+       `Unsat
+    | Z3.Solver.SATISFIABLE ->
+       let m = Z3.Solver.get_model !solver in
+       begin
+         match m with
+           Some m' -> `Sat m'
+         | None ->
+            E.raise (E.of_string "sat_andneg: cannot happen")
+       end
+    | Z3.Solver.UNKNOWN ->
+       `Unknown
+  in
+  Z3.Solver.pop !solver 1;
+  res
       
 let parse_smtlib2_expr s =
   let open Z3.SMT in
@@ -70,7 +79,6 @@ let%test _ =
 
 let mk_true = Z3.Boolean.mk_true !ctx
 let mk_false = Z3.Boolean.mk_false !ctx
-            
 let mk_add e1 e2 = Z3.Arithmetic.mk_add !ctx [e1; e2]
 let mk_sub e1 e2 = Z3.Arithmetic.mk_sub !ctx [e1; e2]
 let mk_mul e1 e2 = Z3.Arithmetic.mk_mul !ctx [e1; e2]
@@ -78,7 +86,14 @@ let mk_div e1 e2 = Z3.Arithmetic.mk_div !ctx e1 e2
 let mk_gt e1 e2 = Z3.Arithmetic.mk_gt !ctx e1 e2
 let mk_ge e1 e2 = Z3.Arithmetic.mk_ge !ctx e1 e2
 let mk_lt e1 e2 = Z3.Arithmetic.mk_lt !ctx e1 e2
-let mk_le e1 e2 = Z3.Arithmetic.mk_le !ctx e1 e2
+let mk_le e1 e2 =
+  (*
+  let open Z3.Expr in
+  let _ = printf "le@." in
+  let _ = printf "e1: %s@." (to_string e1) in
+  let _ = printf "e2: %s@." (to_string e2) in
+   *)
+  Z3.Arithmetic.mk_le !ctx e1 e2
 let mk_eq e1 e2 = Z3.Boolean.mk_eq !ctx e1 e2
 let mk_and e1 e2 = Z3.Boolean.mk_and !ctx [e1; e2]
 let mk_or e1 e2 = Z3.Boolean.mk_or !ctx [e1; e2]
@@ -146,6 +161,11 @@ let%test_module _ =
        
 end)
 
+    (*
+let tseitin_cnf
+tseitin-cnf 
+   *)  
+    
 (* let make_expr sexp =
  *   E.raise (E.of_string "make_expr: not implemented.") *)
   
