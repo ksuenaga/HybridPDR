@@ -111,20 +111,22 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen : vcgen) (((n,fs) : fra
 
 (* If (and hd1 (not hd2)) is unsatisfiable, then (imply hd1 hd2) is valid. *)
 (* [XXX] not tested *)
-let is_valid_implication_cnf (c1:Cnf.t) (c2:Cnf.t) =
+let is_valid_implication_cnf loc (c1:Cnf.t) (c2:Cnf.t) =
   match Cnf.sat_andneg c1 c2 with
   | `Unsat -> `Valid
-  | `Sat m -> `NotValid m
+  | `Sat m -> `NotValid (loc,m)
   | `Unknown -> `NotValidNoModel
      
 let is_valid_implication_frame (e1:frame) (e2:frame) =
   Env.fold2
     e1 e2
     ~init:`Valid
-    ~f:(fun res (_,c1) (_,c2) ->
+    ~f:(fun res (loc1,c1) (loc2,c2) ->
+      assert(loc1=loc2);
       match res with
-      | `Valid | `NotValidNoModel -> is_valid_implication_cnf c1 c2
-      | `NotValid m -> `NotValid m)
+      | `Valid | `NotValidNoModel ->
+         is_valid_implication_cnf loc1 c1 c2
+      | `NotValid (loc,m) -> `NotValid (loc,m))
   
 (* [XXX] not tested *)
 let is_valid ((n,fs) : frames) =
@@ -145,10 +147,10 @@ let expand locs (safe:Cnf.t) ((n,fs) : frames) =
   | hd::_ ->
      let st =
        Env.fold ~init:`Valid
-         ~f:(fun st (_,c) ->
+         ~f:(fun st (loc,c) ->
            match st with
              | `NotValidNoModel | `NotValid _ -> st
-             | _ -> is_valid_implication_cnf c safe)
+             | _ -> is_valid_implication_cnf loc c safe)
          hd
          (* is_valid_implication hd safe *)
      in
@@ -162,7 +164,9 @@ let expand locs (safe:Cnf.t) ((n,fs) : frames) =
               locs
           in
           `Expandable(n+1, newframe::fs)
-       | `NotValid m -> `NonExpandable m
+       | `NotValid m ->
+          E.raise (E.of_string "expand: return a model so that the location is associated.");
+          `NonExpandable m
        | `NotValidNoModel ->
           E.raise (E.of_string "expand: Unknown, cannot proceed.")
      end
@@ -172,10 +176,10 @@ let expand locs (safe:Cnf.t) ((n,fs) : frames) =
 let pp_candidate fmt m =
   fprintf fmt "%s" (Z3.Model.to_string m)
     
-let rec exploreCE (candidates : Z3.Model.model list) (t : frames) =
+let rec exploreCE loc (candidate : Z3.Model.model) (t : frames) =
   let open Format in
   let _ = printf "frames:%a@." pp_frames t in
-  let _ = printf "candidates:%a@." (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "@\n") pp_candidate) candidates in
+  let _ = printf "candidate:%a@." pp_candidate candidate in
   E.raise (E.of_string "exploreCE: not implemented")
   
 let to_vcgen (hs : SpaceexComponent.t) =
@@ -208,7 +212,7 @@ let rec verify ~locs ~vcgen ~safe ~candidates ~frames
           (~frames) 
            *)
   =
-  assert(candidates = []);
+  (* assert(candidates = []); *)
   let _ = printf "frames:%a@." pp_frames frames in
   let (n,frames) as t = frames in
   let t = induction locs vcgen t in
@@ -222,9 +226,9 @@ let rec verify ~locs ~vcgen ~safe ~candidates ~frames
        | `Expandable (n',frame') ->
           assert(n' = n + 1);
           assert(List.length frame' = n');
-          verify ~locs ~vcgen ~safe ~candidates ~frames:(n',frame')
-       | `NonExpandable model ->
-          let res = exploreCE (model::candidates) t in
+          verify ~locs ~vcgen ~safe ~candidates:[] ~frames:(n',frame')
+       | `NonExpandable (loc,model) ->
+          let res = exploreCE loc model t in
           begin
             match res with
             | `CEFound trace -> Ng trace
