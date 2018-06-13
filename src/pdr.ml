@@ -10,16 +10,22 @@ open Format
    Invariant n = List.length fs holds.
    The list fs is arranged as follows: fs = [R_{n-1}; R_{n-2}; ...; R_0]. *)
 type frames = int * Frame.frame list [@@deriving show]
+          
 type result =
   | Ok of frames
-  | Ng of Z3.Model.model list
-
+  | Ng of (SpaceexComponent.id, Z3.Model.model) Env.t (* list *)
+let pp_result fmt r =
+  match r with
+  | Ok (_,fs) -> fprintf fmt "Ok:%a" (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n") pp_frame) fs
+  | Ng menv -> fprintf fmt "Ng(%a)" (Env.pp SpaceexComponent.pp_id (fun fmt m -> fprintf fmt "%s" (Z3.Model.to_string m))) menv
+        
 type cont_reach_pred =
   { pre : Cnf.t;
     post : Cnf.t;
     dynamics : SpaceexComponent.flow;
     inv : Cnf.t }
-
+[@@deriving show]
+  
 exception Unsafe of Z3.Model.model list
 
 type vcgen = pre:frame -> post:frame -> cont_reach_pred list [@@deriving show]
@@ -29,12 +35,18 @@ let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s =
   let st = Cnf.sat_andneg i s  in
   match st with
   | `Unsat -> 
-     2, [Frame.frame_lift locs i; Frame.frame_lift_given_id locs initloc Cnf.cnf_true]
+     2, [Frame.frame_lift locs i; Frame.frame_lift_given_id locs initloc (*Cnf.cnf_true*) s]
   | `Sat m ->
      raise (Unsafe [m])
   | `Unknown ->
      E.raise (E.of_string "init: unknown: Cannot proceed.")
 
+(* [XXX] to be implememnted. *)
+let discharge_vcs vcs =
+  match vcs with
+    [] -> true
+  | _ -> false
+    
 (* [XXX] not tested *)
 let rec induction (locs:SpaceexComponent.id list) (vcgen : vcgen) (((n,fs) : frames) as t) : frames =
   match fs with
@@ -45,7 +57,28 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen : vcgen) (((n,fs) : fra
      | [] -> (1,[hd1])
      | hd2::tl ->
         let atomics = extract_atomics hd2 in
-        E.raise (E.of_string "induction: not implemented.")
+        let local_invs =
+          List.fold_left
+            ~init:[]
+            ~f:(fun l d ->
+              let vcs = vcgen ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
+              if discharge_vcs vcs then
+                d::l
+              else
+                l)
+            atomics
+        in
+        let ret = hd1::hd2::tl in
+        let ret =
+          List.map
+            ~f:(fun frame ->
+              List.fold_left
+                ~init:frame
+                ~f:(fun f inv -> Frame.frame_and_cnf f (Cnf.cnf_lift_atomic inv))
+                local_invs)
+            ret
+        in
+        (n,ret)
   (*
   let open Frame in
   assert(n = List.length fs);
@@ -162,14 +195,19 @@ let to_vcgen (hs : SpaceexComponent.t) =
   ret
   
 (* [XXX] Not tested *)
-let rec verify
+let rec verify ~locs ~vcgen ~safe ~candidates ~frames
           (* (hybridSystem : SpaceexComponent.t) *)
-          (locs : SpaceexComponent.id list)
-          (vcgen : pre:frame -> post:frame -> cont_reach_pred list)
-          (safe : Cnf.t)
-          (candidates : Z3.Model.model list)
-          ((n,frames) as t) =
+          (*
+          (~locs:SpaceexComponent.id list)
+          (~vcgen : pre:frame -> post:frame -> cont_reach_pred list)
+          (~safe : Cnf.t)
+          (~candidates : Z3.Model.model list)
+          (~frames) 
+           *)
+  =
   assert(candidates = []);
+  let _ = printf "frames:%a@." pp_frames frames in
+  let (n,frames) as t = frames in
   let t = induction locs vcgen t in
   let res = is_valid t in
   match res with
@@ -181,12 +219,12 @@ let rec verify
        | `Expandable (n',frame') ->
           assert(n' = n + 1);
           assert(List.length frame' = n');
-          verify locs vcgen safe candidates (n',frame')
+          verify ~locs ~vcgen ~safe ~candidates ~frames:(n',frame')
        | `NonExpandable model ->
           let res = exploreCE candidates t in
           begin
             match res with
             | `CEFound trace -> Ng trace
-            | `Conflict t -> verify locs vcgen safe [] t
+            | `Conflict t -> verify ~locs ~vcgen ~safe ~candidates:[] ~frames:t
           end
      end

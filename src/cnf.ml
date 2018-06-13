@@ -146,3 +146,5 @@ let cnf_and hd1 hd2 = hd1 @ hd2
 
 let cnf_lift_atomic a = [[a]]
 let z3_to_atomic e = e
+
+let listlist_to_cnf ll = ll

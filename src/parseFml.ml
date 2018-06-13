@@ -163,17 +163,18 @@ let rec predexpr_to_cnf (res:expr) : Z3.Expr.expr list list =
        | And -> (predexpr_to_cnf a) @ (predexpr_to_cnf b)
        | Or ->
           let cnf_a, cnf_b = (predexpr_to_cnf a), (predexpr_to_cnf b) in
-          List.fold_left
-            ~init:[]
-            ~f:(fun cnf disja ->
-              let res =
-                List.fold_left
-                  ~init:cnf
-                  ~f:(fun cnf disjb -> (disja @ disjb)::cnf)
-                  cnf_b
-              in
-              res @ cnf)
-            cnf_a
+          List.rev
+            (List.fold_left
+               ~init:[]
+               ~f:(fun cnf disja ->
+                 let res =
+                   List.fold_left
+                     ~init:cnf
+                     ~f:(fun cnf disjb -> (disja @ disjb)::cnf)
+                     cnf_b
+                 in
+                 res @ cnf)
+               cnf_a)
      end
   | Float _ | Ident _ ->
      printf "res:%a@." pp_expr res;
@@ -219,7 +220,7 @@ let%test_module _ =
        expr_equal s expected
        
      let%test _ =
-       let s = parse_to_cnf "4*x+10*x >= y & z >= 5" in
+       let s = parse_to_cnf "4*x+10*x >= y & z >= 5 | z >= 6" in
        let s = Z3Intf.simplify (cnf_to_z3 s) in
        (* let _ = printf "s:%s@." (Z3.Expr.to_string s) in *)
        let expected =
@@ -233,11 +234,18 @@ let%test_module _ =
                       (mk_mul
                          (mk_real_numeral_s "10.0")
                          (mk_real_var "x")))
-                   (mk_real_var "y"))];
+                   (mk_real_var "y"));
+                (mk_ge
+                   (mk_real_var "z")
+                   (mk_real_numeral_s "6.0"))];
                [(mk_ge
                    (mk_real_var "z")
-                   (mk_real_numeral_s "5.0"))]])
+                   (mk_real_numeral_s "5.0"));
+                (mk_ge
+                   (mk_real_var "z")
+                   (mk_real_numeral_s "6.0"))]])
        in
+       (* let _ = printf "expected:%s@." (Z3.Expr.to_string expected) in *)
        expr_equal s expected
    end)
     

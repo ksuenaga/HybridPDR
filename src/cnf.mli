@@ -16,3 +16,5 @@ val cnf_and : t -> t -> t
                           (* val cnf_lift_disj : disj -> t *)
 val cnf_lift_atomic : atomic -> t
 val z3_to_atomic : Z3.Expr.expr -> atomic
+
+val listlist_to_cnf : Z3.Expr.expr list list -> t
