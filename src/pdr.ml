@@ -174,7 +174,7 @@ let expand locs (safe:Cnf.t) (fs : frames) =
 let pp_candidate fmt m =
   fprintf fmt "%s" (Z3.Model.to_string m)
   
-let rec exploreCE loc (candidates : (SpaceexComponent.id*Z3.Model.model) list) (t : frames) =
+let rec exploreCE loc (hs:SpaceexComponent.t) (candidates : (SpaceexComponent.id*Z3.Model.model) list) (t : frames) =
   let open Format in
   let _ = printf "frames:%a@." pp_frames t in
   let _ = printf "candidate:%a@." (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n") (fun fmt (loc,m) -> fprintf fmt "%a:%a" SpaceexComponent.pp_id loc pp_candidate m)) candidates in
@@ -200,7 +200,7 @@ let to_vcgen (hs : SpaceexComponent.t) =
   ret
   
 (* [XXX] Not tested *)
-let rec verify ~locs ~vcgen ~safe ~candidates ~frames =
+let rec verify ~locs ~hs ~vcgen ~safe ~candidates ~frames =
   let _ = printf "frames:%a@." pp_frames frames in
   let t = frames in
   (* Do induction as much as possible. *)
@@ -229,12 +229,12 @@ let rec verify ~locs ~vcgen ~safe ~candidates ~frames =
                (* the tip of the frame is safe.  Expand the frames. *)
                let newframe = Frame.frame_lift locs Cnf.cnf_true in
                (* Discard the candidates.  Continue verification. *)
-               verify ~locs ~vcgen ~safe ~candidates:[] ~frames:(newframe::frames)
+               verify ~locs ~hs ~vcgen ~safe ~candidates:[] ~frames:(newframe::frames)
             | `NotValid(loc,m) ->
                (* Counterexample is found. *)
                let newcandidates = (loc,m)::candidates in
                (* Push back the counterexample. *)
-               let res = exploreCE loc newcandidates t in
+               let res = exploreCE loc hs newcandidates t in
                begin
                  match res with
                  | `CEFound trace ->
@@ -242,7 +242,7 @@ let rec verify ~locs ~vcgen ~safe ~candidates ~frames =
                     Ng trace
                  | `CENotFound newframes ->
                     (* The frames are refined with newly found predicates.  Continue verification. *)
-                    verify ~locs ~vcgen ~safe ~candidates:[] ~frames:newframes
+                    verify ~locs ~hs ~vcgen ~safe ~candidates:[] ~frames:newframes
                end
             | `NotValidNoModel ->
                (* Got stuck. *)
