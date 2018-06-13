@@ -1,7 +1,7 @@
 type id [@@deriving show]
 type typ = Int | Real | Label [@@deriving show]
 type fml = Cnf.t [@@deriving show]
-type flow [@@deriving show]
+type flow
 type command
 type loc =
   { name : id;
@@ -35,3 +35,4 @@ val locations : t -> id list
 
 val id_of_string : string -> id
 val string_of_id : string -> id
+val pp_flow : Format.formatter -> flow -> unit

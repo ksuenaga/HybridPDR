@@ -9,7 +9,11 @@ type id = string [@@deriving show]
 type exp = string [@@deriving show]
 type typ = Int | Real | Label [@@deriving show]
 type fml = Cnf.t [@@deriving show]
-type flow = string [@@deriving show]
+type flow = (string,Z3.Expr.expr) Env.t
+
+let empty_flow = Env.empty
+let pp_flow fmt flow =
+  fprintf fmt "%a" (Env.pp (fun fmt s -> fprintf fmt "%s" s) (fun fmt e -> fprintf fmt "%s" (Z3.Expr.to_string e))) flow
 
 let id_of_string s = s
 let string_of_id s = s
@@ -105,7 +109,7 @@ and param (xml : Xml.xml) (t : t) : t =
 and location (xml : Xml.xml) (t : t) : t =
   let id = Xml.attrib xml "id" in
   let name = Xml.attrib xml "name" in
-  let loc = { name; inv = Cnf.cnf_true; flow = "" } in
+  let loc = { name; inv = Cnf.cnf_true; flow = empty_flow } in
   let loc =
     List.fold_left ~init:loc
       ~f:(fun (t : loc) x ->
@@ -115,8 +119,8 @@ and location (xml : Xml.xml) (t : t) : t =
            let r = add_invariant (Cnf.parse s) t in
            r
         | "flow" ->
-           let s = get_child_pcdata x in
-           let r = add_flow s t in
+           let flow = List.fold_left ~f:(fun flow (k,v) -> Env.add k v flow) ~init:empty_flow (ParseFml.parse_flow (get_child_pcdata x)) in
+           let r = add_flow flow t in
            r
         | _ ->
            malformed_error_xml "location" x)
@@ -246,10 +250,14 @@ let%test_module _ =
        let loc1 = Env.find_exn circleTLocs "1" in
        (loc1.name = "p" &&
           loc1.inv = Cnf.parse "y>=0" &&
-            loc1.flow = "x'==-y & y'==x")
+            Z3.Expr.equal (Env.find_exn loc1.flow "x") Z3Intf.(mk_neg (mk_real_var "y")) &&
+              Z3.Expr.equal (Env.find_exn loc1.flow "y") Z3Intf.(mk_real_var "x"))
      let%test _ =
        let loc2 = Env.find_exn circleTLocs "2" in
-       (loc2.name = "n" && loc2.inv = Cnf.parse "y<=0" && loc2.flow = "x'==-y & y'==x")
+       (loc2.name = "n" &&
+          loc2.inv = Cnf.parse "y<=0" &&
+            Z3.Expr.equal (Env.find_exn loc2.flow "x") Z3Intf.(mk_neg (mk_real_var "y")) &&
+              Z3.Expr.equal (Env.find_exn loc2.flow "y") Z3Intf.(mk_real_var "x"))
      (* [XXX] Complete the test *)
      let circleTTrans = circleTComp.transitions
      let%test _ =

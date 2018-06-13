@@ -178,6 +178,7 @@ let rec exploreCE loc (hs:SpaceexComponent.t) (candidates : (SpaceexComponent.id
   let open Format in
   let _ = printf "frames:%a@." pp_frames t in
   let _ = printf "candidate:%a@." (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n") (fun fmt (loc,m) -> fprintf fmt "%a:%a" SpaceexComponent.pp_id loc pp_candidate m)) candidates in
+  let _ = printf "hs:%a@." SpaceexComponent.pp hs in
   E.raise (E.of_string "exploreCE: not implemented")
   
 let to_vcgen (hs : SpaceexComponent.t) =

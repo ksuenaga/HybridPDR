@@ -265,3 +265,29 @@ let parse_assignment s =
   | Failed (msg, e) ->
      failwith msg
   
+let single_ode_parser s =
+  ((spaces >> parse_ident << (regexp (make_regexp "'")) << spaces) >>=
+    (fun x ->
+      match x with
+      | Ident x ->
+         (spaces >> (regexp (make_regexp "==")) >> spaces) >> expr >>= (fun e -> return (x,expr_to_z3 e))
+      | _ ->
+         E.raise (E.of_string "single_ode_parser: malformed."))) s
+
+  (*
+let flow_parser s =
+  ((expression [[Infix(((symbol "&") |>> (fun _ a b -> a @ b)),Assoc_left)]] single_ode_parser) << eof) s
+   *)
+
+let parse_flow s =
+  (* let open Core.String in *)
+  let ss = String.split s ~on:'&' in
+  List.fold_left
+    ~init:[]
+    ~f:(fun res ode_s ->
+      match MParser.parse_string single_ode_parser ode_s () with
+      | Success e ->
+         e::res     
+      | Failed (msg, e) ->
+         failwith msg)
+    ss
