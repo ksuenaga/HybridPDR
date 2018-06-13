@@ -168,11 +168,14 @@ let expand locs (safe:Cnf.t) ((n,fs) : frames) =
      end
   | _ ->
      E.raise (E.of_string "expand: Should not happen")
+
+let pp_candidate fmt m =
+  fprintf fmt "%s" (Z3.Model.to_string m)
     
 let rec exploreCE (candidates : Z3.Model.model list) (t : frames) =
   let open Format in
   let _ = printf "frames:%a@." pp_frames t in
-  (* let _ = printf "candidates:%a@." pp_frames t in *)
+  let _ = printf "candidates:%a@." (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "@\n") pp_candidate) candidates in
   E.raise (E.of_string "exploreCE: not implemented")
   
 let to_vcgen (hs : SpaceexComponent.t) =
@@ -221,7 +224,7 @@ let rec verify ~locs ~vcgen ~safe ~candidates ~frames
           assert(List.length frame' = n');
           verify ~locs ~vcgen ~safe ~candidates ~frames:(n',frame')
        | `NonExpandable model ->
-          let res = exploreCE candidates t in
+          let res = exploreCE (model::candidates) t in
           begin
             match res with
             | `CEFound trace -> Ng trace

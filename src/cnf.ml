@@ -148,3 +148,14 @@ let cnf_lift_atomic a = [[a]]
 let z3_to_atomic e = e
 
 let listlist_to_cnf ll = ll
+
+let substitute_one x e cnf =
+  let open Z3Intf in
+  List.map
+    ~f:(fun d ->
+      List.map
+        ~f:(fun a ->
+          let x = mk_real_var x in
+          Z3.Expr.substitute_one x e a)
+        d)
+    cnf

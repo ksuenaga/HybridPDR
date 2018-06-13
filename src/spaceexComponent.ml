@@ -12,6 +12,7 @@ type fml = Cnf.t [@@deriving show]
 type flow = string [@@deriving show]
 
 let id_of_string s = s
+let string_of_id s = s
           
 (* Assignments *)
 type command = (id,Z3.Expr.expr) Env.t
@@ -261,7 +262,16 @@ let%test_module _ =
 
 (**************** WP computation ****************)
 
-let wp_command cmd cnf =
-  Error.raise (Error.of_string "wp_command: not implemented")
-
-
+let wp_command (cmd:command) cnf =
+  (*
+  let _ = printf "cmd:%a@." pp_command cmd in
+  let _ = printf "cnf:%a@." Cnf.pp cnf in
+   *)
+  let cnf =
+    Env.fold
+      ~init:cnf
+      ~f:(fun cnf (k,v) ->
+        Cnf.substitute_one k v cnf)
+      cmd
+  in
+  cnf

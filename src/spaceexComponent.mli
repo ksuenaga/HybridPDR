@@ -34,3 +34,4 @@ val wp_command : command -> Cnf.t -> Cnf.t
 val locations : t -> id list
 
 val id_of_string : string -> id
+val string_of_id : string -> id

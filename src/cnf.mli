@@ -19,3 +19,5 @@ val cnf_lift_atomic : atomic -> t
 val z3_to_atomic : Z3.Expr.expr -> atomic
 
 val listlist_to_cnf : Z3.Expr.expr list list -> t
+
+val substitute_one : string -> Z3.Expr.expr -> t -> t
