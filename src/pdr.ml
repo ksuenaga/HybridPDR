@@ -35,7 +35,7 @@ let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s =
   let st = Cnf.sat_andneg i s  in
   match st with
   | `Unsat -> 
-     2, [Frame.frame_lift locs i; Frame.frame_lift_given_id locs initloc (*Cnf.cnf_true*) s]
+     2, [Frame.frame_lift locs s; Frame.frame_lift_given_id locs initloc (*Cnf.cnf_true*) i]
   | `Sat m ->
      raise (Unsafe [m])
   | `Unknown ->

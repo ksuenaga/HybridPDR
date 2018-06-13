@@ -21,6 +21,5 @@ let frame_lift_given_id
       (locs:SpaceexComponent.id list)
       (id:SpaceexComponent.id)
       (cnf:Cnf.t) =
-  let default = frame_lift locs cnf in
+  let default = frame_lift locs Cnf.cnf_false in
   Env.add id cnf default
-

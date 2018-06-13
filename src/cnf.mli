@@ -7,6 +7,7 @@ val pp : Format.formatter -> t -> unit
    
 val set_context : (string * string) list -> unit
 val cnf_true : t
+val cnf_false : t
 val parse : string -> t
 
 val sat_andneg : t -> t -> [> `Sat of Z3.Model.model | `Unknown | `Unsat ]
