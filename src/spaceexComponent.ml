@@ -1,4 +1,3 @@
-
 open Core
 open Format
 
@@ -11,7 +10,20 @@ type exp = string [@@deriving show]
 type typ = Int | Real | Label [@@deriving show]
 type fml = Cnf.t [@@deriving show]
 type flow = string [@@deriving show]
-type command = string [@@deriving show]
+
+let id_of_string s = s
+          
+(* Assignments *)
+type command = (id,Z3.Expr.expr) Env.t
+let empty_command = Env.empty
+
+let pp_command fmt cmd =
+  fprintf fmt "%a" (Env.pp pp_id (fun fmt e -> fprintf fmt "%s" (Z3.Expr.to_string e))) cmd
+
+let pp_command fmt cmd =
+  let open Format in
+  fprintf fmt "%a" (Env.pp pp_id (fun fmt e -> fprintf fmt "%s" (Z3.Expr.to_string e))) cmd
+
 type loc =
   { name : id;
     inv : fml;
@@ -29,6 +41,7 @@ type param =
   { typ : typ;
     local : bool }
     [@@deriving show]
+
 type t =
   { id : id;
     params : (id,param) Env.t; (* bool is false if it is a local param *)
@@ -49,7 +62,9 @@ let add_invariant inv loc = { loc with inv = inv }
 let add_flow flow loc = { loc with flow = flow }
 let add_label label trans = { trans with label = label }
 let add_guard guard trans = { trans with guard = guard }
-let add_command command trans = { trans with command = command }
+let add_command command_s trans =
+  let (x,e) = ParseFml.parse_assignment command_s in
+  Env.{ trans with command = add x e trans.command }
 
 (**************** Aux ****************)
 
@@ -110,7 +125,7 @@ and location (xml : Xml.xml) (t : t) : t =
 and transition (xml : Xml.xml) (t : t) : t =
   let source = Xml.attrib xml "source" in
   let target = Xml.attrib xml "target" in
-  let trans = { source; target; guard = Cnf.cnf_true; label = ""; command = "" } in
+  let trans = { source; target; guard = Cnf.cnf_true; label = ""; command = Env.empty } in
   let trans =
     List.fold_left
       ~init:trans
@@ -238,10 +253,10 @@ let%test_module _ =
      let circleTTrans = circleTComp.transitions
      let%test _ =
        let trans12 = MySet.find_exn circleTTrans ~f:(fun t -> t.source = "1" && t.target = "2") in
-       trans12.label = "hop" && trans12.guard = Cnf.parse "y<=0" && trans12.command = ""
+       trans12.label = "hop" && trans12.guard = Cnf.parse "y<=0" && trans12.command = empty_command
      let%test _ =
        let trans21 = MySet.find_exn circleTTrans ~f:(fun t -> t.source = "2" && t.target = "1") in
-       trans21.label = "hop" && trans21.guard = Cnf.parse "y>=0" && trans21.command = ""
+       trans21.label = "hop" && trans21.guard = Cnf.parse "y>=0" && trans21.command = empty_command
    end)
 
 (**************** WP computation ****************)
@@ -249,4 +264,4 @@ let%test_module _ =
 let wp_command cmd cnf =
   Error.raise (Error.of_string "wp_command: not implemented")
 
-let id_of_string s = s
+

@@ -2,7 +2,7 @@ type id [@@deriving show]
 type typ = Int | Real | Label [@@deriving show]
 type fml = Cnf.t [@@deriving show]
 type flow [@@deriving show]
-type command [@@deriving show]
+type command
 type loc =
   { name : id;
     inv : fml;

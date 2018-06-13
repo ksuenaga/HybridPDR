@@ -248,4 +248,20 @@ let%test_module _ =
        (* let _ = printf "expected:%s@." (Z3.Expr.to_string expected) in *)
        expr_equal s expected
    end)
-    
+
+let assignment_parser s =
+  ((spaces >> parse_ident << spaces) >>=
+     (fun x ->
+       match x with
+         Ident x' -> 
+          (spaces >> regexp (make_regexp ":=") >> spaces) >> expr >>= (fun e -> return (x',expr_to_z3 e))
+       | _ ->
+          E.raise (E.of_string "parse_assignment: malformed assignment."))) s
+
+let parse_assignment s =
+  match MParser.parse_string assignment_parser s () with
+  | Success e ->
+     e     
+  | Failed (msg, e) ->
+     failwith msg
+  
