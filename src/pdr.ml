@@ -4,10 +4,12 @@ module E = Error
 
 open Frame
 
+open Format
+
 (* ((n,fs) : frames) is a configuration of PDR procedure.
    Invariant n = List.length fs holds.
    The list fs is arranged as follows: fs = [R_{n-1}; R_{n-2}; ...; R_0]. *)
-type frames = int * Frame.frame list
+type frames = int * Frame.frame list [@@deriving show]
 type result =
   | Ok of frames
   | Ng of Z3.Model.model list
@@ -20,7 +22,7 @@ type cont_reach_pred =
 
 exception Unsafe of Z3.Model.model list
 
-type vcgen = pre:frame -> post:frame -> cont_reach_pred list
+type vcgen = pre:frame -> post:frame -> cont_reach_pred list [@@deriving show]
 
 (* [XXX] not tested *)        
 let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s =
@@ -34,22 +36,45 @@ let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s =
      E.raise (E.of_string "init: unknown: Cannot proceed.")
 
 (* [XXX] not tested *)
-let rec induction (locs:SpaceexComponent.id list) (vcgen : vcgen) (((n,fs) : frames) as t) =
+let rec induction (locs:SpaceexComponent.id list) (vcgen : vcgen) (((n,fs) : frames) as t) : frames =
+  match fs with
+  | [] -> (0,[])
+  | hd1::tl ->
+     let (_,fs) = induction locs vcgen (n-1,tl) in
+     match fs with
+     | [] -> (1,[hd1])
+     | hd2::tl ->
+        let atomics = extract_atomics hd2 in
+        E.raise (E.of_string "induction: not implemented.")
+  (*
   let open Frame in
   assert(n = List.length fs);
   match fs with
   | [] | [_] -> t
-  | hd1::hd2::tl ->
-     let disjuncts = extract_disjuncts hd2 in
-     let vcs =
-       List.fold_left
-         ~init:[]
-         ~f:(fun l d ->
-           let vc = vcgen ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
-           vc)
-         disjuncts
-     in
-     E.raise (E.of_string "induction: not implemneted")
+  | hd::tl ->
+     let (_,fs) = induction locs vcgen ((n-1,tl)) in
+     match fs with
+     | hd1::hd2::tl ->
+        begin
+          let disjuncts = extract_disjuncts hd2 in
+          let vcs =
+            List.fold_left
+              ~init:[]
+              ~f:(fun l d ->
+                let vc = vcgen ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
+                vc)
+              disjuncts
+          in
+          match vcs with
+          | [] ->
+             induction locs vcgen ((n-1,hd2::tl))
+          | _ ->
+             E.raise (E.of_string "induction: vc discharge: not implemneted")
+        end
+     | [hd] -> (1,[hd])
+     | _ ->
+        E.raise (E.of_string "induction: should not happen.")        
+   *)
 
 (* If (and hd1 (not hd2)) is unsatisfiable, then (imply hd1 hd2) is valid. *)
 (* [XXX] not tested *)
@@ -112,8 +137,11 @@ let expand locs (safe:Cnf.t) ((n,fs) : frames) =
      E.raise (E.of_string "expand: Should not happen")
     
 let rec exploreCE (candidates : Z3.Model.model list) (t : frames) =
-  E.raise (E.of_string "exploreCE: not implemented")  
-
+  let open Format in
+  let _ = printf "frames:%a@." pp_frames t in
+  (* let _ = printf "candidates:%a@." pp_frames t in *)
+  E.raise (E.of_string "exploreCE: not implemented")
+  
 let to_vcgen (hs : SpaceexComponent.t) =
   let open Frame in
   let open SpaceexComponent in
@@ -130,7 +158,8 @@ let to_vcgen (hs : SpaceexComponent.t) =
       )
       hs.transitions
   in
-  E.raise (E.of_string "exploreCE: not implemented")
+  (* E.raise (E.of_string "to_vcgen: not implemented") *)
+  ret
   
 (* [XXX] Not tested *)
 let rec verify

@@ -1,8 +1,8 @@
 open Core
 
-type frame = (SpaceexComponent.id,Cnf.t) Env.t
+type frame = (SpaceexComponent.id,Cnf.t) Env.t [@@deriving show]
 
-let extract_disjuncts (f:frame) =
+let extract_atomics (f:frame) =
   Env.fold
     ~init:[]
     ~f:(fun l (_,c) -> (Cnf.extract_atomics c) @ l)

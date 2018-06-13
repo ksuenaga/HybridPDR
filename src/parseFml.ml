@@ -6,6 +6,8 @@ module Regex = MakeRegexp(MParser_RE.Regexp)
 open Regex
 open Tokens
 
+module E = Error
+   
 type unop = Neg
 [@@deriving show]
 
@@ -65,8 +67,8 @@ let rec expr s =
 and term s = (parens expr) s
    *)
 
-
-let rec expr_to_z3 res : Z3.Expr.expr =
+  (*
+let rec expr_to_cnf res : Z3.Expr.expr list list =
   let open Z3Intf in
   let float f = mk_real_numeral_s (string_of_float f) in
   (* [XXX] Consider the type of x *)
@@ -78,7 +80,7 @@ let rec expr_to_z3 res : Z3.Expr.expr =
   | Unop(op, a) ->
      begin
        match op with
-       | Neg ->  neg (expr_to_z3 a)
+       | Neg ->  [[(neg (expr_to_z3 a))]]
      end
   | Binop (op, a, b) ->
      let op_f = 
@@ -98,11 +100,90 @@ let rec expr_to_z3 res : Z3.Expr.expr =
      op_f (expr_to_z3 a) (expr_to_z3 b)
   | Float f -> float f
   | Ident x ->  ident x
+   *)
+  
+let rec expr_to_z3 (res:expr) : Z3.Expr.expr =
+  let open Z3Intf in
+  let float f = mk_real_numeral_s (string_of_float f) in
+  (* [XXX] Consider the type of x *)
+  let ident x = mk_real_var x in
+  let neg a = mk_neg a in
+  match res with
+  | Unop(op,a) ->
+    begin
+      match op with
+        Neg -> neg (expr_to_z3 a)
+    end
+  | Float f -> float f
+  | Ident x -> ident x
+  | Binop(op,a,b) ->
+     begin
+       let op_f =
+         match op with
+         | Add -> mk_add
+         | Sub -> mk_sub
+         | Mul -> mk_mul
+         | Div -> mk_div
+         | _ -> E.raise (E.of_string "expr_to_z3: binop: should not occur")
+       in
+       op_f (expr_to_z3 a) (expr_to_z3 b)
+     end
 
-let parse s =
+(* E.raise (E.of_string "expr_to_z3: not implemented.") *)
+       (*
+     begin
+       match op with
+       | Neg ->  [[(neg (expr_to_z3 a))]]
+     end
+      *)
+         (*
+          *)
+  (*
+  | Float f -> float f
+  | Ident x ->  ident x
+   *)
+              
+let rec predexpr_to_cnf (res:expr) : Z3.Expr.expr list list =
+  let open Z3Intf in
+  match res with
+  | Unop(op, a) ->
+     begin
+       match op with
+       | Neg -> E.raise (E.of_string "predexpr_to_cnf: unop: should not occur")
+     end
+  | Binop (op, a, b) ->
+     begin
+       match op with
+       | Add | Sub | Mul | Div -> E.raise (E.of_string "predexpr_to_cnf: binop: should not occur")
+       | Gt -> [[mk_gt (expr_to_z3 a) (expr_to_z3 b)]]
+       | Ge -> [[mk_ge (expr_to_z3 a) (expr_to_z3 b)]]
+       | Lt -> [[mk_lt (expr_to_z3 a) (expr_to_z3 b)]]
+       | Le -> [[mk_le (expr_to_z3 a) (expr_to_z3 b)]]
+       | Eq -> [[mk_eq (expr_to_z3 a) (expr_to_z3 b)]]
+       | And -> (predexpr_to_cnf a) @ (predexpr_to_cnf b)
+       | Or ->
+          let cnf_a, cnf_b = (predexpr_to_cnf a), (predexpr_to_cnf b) in
+          List.fold_left
+            ~init:[]
+            ~f:(fun cnf disja ->
+              let res =
+                List.fold_left
+                  ~init:cnf
+                  ~f:(fun cnf disjb -> (disja @ disjb)::cnf)
+                  cnf_b
+              in
+              res @ cnf)
+            cnf_a
+     end
+  | Float _ | Ident _ ->
+     printf "res:%a@." pp_expr res;
+     E.raise (E.of_string "predexpr_to_cnf: value: should not occur")
+
+let parse_to_cnf s =
   match MParser.parse_string expr s () with
   | Success e ->
-     expr_to_z3 e
+  (* expr_to_z3 e *)
+     predexpr_to_cnf e
   (* e *)
   | Failed (msg, e) ->
      failwith msg
@@ -110,30 +191,53 @@ let parse s =
 let%test_module _ =
   (module struct
      open Z3Intf
-     
-     let%test _ =
-       let s = parse " x " in
-       expr_equal s (mk_real_var "x")
 
+     let disj_to_z3 disj : Z3.Expr.expr = Z3.Boolean.mk_or !ctx disj
+     let cnf_to_z3 cnf : Z3.Expr.expr = Z3.Boolean.mk_and !ctx (List.map ~f:disj_to_z3 cnf)
+       (*
+       List.fold_left
+         ~f:(fun z3 d -> mk_and z3 (disj_to_z3 d))
+         ~init:mk_true
+         cnf
+        *)
+
+                                      (*
      let%test _ =
-       let s = parse "x >= y" in
-       expr_equal s (mk_ge (mk_real_var "x") (mk_real_var "y"))
+       let s = parse_to_cnf " x " in
+       let s = cnf_to_z3 s in
+       expr_equal s (mk_real_var "x")
+                                       *)
+                                      
+     let%test _ =
+       let s = parse_to_cnf "x >= y" in
+       let s = cnf_to_z3 s in
+       let expected = cnf_to_z3 [[(mk_ge (mk_real_var "x") (mk_real_var "y"))]] in
+       (*
+       let _ = printf "s:%s@." (Z3.Expr.to_string s) in
+       let _ = printf "expected:%s@." (Z3.Expr.to_string expected) in
+        *)
+       expr_equal s expected
        
      let%test _ =
-       let s = parse "4*x+10*x >= y & z >= 5" in
-       expr_equal s 
-         (mk_and
-            (mk_ge
-               (mk_add
-                  (mk_mul
-                     (mk_real_numeral_s "4.0")
-                     (mk_real_var "x"))
-                  (mk_mul
-                     (mk_real_numeral_s "10.0")
-                     (mk_real_var "x")))
-               (mk_real_var "y"))
-            (mk_ge
-               (mk_real_var "z")
-               (mk_real_numeral_s "5.0")))
+       let s = parse_to_cnf "4*x+10*x >= y & z >= 5" in
+       let s = Z3Intf.simplify (cnf_to_z3 s) in
+       (* let _ = printf "s:%s@." (Z3.Expr.to_string s) in *)
+       let expected =
+         Z3Intf.simplify
+           (cnf_to_z3
+              [[(mk_ge
+                   (mk_add
+                      (mk_mul
+                         (mk_real_numeral_s "4.0")
+                         (mk_real_var "x"))
+                      (mk_mul
+                         (mk_real_numeral_s "10.0")
+                         (mk_real_var "x")))
+                   (mk_real_var "y"))];
+               [(mk_ge
+                   (mk_real_var "z")
+                   (mk_real_numeral_s "5.0"))]])
+       in
+       expr_equal s expected
    end)
     

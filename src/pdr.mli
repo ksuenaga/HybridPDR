@@ -1,6 +1,6 @@
 
-type vcgen
-type frames
+type vcgen [@@deriving show]
+type frames [@@deriving show]
 type result =
   | Ok of frames
   | Ng of Z3.Model.model list

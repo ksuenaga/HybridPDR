@@ -97,6 +97,7 @@ let mk_le e1 e2 =
 let mk_eq e1 e2 = Z3.Boolean.mk_eq !ctx e1 e2
 let mk_and e1 e2 = Z3.Boolean.mk_and !ctx [e1; e2]
 let mk_or e1 e2 = Z3.Boolean.mk_or !ctx [e1; e2]
+let mk_implies e1 e2 = Z3.Boolean.mk_implies !ctx e1 e2
   
 let%test_module _ =
   (module struct

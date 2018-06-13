@@ -33,8 +33,10 @@ let parse_verif_task_from_file ?(initial_condition=Cnf.cnf_true) ?(safety_region
 let verify (model:SpaceexComponent.t) ?(init_id=SpaceexComponent.id_of_string "1") init safe =
   let open SpaceexComponent in
   (* Setup frames *)
-  let t = Pdr.init (locations model) init_id init safe in
-  (* let result = Pdr.verify (Pdr.to_transformer model) safe [] t in  *)
+  let locs = locations model in
+  let t = Pdr.init locs init_id init safe in
+  let _ = printf "verify: %a@." Pdr.pp_frames t in
+  let result = Pdr.verify locs (Pdr.to_vcgen model) safe [] t in
   let result = E.raise (E.of_string "not implemented.") in
   result
 
