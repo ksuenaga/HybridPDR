@@ -14,6 +14,6 @@
  (libraries (core xml-light z3 mparser sexplib mparser.re))
  (inline_tests)
   ; [XXX] use camlon
- (preprocess (pps (ppx_inline_test ppx_deriving.show)))
+ (preprocess (pps (ppx_inline_test ppx_deriving.show bisect_ppx)))
  )
 )

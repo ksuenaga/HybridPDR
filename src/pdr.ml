@@ -24,11 +24,17 @@ let pp_result fmt r =
        ms
         
 type cont_reach_pred =
-  { pre : Cnf.t;
-    post : Cnf.t;
+  { pre : Z3.Expr.expr;
+    post : Z3.Expr.expr;
     dynamics : SpaceexComponent.flow;
     inv : Cnf.t }
-[@@deriving show]
+let pp_cont_reach_pred fmt crp =
+  fprintf fmt
+    "{ pre = %s;@\n post = %s;@\n dynamics = %a;@\n inv = %a }"
+    (Z3.Expr.to_string crp.pre)
+    (Z3.Expr.to_string crp.post)
+    SpaceexComponent.pp_flow crp.dynamics
+    Cnf.pp crp.inv
   
 exception Unsafe of Z3.Model.model list
 
@@ -278,10 +284,10 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen =
       ~f:(fun vcs t ->
         let srcloc = Env.find_exn hs.locations t.source in
         let dynamics,inv = srcloc.flow,srcloc.inv in
-        let pre_source : Cnf.t = Env.find_exn pre t.source in
+        let pre_source = Env.find_exn pre t.source in
         let post_target : Cnf.t = Env.find_exn post t.target in
-        let wp : Cnf.t = Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target) in
-        {pre=pre_source; post=wp; dynamics=dynamics; inv=inv}::vcs
+        let wp : Z3.Expr.expr = Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target) in
+        {pre=Cnf.to_z3 pre_source; post=wp; dynamics=dynamics; inv=inv}::vcs
       )
       hs.transitions
   in
