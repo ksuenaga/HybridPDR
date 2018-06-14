@@ -13,11 +13,15 @@ type frames = Frame.frame list [@@deriving show]
           
 type result =
   | Ok of frames
-  | Ng of (SpaceexComponent.id, Z3.Model.model) Env.t (* list *)
+  | Ng of (SpaceexComponent.id * Z3.Model.model) list
 let pp_result fmt r =
   match r with
   | Ok fs -> fprintf fmt "Ok:%a" (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n") pp_frame) fs
-  | Ng menv -> fprintf fmt "Ng(%a)" (Env.pp SpaceexComponent.pp_id (fun fmt m -> fprintf fmt "%s" (Z3.Model.to_string m))) menv
+  | Ng ms ->
+     fprintf fmt "Ng(%a)"
+       (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n")
+          (fun fmt (id,m) -> fprintf fmt "%a:%s" SpaceexComponent.pp_id id (Z3.Model.to_string m)))
+       ms
         
 type cont_reach_pred =
   { pre : Cnf.t;
@@ -48,11 +52,11 @@ let discharge_vcs vcs =
   | _ -> false
     
 (* [XXX] not tested *)
-let rec induction (locs:SpaceexComponent.id list) (vcgen : vcgen) ((fs : frames) as t) : frames =
+let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : vcgen) (fs : frames) : frames =
   match fs with
   | [] -> []
   | hd1::tl ->
-     let fs = induction locs vcgen tl in
+     let fs = induction locs vcgen_partial tl in
      match fs with
      | [] -> [hd1]
      | hd2::tl ->
@@ -61,7 +65,7 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen : vcgen) ((fs : frames)
           List.fold_left
             ~init:[]
             ~f:(fun l d ->
-              let vcs = vcgen ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
+              let vcs = vcgen_partial ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
               if discharge_vcs vcs then
                 d::l
               else
@@ -173,15 +177,99 @@ let expand locs (safe:Cnf.t) (fs : frames) =
 
 let pp_candidate fmt m =
   fprintf fmt "%s" (Z3.Model.to_string m)
+
+  (*
+exception CEFound of SpaceexComponent.id * Z3.Model.model
+
+let flow_back ~(post_state:Z3.Model.model) ~(to_hold_in_pre:Cnf.t) ~(inv:Cnf.t) =
+  E.raise (E.of_string "flow_back: not implemented.")
+   *)
+  (*
+let rec explore_single_candidate ~loc (*~(hs:SpaceexComponent.t)*) ~(vcgen_total : vcgen) ~(candidates : SpaceexComponent.id*Z3.Model.model) ~(frames : frames) =
+  let open SpaceexComponent in
+  let cand_loc_id, m = candidates in
+  (*
+  let cand_loc = Env.find_exn hs.locations cand_loc_id in
+  let flow_cand_loc,inv_cand_loc = cand_loc.flow,cand_loc.inv in
+   *)
+  match frames with
+    [] -> `CEFound [cand_loc_id,m]
+  | hd1::hd2::tl ->
+     (* We need to find the following m' and loc' and m''
+        1. m' reaches to m in the flow of cand_loc (we call this flow flow(cand_loc) in the following.
+        2. loc' -guard,cmd-> cand_loc is in the transition in hs such that m' = [[cmd]](m'') and m'' |= guard /\ hd2(loc') *)
+     (* m' |= wp(cmd,guard /\ hd2), so m' is obtained by (trying to) falisify not(wp(cmd, guard /\ hd2)) along with the reverse of flow(cand_loc). *)
+     (*
+     let trans_l = MySet.fold ~init:[] ~f:(fun l t -> if t.target = cand_loc_id then t::l else l) hs.transitions in
+     let post = Env.find_exn hd1 cand_loc_id in
+     let frames_r = ref (hd1::hd2::tl) in
+     List.iter
+       ~f:(fun t ->
+         let loc_pre, guard, cmd = t.source, t.guard, t.command in
+         let pre = Env.find_exn hd2 loc_pre in
+         let wp = wp_command cmd (Cnf.cnf_and pre guard) in
+         let res = flow_back ~post_state:m ~to_hold_in_pre:wp ~inv:(Cnf.cnf_and inv_cand_loc post) in
+         match res with
+         | `Propagated m ->
+            begin
+              match explore_single_candidate loc hs (loc_pre,m) (hd2::tl) with
+              | `CEFound(loc_m_l) -> `CEFound ((loc_pre,m)::loc_m_l)
+              | `Conflict(pred,frames) ->
+                 let refined_post = Cnf.cnf_and post pred in
+                 let refined_hd1 = Env.add cand_loc_id refined_post hd1 in
+                 `Conflict(pred, refined_hd1::frames)
+            end
+         | `PredFound pred ->
+            let refine p frame =
+              Env.add cand_loc_id (Cnf.cnf_and post p) frame
+            in
+            `Conflict(pred, List.map ~f:(refine pred) frames)
+       )
+       trans_l
+      *)
+  (* E.raise (E.of_string "explore_single_candidate: not implemented.")      *)
+  | [hd] ->
+     E.raise (E.of_string "explore_single_candidate: not implemented.")
+   *) 
+
+let rec explore_single_candidate_one_step ~(candidate : (int*SpaceexComponent.id*Z3.Model.model)) =
+  E.raise (E.of_string "explore_single_candidate_one_step: not implemented")
   
-let rec exploreCE loc (hs:SpaceexComponent.t) (candidates : (SpaceexComponent.id*Z3.Model.model) list) (t : frames) =
+let rec exploreCE ~(vcgen_total:vcgen) ~(candidates : (int*SpaceexComponent.id*Z3.Model.model) list) ~(t : frames) =
   let open Format in
   let _ = printf "frames:%a@." pp_frames t in
-  let _ = printf "candidate:%a@." (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n") (fun fmt (loc,m) -> fprintf fmt "%a:%a" SpaceexComponent.pp_id loc pp_candidate m)) candidates in
-  let _ = printf "hs:%a@." SpaceexComponent.pp hs in
-  E.raise (E.of_string "exploreCE: not implemented")
+  let _ = printf
+            "candidates:%a@."
+            (pp_print_list
+               ~pp_sep:(fun fmt _ -> fprintf fmt "@\n")
+               (fun fmt (num,loc,m) -> fprintf fmt "%n@%a:%a" num SpaceexComponent.pp_id loc pp_candidate m))
+            candidates
+  in
+  (* let _ = printf "hs:%a@." SpaceexComponent.pp hs in *)
+  (* let _ = printf "vcgen:%a@." SpaceexComponent.pp hs in *)
+  (* E.raise (E.of_string "exploreCE: not implemented") *)
+  match candidates with
+  | [] -> `CENotFound t
+  | ((num,loc,m) as hd)::tl ->
+     if num = 0 then
+       `CEFound candidates
+     else
+       begin
+         match explore_single_candidate_one_step ~candidate:hd with
+         | `Propagated newcand ->
+            exploreCE ~vcgen_total ~candidates:(newcand::tl) ~t:t
+         | `Conflict newframe ->
+            exploreCE ~vcgen_total ~candidates:tl ~t:newframe
+         | `CEFound candidates -> `CEFound candidates
+       end
+(* E.raise (E.of_string "exploreCE: not implemented") *)
+       (*
+     begin
+       match explore_single_candidate_one_step hd with
+     end
+        *)
   
-let to_vcgen (hs : SpaceexComponent.t) =
+let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen =
   let open Frame in
   let open SpaceexComponent in
   let ret ~(pre:frame) ~(post:frame) =
@@ -192,20 +280,24 @@ let to_vcgen (hs : SpaceexComponent.t) =
         let dynamics,inv = srcloc.flow,srcloc.inv in
         let pre_source : Cnf.t = Env.find_exn pre t.source in
         let post_target : Cnf.t = Env.find_exn post t.target in
-        let wp : Cnf.t = Cnf.cnf_and t.guard (SpaceexComponent.wp_command t.command post_target) in
+        let wp : Cnf.t = Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target) in
         {pre=pre_source; post=wp; dynamics=dynamics; inv=inv}::vcs
       )
       hs.transitions
   in
   (* E.raise (E.of_string "to_vcgen: not implemented") *)
   ret
+
+let to_vcgen_total (hs : SpaceexComponent.t) : vcgen =
+  E.raise (E.of_string "to_vcgen_total: not implemented")  
   
 (* [XXX] Not tested *)
-let rec verify ~locs ~hs ~vcgen ~safe ~candidates ~frames =
+let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
+  assert(candidates = []);
   let _ = printf "frames:%a@." pp_frames frames in
   let t = frames in
   (* Do induction as much as possible. *)
-  let t = induction locs vcgen t in
+  let t = induction locs vcgen_partial t in
   (* Check whether the fixpoint is already reached. *)
   let res = is_valid t in
   match res with
@@ -230,20 +322,20 @@ let rec verify ~locs ~hs ~vcgen ~safe ~candidates ~frames =
                (* the tip of the frame is safe.  Expand the frames. *)
                let newframe = Frame.frame_lift locs Cnf.cnf_true in
                (* Discard the candidates.  Continue verification. *)
-               verify ~locs ~hs ~vcgen ~safe ~candidates:[] ~frames:(newframe::frames)
+               verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:(newframe::frames)
             | `NotValid(loc,m) ->
                (* Counterexample is found. *)
-               let newcandidates = (loc,m)::candidates in
+               let newcandidates = [(List.length frames) - 1,loc,m] in
                (* Push back the counterexample. *)
-               let res = exploreCE loc hs newcandidates t in
+               let res = exploreCE ~vcgen_total ~candidates:newcandidates ~t:t in
                begin
                  match res with
                  | `CEFound trace ->
                     (* True counterexample is found. *)
-                    Ng trace
+                    Ng (List.map ~f:(fun (_,loc,m) -> (loc,m)) trace)
                  | `CENotFound newframes ->
                     (* The frames are refined with newly found predicates.  Continue verification. *)
-                    verify ~locs ~hs ~vcgen ~safe ~candidates:[] ~frames:newframes
+                    verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes
                end
             | `NotValidNoModel ->
                (* Got stuck. *)

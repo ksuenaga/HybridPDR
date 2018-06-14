@@ -141,6 +141,17 @@ let rec extract_atomics (hd:t) : atomic list =
 (* [XXX] not tested *)
 let cnf_and hd1 hd2 = hd1 @ hd2
 
+let cnf_implies hd1 hd2 =
+  E.raise (E.of_string "cnf_implies: not implemented.")
+
+let%test _ =
+  let open Z3Intf in
+  expr_equal (simplify (conj_to_z3 (cnf_implies cnf_false cnf_true))) mk_true
+
+let%test _ =
+  let open Z3Intf in
+  expr_equal (simplify (conj_to_z3 (cnf_implies cnf_true cnf_false))) mk_false
+  
 (* [XXX] not tested *)
                                     (* let cnf_lift_disj d = [d] *)
 

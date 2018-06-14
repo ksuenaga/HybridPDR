@@ -23,3 +23,6 @@ let frame_lift_given_id
       (cnf:Cnf.t) =
   let default = frame_lift locs Cnf.cnf_false in
   Env.add id cnf default
+
+let find_exn ~loc ~frame =
+  Env.find_exn frame loc

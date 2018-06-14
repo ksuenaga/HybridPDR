@@ -36,7 +36,7 @@ let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr
   let locs = locations model in
   let t = Pdr.init locs init_id init safe in
   let _ = printf "verify: %a@." Pdr.pp_frames t in
-  let result = Pdr.verify ~hs:model ~locs:locs ~vcgen:(Pdr.to_vcgen model) ~safe:safe ~candidates:[] ~frames:t in
+  let result = Pdr.verify ~hs:model ~locs:locs ~vcgen_partial:(Pdr.to_vcgen_partial model) ~vcgen_total:(Pdr.to_vcgen_total model) ~safe:safe ~candidates:[] ~frames:t in
   (* let result = printf "result:%a@." Pdr.pp_result result in *)
   result
 
