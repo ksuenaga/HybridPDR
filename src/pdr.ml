@@ -1,4 +1,3 @@
-
 open Core
 module E = Error
 
@@ -23,22 +22,13 @@ let pp_result fmt r =
           (fun fmt (id,m) -> fprintf fmt "%a:%s" SpaceexComponent.pp_id id (Z3.Model.to_string m)))
        ms
         
-type cont_reach_pred =
-  { pre : Z3.Expr.expr;
-    post : Z3.Expr.expr;
-    dynamics : SpaceexComponent.flow;
-    inv : Cnf.t }
-let pp_cont_reach_pred fmt crp =
-  fprintf fmt
-    "{ pre = %s;@\n post = %s;@\n dynamics = %a;@\n inv = %a }"
-    (Z3.Expr.to_string crp.pre)
-    (Z3.Expr.to_string crp.post)
-    SpaceexComponent.pp_flow crp.dynamics
-    Cnf.pp crp.inv
+type vc_partial = DischargeVC.cont_triple_partial
+type vc_total = DischargeVC.cont_triple_total
   
 exception Unsafe of Z3.Model.model list
 
-type vcgen = pre:frame -> post:frame -> cont_reach_pred list [@@deriving show]
+type vcgen_partial = pre:frame -> post:frame -> DischargeVC.cont_triple_partial list
+type vcgen_total = pre:frame -> post:frame -> DischargeVC.cont_triple_total list
 
 (* [XXX] not tested *)        
 let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : frames =
@@ -50,15 +40,9 @@ let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : fra
      raise (Unsafe [m])
   | `Unknown ->
      E.raise (E.of_string "init: unknown: Cannot proceed.")
-
-(* [XXX] to be implememnted. *)
-let discharge_vcs vcs =
-  match vcs with
-    [] -> true
-  | _ -> false
     
 (* [XXX] not tested *)
-let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : vcgen) (fs : frames) : frames =
+let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : vcgen_partial) (fs : frames) : frames =
   match fs with
   | [] -> []
   | hd1::tl ->
@@ -72,10 +56,15 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : vcgen) (fs : 
             ~init:[]
             ~f:(fun l d ->
               let vcs = vcgen_partial ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
+              match vcs with
+                [] -> d::l
+              | _ -> l)
+            (*
               if discharge_vcs vcs then
                 d::l
               else
                 l)
+             *)
             atomics
         in
         let ret = hd1::hd2::tl in
@@ -238,36 +227,83 @@ let rec explore_single_candidate ~loc (*~(hs:SpaceexComponent.t)*) ~(vcgen_total
      E.raise (E.of_string "explore_single_candidate: not implemented.")
    *) 
 
-let rec explore_single_candidate_one_step ~(candidate : (int*SpaceexComponent.id*Z3.Model.model)) =
-  E.raise (E.of_string "explore_single_candidate_one_step: not implemented")
   
-let rec exploreCE ~(vcgen_total:vcgen) ~(candidates : (int*SpaceexComponent.id*Z3.Model.model) list) ~(t : frames) =
+let rec explore_single_candidate_one_step
+          ~(candidate : (SpaceexComponent.id * Z3.Model.model))
+          ~(vcgen_total : vcgen_total)
+          ~(pre : frame)
+          ~(post : frame)
+  =
+  (* If one of the triples has a correct precondition, then the entire vc is discharged *)
+  let triples = vcgen_total ~pre:pre ~post:post in
+  let _ =
+    printf "triples_total:%a@."
+      (pp_print_list
+         ~pp_sep:(fun fmt _ -> fprintf fmt "@\n")
+         DischargeVC.pp_cont_triple_total)
+      triples
+  in
+  let pre =
+    List.fold_left
+      ~init:None
+      ~f:(fun sol triple ->
+        match sol with
+          Some _ -> sol
+        | None ->
+           DischargeVC.discharge_vc_total triple)
+      triples
+  in
+  match pre with
+    Some(id,m) -> `Propagated(id,m)
+  | None -> E.raise (E.of_string "explore_single_candidate_one_step(interpolant): not implemented")
+  (*
+  let id,model = candidate in
+  let post_cnf = Env.find_exn post id in
+   *)
+
+(* 
+   The number of frames = N
+   
+   Initial call:
+   frames = [F(N-1),F(N-2);...;F(0)] where F(i) is the i-th frame
+   candidates = [cand(loc(N-1),N-1)] where cand(i) is the counterexample found at i-th frame.
+
+   In general:
+   frames = [F(j+1),F(j);...;F(0)] where F(i) is the i-th frame
+   candidates = [cand(loc(j+1),j+1); cand(loc(j+2),j+2); ...; CAND(loc(N-1),N-1)] where cand(loc,i) is the counterexample found at i-th frame at location loc.
+*)
+
+(* Invariant: List.hd candidates is the counterexample of List.hd t *)
+let rec exploreCE
+          ~(locs:SpaceexComponent.id list)
+          ~(vcgen_total:vcgen_total)
+          ~(candidates : (SpaceexComponent.id * Z3.Model.model) list)
+          ~(t : frames)
+  =
   let open Format in
   let _ = printf "frames:%a@." pp_frames t in
   let _ = printf
             "candidates:%a@."
             (pp_print_list
                ~pp_sep:(fun fmt _ -> fprintf fmt "@\n")
-               (fun fmt (num,loc,m) -> fprintf fmt "%n@%a:%a" num SpaceexComponent.pp_id loc pp_candidate m))
+               (fun fmt (loc,m) -> fprintf fmt "loc=%a:cand=%a" SpaceexComponent.pp_id loc pp_candidate m))
             candidates
   in
   (* let _ = printf "hs:%a@." SpaceexComponent.pp hs in *)
   (* let _ = printf "vcgen:%a@." SpaceexComponent.pp hs in *)
   (* E.raise (E.of_string "exploreCE: not implemented") *)
-  match candidates with
-  | [] -> `CENotFound t
-  | ((num,loc,m) as hd)::tl ->
-     if num = 0 then
-       `CEFound candidates
-     else
-       begin
-         match explore_single_candidate_one_step ~candidate:hd with
-         | `Propagated newcand ->
-            exploreCE ~vcgen_total ~candidates:(newcand::tl) ~t:t
-         | `Conflict newframe ->
-            exploreCE ~vcgen_total ~candidates:tl ~t:newframe
-         | `CEFound candidates -> `CEFound candidates
-       end
+  match candidates, t with
+  | [], _ -> `CENotFound t
+  | _::_, [] -> `CEFound candidates
+  | ((loc,m) as hd_cand)::tl_cand, hd_frame::tl_frame ->
+     begin
+       let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.frame_lift locs Cnf.cnf_true in
+       match explore_single_candidate_one_step ~candidate:hd_cand ~vcgen_total:vcgen_total ~post:hd_frame ~pre:hd2 with
+       | `Propagated newcand ->
+          exploreCE ~locs ~vcgen_total ~candidates:(newcand::hd_cand::tl_cand) ~t:tl_frame
+       | `Conflict newframe ->
+          exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframe
+     end
 (* E.raise (E.of_string "exploreCE: not implemented") *)
        (*
      begin
@@ -275,9 +311,10 @@ let rec exploreCE ~(vcgen_total:vcgen) ~(candidates : (int*SpaceexComponent.id*Z
      end
         *)
   
-let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen =
+let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
   let open Frame in
   let open SpaceexComponent in
+  let open DischargeVC in
   let ret ~(pre:frame) ~(post:frame) =
     MySet.fold
       ~init:[]
@@ -287,15 +324,33 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen =
         let pre_source = Env.find_exn pre t.source in
         let post_target : Cnf.t = Env.find_exn post t.target in
         let wp : Z3.Expr.expr = Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target) in
-        {pre=Cnf.to_z3 pre_source; post=wp; dynamics=dynamics; inv=inv}::vcs
+        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=Cnf.to_z3 pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=inv}::vcs
       )
       hs.transitions
   in
   (* E.raise (E.of_string "to_vcgen: not implemented") *)
   ret
 
-let to_vcgen_total (hs : SpaceexComponent.t) : vcgen =
-  E.raise (E.of_string "to_vcgen_total: not implemented")  
+let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
+  let open Frame in
+  let open SpaceexComponent in
+  let open DischargeVC in
+  let ret ~(pre:frame) ~(post:frame) =
+    MySet.fold
+      ~init:[]
+      ~f:(fun vcs t ->
+        let srcloc = Env.find_exn hs.locations t.source in
+        let dynamics,inv = srcloc.flow,srcloc.inv in
+        let pre_source = Env.find_exn pre t.source in
+        let post_target : Cnf.t = Env.find_exn post t.target in
+        let wp : Z3.Expr.expr = Cnf.to_z3 (Cnf.cnf_and t.guard (SpaceexComponent.wp_command t.command post_target)) in
+        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=Cnf.to_z3 pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv}::vcs
+      )
+      hs.transitions
+      (* E.raise (E.of_string "to_vcgen: not implemented") *)
+  in
+  ret
+
   
 (* [XXX] Not tested *)
 let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
@@ -331,14 +386,14 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
                verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:(newframe::frames)
             | `NotValid(loc,m) ->
                (* Counterexample is found. *)
-               let newcandidates = [(List.length frames) - 1,loc,m] in
+               let newcandidates = [(loc,m)] in
                (* Push back the counterexample. *)
-               let res = exploreCE ~vcgen_total ~candidates:newcandidates ~t:t in
+               let res = exploreCE ~locs ~vcgen_total ~candidates:newcandidates ~t:t in
                begin
                  match res with
                  | `CEFound trace ->
                     (* True counterexample is found. *)
-                    Ng (List.map ~f:(fun (_,loc,m) -> (loc,m)) trace)
+                    Ng (List.map ~f:(fun (loc,m) -> (loc,m)) trace)
                  | `CENotFound newframes ->
                     (* The frames are refined with newly found predicates.  Continue verification. *)
                     verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes

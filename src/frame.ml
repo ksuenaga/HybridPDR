@@ -26,3 +26,4 @@ let frame_lift_given_id
 
 let find_exn ~loc ~frame =
   Env.find_exn frame loc
+

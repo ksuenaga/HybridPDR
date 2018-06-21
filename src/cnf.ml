@@ -42,10 +42,13 @@ let disj_to_z3 (t:disj) : Z3.Expr.expr =
 
 (* [XXX] not tested *)
 let conj_to_z3 (t:cnf) : Z3.Expr.expr =
-  List.fold_left
-    ~init:(Z3.Boolean.mk_true !ctx)
-    ~f:(fun z3expr d ->
-      Z3.Boolean.mk_and !ctx [z3expr; (disj_to_z3 d)]) t
+  let ret =
+    List.fold_left
+      ~init:(Z3.Boolean.mk_true !ctx)
+      ~f:(fun z3expr d ->
+        Z3.Boolean.mk_and !ctx [z3expr; (disj_to_z3 d)]) t
+  in
+  Z3Intf.simplify ret
 
 let%test _ =
   let open Z3Intf in
