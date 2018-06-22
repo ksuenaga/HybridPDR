@@ -9,6 +9,11 @@ let solver =
   Z3.enable_trace "hpdr";
   ref solver
 
+let pp_expr fmt e =
+  fprintf fmt "%s" (Z3.Expr.to_string e)
+let pp_symbol fmt e =
+  fprintf fmt "%s" (Z3.Symbol.to_string e)
+  
 let set_context param = ctx := Z3.mk_context param
                       
 let callZ3 z3expr =
@@ -182,22 +187,29 @@ tseitin-cnf
  *      let _ = equal (make_expr (of_string "(int 3)")) (mk_numeral_i !ctx 3)
  *    end) *)
 
+  
 let expr_of_model ~(model:Z3.Model.model) : Z3.Expr.expr =
   let open Z3Intf in
   let module M = Z3.Model in
   let module FD = Z3.FuncDecl in
   let module R = Z3.Arithmetic.Real in
+  (* let _ = printf "model:%s@." (M.to_string model) in *)
   let fds = M.get_const_decls model in
+  (* let _ = printf "fds:%a" (Util.pp_list pp_print_string) (List.map ~f:FD.to_string fds) in *)
+  let interps = List.map ~f:(fun fd -> M.get_const_interp model fd) fds in
+  (* let _ = printf "interps:%a" (Util.pp_list (Util.pp_option pp_expr)) interps in *)
   let ids = List.map ~f:FD.get_name fds in
-  let exprs = List.map ~f:(fun fd -> FD.apply fd []) fds in
-  let mapped = List.map2_exn ~f:(fun id exp -> mk_eq exp (R.mk_const !ctx id)) ids exprs in
+  (* let _ = printf "ids:%a" (Util.pp_list pp_symbol) ids in *)
+  let exprs = List.map ~f:(fun interp -> match interp with None -> E.raise (E.of_string "expr_of_model: cannot happen") | Some e -> e) interps in
+  (* let _ = printf "exprs:%a" (Util.pp_list pp_expr) exprs in *)
+  let mapped = List.map2_exn ~f:(fun id exp -> mk_eq (R.mk_const !ctx id) exp) ids exprs in
   let ret =
     List.fold_left
       ~init:mk_true
       ~f:mk_and
       mapped
   in
-  ret
+  simplify ret
   (* frame_lift_given_id ~locs ~loc (simplify ret); *)
 (* E.raise (Error.of_string "frame_of_model: not implemented.") *)
 
@@ -210,12 +222,12 @@ let%test _ =
   let cnf1 = Cnf.parse "x==0.0" in
    *)
   let e1 = mk_eq (mk_real_var "x") (mk_real_numeral_s "0.0") in
-  let _ = printf "e1:%s@." (Z3.Expr.to_string e1) in
+  (* let _ = printf "e1:%s@." (Z3.Expr.to_string e1) in *)
   let res = callZ3 e1 in
   match res with
   | `Sat model ->
      let e2 = expr_of_model model in
-     let _ = printf "e2:%s@." (Z3.Expr.to_string e2) in
+     (* let _ = printf "e2:%s@." (Z3.Expr.to_string e2) in *)
      Z3.Expr.equal e1 e2
   | _ -> false
 

@@ -229,8 +229,10 @@ let%test _ =
   let open Z3Intf in
   let implies = simplify (cnf_implies cnf_true cnf_false) in
   let expected = mk_false in
+  (*
   let _ = printf "implies:%s@." (Z3.Expr.to_string implies) in
   let _ = printf "expected:%s@." (Z3.Expr.to_string expected) in
+   *)
   expr_equal implies mk_false
   
 (* [XXX] not tested *)

@@ -353,6 +353,7 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
   
 (* [XXX] Not tested *)
 let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
+  E.raise (E.of_string "verify: task: Sort out log messages before going further.");
   assert(candidates = []);
   let _ = printf "frames:%a@." pp_frames frames in
   let t = frames in

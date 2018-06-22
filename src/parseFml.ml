@@ -144,7 +144,7 @@ let rec expr_to_z3 (res:expr) : Z3.Expr.expr =
    *)
               
 let rec predexpr_to_cnf (res:expr) : Z3.Expr.expr list list =
-  let open Z3Intf in
+  let module Z = Z3Intf in
   match res with
   | Unop(op, a) ->
      begin
@@ -155,11 +155,11 @@ let rec predexpr_to_cnf (res:expr) : Z3.Expr.expr list list =
      begin
        match op with
        | Add | Sub | Mul | Div -> E.raise (E.of_string "predexpr_to_cnf: binop: should not occur")
-       | Gt -> [[mk_gt (expr_to_z3 a) (expr_to_z3 b)]]
-       | Ge -> [[mk_ge (expr_to_z3 a) (expr_to_z3 b)]]
-       | Lt -> [[mk_lt (expr_to_z3 a) (expr_to_z3 b)]]
-       | Le -> [[mk_le (expr_to_z3 a) (expr_to_z3 b)]]
-       | Eq -> [[mk_eq (expr_to_z3 a) (expr_to_z3 b)]]
+       | Gt -> [[Z.mk_gt (expr_to_z3 a) (expr_to_z3 b)]]
+       | Ge -> [[Z.mk_ge (expr_to_z3 a) (expr_to_z3 b)]]
+       | Lt -> [[Z.mk_lt (expr_to_z3 a) (expr_to_z3 b)]]
+       | Le -> [[Z.mk_le (expr_to_z3 a) (expr_to_z3 b)]]
+       | Eq -> [[Z.mk_eq (expr_to_z3 a) (expr_to_z3 b)]]
        | And -> (predexpr_to_cnf a) @ (predexpr_to_cnf b)
        | Or ->
           let cnf_a, cnf_b = (predexpr_to_cnf a), (predexpr_to_cnf b) in

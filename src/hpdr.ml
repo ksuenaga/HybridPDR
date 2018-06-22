@@ -32,7 +32,7 @@ let parse_verif_task_from_file ?(initial_condition=Cnf.cnf_true) ?(safety_region
 let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr.result =
   let open SpaceexComponent in
   let _ = printf "(******* Starting verification *******)@." in
-  let _ = printf "(******* Model *******)@." in
+  let _ = printf "(******* System to be verified *******)@." in
   let _ = printf "%a@." pp model in
   (* Setup frames *)
   let locs = locations model in
