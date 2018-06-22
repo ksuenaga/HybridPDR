@@ -1,6 +1,16 @@
-open Core
+open Core_kernel
+open Format
 
 type frame = (SpaceexComponent.id,Cnf.t) Env.t [@@deriving show]
+
+module E = Error
+           
+let pp_frame fmt frame =
+  Env.fold
+    ~init:()
+    ~f:(fun _ (id,cnf) ->
+      fprintf fmt "(%a -> %s) " SpaceexComponent.pp_id id (Z3.Expr.to_string (Cnf.to_z3 cnf)))
+    frame
 
 let extract_atomics (f:frame) =
   Env.fold
@@ -27,3 +37,6 @@ let frame_lift_given_id
 let find_exn ~loc ~frame =
   Env.find_exn frame loc
 
+
+let equal f1 f2 = Env.equal f1 f2
+  

@@ -6,3 +6,4 @@ val fold : init:'a -> f:('a -> 'key * 'value -> 'a) -> ('key,'value) t -> 'a
 val map : f:('value -> 'value) -> ('key,'value) t -> ('key,'value) t
 val fold2 : init:'a -> f:('a -> ('key * 'value) -> ('key * 'value) -> 'a) -> ('key,'value) t -> ('key,'value) t -> 'a
 val domain : ('key,'value) t -> 'key list
+val equal : ('key,'value) t -> ('key,'value) t -> bool

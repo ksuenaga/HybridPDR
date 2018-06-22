@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 open Format
 
 module E = Error
@@ -43,21 +43,14 @@ let pp_cont_triple_total fmt crp =
 (* [XXX] Premature rough implementation *)
 let discharge_vc_total ~(triple:cont_triple_total) : (SpaceexComponent.id * Z3.Model.model) option =
   let open Z3Intf in
+  let _ = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in
   let res = callZ3 (mk_and triple.pre_total triple.post_total) in
   match res with
   | `Unsat | `Unknown -> None
   | `Sat m -> Some(triple.pre_loc_total, m)
-     (* E.raise (E.of_string "discharge_vc_total: not implemented.") *)
+(* E.raise (E.of_string "discharge_vc_total: not implemented.") *)
 
 (* [XXX] to be implememnted. *)
 let discharge_vc_partial vc =
-  E.raise (E.of_string "discharge_vc_partial: not implemented.")
-  (*
-  let open Z3Intf in
-  let res = callZ3
-  (*
-  match vcs with
-    [] -> true
-  | _ -> false
-   *)
-   *)
+  false
+    (* E.raise (E.of_string "discharge_vc_partial: not implemented.") *)

@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 module E = Error
 
 open Frame
@@ -28,7 +28,7 @@ type vc_total = DischargeVC.cont_triple_total
 exception Unsafe of Z3.Model.model list
 
 type vcgen_partial = pre:frame -> post:frame -> DischargeVC.cont_triple_partial list
-type vcgen_total = pre:frame -> post:frame -> DischargeVC.cont_triple_total list
+type vcgen_total = pre:frame -> post:Z3.Expr.expr -> DischargeVC.cont_triple_total list
 
 (* [XXX] not tested *)        
 let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : frames =
@@ -56,15 +56,8 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : vcgen_partial
             ~init:[]
             ~f:(fun l d ->
               let vcs = vcgen_partial ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
-              match vcs with
-                [] -> d::l
-              | _ -> l)
-            (*
-              if discharge_vcs vcs then
-                d::l
-              else
-                l)
-             *)
+              let res = List.fold_left ~init:true ~f:(fun res vc -> if res then DischargeVC.discharge_vc_partial vcs else res) vcs in
+              if res then d::l else l)
             atomics
         in
         let ret = hd1::hd2::tl in
@@ -229,13 +222,16 @@ let rec explore_single_candidate ~loc (*~(hs:SpaceexComponent.t)*) ~(vcgen_total
 
   
 let rec explore_single_candidate_one_step
+          ~locs
           ~(candidate : (SpaceexComponent.id * Z3.Model.model))
           ~(vcgen_total : vcgen_total)
           ~(pre : frame)
           ~(post : frame)
   =
   (* If one of the triples has a correct precondition, then the entire vc is discharged *)
-  let triples = vcgen_total ~pre:pre ~post:post in
+  let open Frame in
+  let id, m = candidate in
+  let triples = vcgen_total ~pre:pre ~post:(Z3Intf.expr_of_model m) in
   let _ =
     printf "triples_total:%a@."
       (pp_print_list
@@ -281,6 +277,7 @@ let rec exploreCE
           ~(t : frames)
   =
   let open Format in
+  (*
   let _ = printf "frames:%a@." pp_frames t in
   let _ = printf
             "candidates:%a@."
@@ -289,6 +286,7 @@ let rec exploreCE
                (fun fmt (loc,m) -> fprintf fmt "loc=%a:cand=%a" SpaceexComponent.pp_id loc pp_candidate m))
             candidates
   in
+   *)
   (* let _ = printf "hs:%a@." SpaceexComponent.pp hs in *)
   (* let _ = printf "vcgen:%a@." SpaceexComponent.pp hs in *)
   (* E.raise (E.of_string "exploreCE: not implemented") *)
@@ -298,7 +296,7 @@ let rec exploreCE
   | ((loc,m) as hd_cand)::tl_cand, hd_frame::tl_frame ->
      begin
        let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.frame_lift locs Cnf.cnf_true in
-       match explore_single_candidate_one_step ~candidate:hd_cand ~vcgen_total:vcgen_total ~post:hd_frame ~pre:hd2 with
+       match explore_single_candidate_one_step ~locs ~candidate:hd_cand ~vcgen_total:vcgen_total ~post:hd_frame ~pre:hd2 with
        | `Propagated newcand ->
           exploreCE ~locs ~vcgen_total ~candidates:(newcand::hd_cand::tl_cand) ~t:tl_frame
        | `Conflict newframe ->
@@ -335,15 +333,16 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
   let open Frame in
   let open SpaceexComponent in
   let open DischargeVC in
-  let ret ~(pre:frame) ~(post:frame) =
+  let ret ~(pre:frame) ~(post:Z3.Expr.expr) =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
         let srcloc = Env.find_exn hs.locations t.source in
         let dynamics,inv = srcloc.flow,srcloc.inv in
         let pre_source = Env.find_exn pre t.source in
-        let post_target : Cnf.t = Env.find_exn post t.target in
-        let wp : Z3.Expr.expr = Cnf.to_z3 (Cnf.cnf_and t.guard (SpaceexComponent.wp_command t.command post_target)) in
+        (* let post_target : Cnf.t = Env.find_exn post t.target in *)
+        let post_target = post in
+        let wp : Z3.Expr.expr = Z3Intf.mk_and (Cnf.to_z3 t.guard) (SpaceexComponent.wp_command_z3 t.command post_target) in
         {pre_loc_total=t.source; post_loc_total=t.target; pre_total=Cnf.to_z3 pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv}::vcs
       )
       hs.transitions

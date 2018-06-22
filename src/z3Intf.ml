@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 open Format
 
 module E = Error
@@ -13,14 +13,11 @@ let set_context param = ctx := Z3.mk_context param
                       
 let callZ3 z3expr =
   let open Format in
-  let _ = printf "callZ3: %s@." (Z3.Expr.to_string z3expr) in
+  (* let _ = printf "callZ3: %s@." (Z3.Expr.to_string z3expr) in *)
   Z3.Solver.push !solver;
-  (* let _ = printf "pushed@." in *)
   Z3.Solver.add !solver [z3expr];
-  (* let _ = printf "added@." in *)
   let st = Z3.Solver.check !solver [] in
-  (* let _ = printf "checked@." in *)
-  let _ = printf "reply:%s@." (Z3.Solver.string_of_status st) in
+  (* let _ = printf "reply:%s@." (Z3.Solver.string_of_status st) in *)
   let res =
     match st with
     | Z3.Solver.UNSATISFIABLE ->
@@ -164,6 +161,11 @@ let%test_module _ =
        
 end)
 
+  (*
+let expr_of_model (m:Z3.Model.model) : Z3.Expr.expr =
+   *)
+
+    
     (*
 let tseitin_cnf
 tseitin-cnf 
@@ -180,3 +182,61 @@ tseitin-cnf
  *      let _ = equal (make_expr (of_string "(int 3)")) (mk_numeral_i !ctx 3)
  *    end) *)
 
+let expr_of_model ~(model:Z3.Model.model) : Z3.Expr.expr =
+  let open Z3Intf in
+  let module M = Z3.Model in
+  let module FD = Z3.FuncDecl in
+  let module R = Z3.Arithmetic.Real in
+  let fds = M.get_const_decls model in
+  let ids = List.map ~f:FD.get_name fds in
+  let exprs = List.map ~f:(fun fd -> FD.apply fd []) fds in
+  let mapped = List.map2_exn ~f:(fun id exp -> mk_eq exp (R.mk_const !ctx id)) ids exprs in
+  let ret =
+    List.fold_left
+      ~init:mk_true
+      ~f:mk_and
+      mapped
+  in
+  ret
+  (* frame_lift_given_id ~locs ~loc (simplify ret); *)
+(* E.raise (Error.of_string "frame_of_model: not implemented.") *)
+
+let%test _ =
+  let open Z3Intf in
+  (*
+  let l1 = id_of_string "1" in
+  let l2 = id_of_string "1" in
+  let locs = [l1;l2] in
+  let cnf1 = Cnf.parse "x==0.0" in
+   *)
+  let e1 = mk_eq (mk_real_var "x") (mk_real_numeral_s "0.0") in
+  let _ = printf "e1:%s@." (Z3.Expr.to_string e1) in
+  let res = callZ3 e1 in
+  match res with
+  | `Sat model ->
+     let e2 = expr_of_model model in
+     let _ = printf "e2:%s@." (Z3.Expr.to_string e2) in
+     Z3.Expr.equal e1 e2
+  | _ -> false
+
+(* Compute [e1/x]e *)
+let substitute_one (x:string) (e1:Z3.Expr.expr) (e:Z3.Expr.expr) : Z3.Expr.expr =
+  let sym = Z3.Symbol.mk_string !ctx x in
+  let x = Z3.Arithmetic.Real.mk_const !ctx sym in
+  (simplify (Z3.Expr.substitute_one e x e1))
+
+(* x + x * x *)
+let%test _ =
+  let x = mk_real_var "x" in
+  let e = mk_eq (mk_add x (mk_mul x x)) (mk_real_numeral_s "6.0") in
+  (*
+  let _ = printf "e:%s@\n" (Z3.Expr.to_string e) in
+  let _ = printf "OK@." in
+   *)
+  let e1 = substitute_one "x" (mk_real_numeral_s "0.0") e in
+  let e2 = substitute_one "x" (mk_real_numeral_s "2.0") e in
+  let res1 = callZ3 e1 in
+  let res2 = callZ3 e2 in
+  match res1,res2 with
+  | `Unsat, `Sat _ -> true
+  | _ -> false

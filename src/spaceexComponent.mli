@@ -30,6 +30,7 @@ type t =
 val parse_from_channel : Core.In_channel.t -> t list
 
 val wp_command : command -> Cnf.t -> Cnf.t
+val wp_command_z3 : command -> Z3.Expr.expr -> Z3.Expr.expr
 
 val locations : t -> id list
 

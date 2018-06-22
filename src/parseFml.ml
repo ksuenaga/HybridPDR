@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 open Format
 
 open MParser
@@ -280,7 +280,6 @@ let flow_parser s =
    *)
 
 let parse_flow s =
-  (* let open Core.String in *)
   let ss = String.split s ~on:'&' in
   List.fold_left
     ~init:[]

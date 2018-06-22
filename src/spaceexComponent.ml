@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 open Format
 
 module E = Error
@@ -283,3 +283,14 @@ let wp_command (cmd:command) cnf =
       cmd
   in
   cnf
+
+let wp_command_z3 (cmd:command) (e:Z3.Expr.expr) =
+  let open Z3Intf in
+  let e =
+    Env.fold
+      ~init:e
+      ~f:(fun e (k,v) ->
+        E.raise (E.of_string "wp_command_z3: not implemented"))
+      cmd
+  in
+  simplify e

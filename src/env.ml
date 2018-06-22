@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 
 type ('key,'value) t = ('key * 'value) list [@@deriving show]
 
@@ -7,7 +7,7 @@ let rec add k v l =
   match l with
     [] -> [k,v]
   | (k',v')::tl ->
-     if k = k' then
+     if compare k k' = 0 then
        (k,v)::tl
      else
        (k',v')::(add k v tl)
@@ -24,3 +24,11 @@ let fold2 ~init ~f env1 env2 =
   List.fold2_exn env1 env2 ~init:init ~f:(fun a (k1,v1) (k2,v2) -> assert(k1=k2); f a (k1,v1) (k2,v2))
 
 let domain t = List.map ~f:fst t
+
+let compare_kv (k1,_) (k2,_) = compare k1 k2
+let sort env = List.sort ~compare:compare_kv env
+             
+let equal env1 env2 =
+  let env1 = sort env1 in
+  let env2 = sort env2 in
+  List.equal env1 env2 ~equal:(fun (k1,v1) (k2,v2) -> k1 = k2 && v1 = v2)

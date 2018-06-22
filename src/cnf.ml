@@ -1,15 +1,15 @@
-
 (* [XXX] We currently do not use CNF. *)
 
-open Core
+open Core_kernel
 open Format
+
 module E = Error
 module U = Util
 
 type atomic = Z3.Expr.expr
 
-let pp_atomic fmt a = Format.fprintf fmt "%s" (Z3.Expr.to_string a)
-(* let pp_expr fmt e = Format.fprintf fmt "%s" (Z3.Expr.to_string e) *)
+let pp_atomic fmt a = fprintf fmt "%s" (Z3.Expr.to_string a)
+(* let pp_expr fmt e = fprintf fmt "%s" (Z3.Expr.to_string e) *)
 
 type disj = atomic list [@@deriving show]
 type cnf = disj list [@@deriving show]
@@ -93,7 +93,9 @@ let sat_andneg (i:t) (s:t) =
   st
 
 let%test _ =
-  sat_andneg cnf_true cnf_true = `Unsat
+  match sat_andneg cnf_true cnf_true with
+    `Unsat -> true
+  | _ -> false
 
 let%test _ =
   match sat_andneg cnf_true cnf_false with
@@ -103,10 +105,14 @@ let%test _ =
      false
 
 let%test _ =
-  sat_andneg cnf_false cnf_true = `Unsat
+  match sat_andneg cnf_false cnf_true with
+    `Unsat -> true
+  | _ -> false
 
 let%test _ =
-  sat_andneg cnf_false cnf_false = `Unsat
+  match sat_andneg cnf_false cnf_false with
+    `Unsat -> true
+  | _ -> false
 
 (* [XXX] not tested *)  
 let sat_implication (conj1:t) (conj2:t) =
