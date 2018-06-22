@@ -35,5 +35,5 @@ val wp_command_z3 : command -> Z3.Expr.expr -> Z3.Expr.expr
 val locations : t -> id list
 
 val id_of_string : string -> id
-val string_of_id : string -> id
+val string_of_id : id -> string
 val pp_flow : Format.formatter -> flow -> unit

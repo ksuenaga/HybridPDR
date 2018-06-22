@@ -13,6 +13,8 @@ let pp_expr fmt e =
   fprintf fmt "%s" (Z3.Expr.to_string e)
 let pp_symbol fmt e =
   fprintf fmt "%s" (Z3.Symbol.to_string e)
+let pp_model fmt m =
+  fprintf fmt "%s" (Z3.Model.to_string m)
   
 let set_context param = ctx := Z3.mk_context param
                       

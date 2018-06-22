@@ -231,7 +231,11 @@ let rec explore_single_candidate_one_step
   (* If one of the triples has a correct precondition, then the entire vc is discharged *)
   let open Frame in
   let id, m = candidate in
+  let _ = printf "Counterexample at loc %a: %a@." SpaceexComponent.pp_id id Z3Intf.pp_model m in
+  let _ = printf "Try to propagate from the post region: %a@." Z3Intf.pp_expr (Z3Intf.expr_of_model m) in
+  let _ = printf "To the pre region: %a@." pp_frame pre in
   let triples = vcgen_total ~pre:pre ~post:(Z3Intf.expr_of_model m) in
+  (*
   let _ =
     printf "triples_total:%a@."
       (pp_print_list
@@ -239,19 +243,25 @@ let rec explore_single_candidate_one_step
          DischargeVC.pp_cont_triple_total)
       triples
   in
+   *)
   let pre =
     List.fold_left
-      ~init:None
+      ~init:`Unknown
       ~f:(fun sol triple ->
         match sol with
-          Some _ -> sol
-        | None ->
+        | `Propagated _ -> sol
+        | _ ->
            DischargeVC.discharge_vc_total triple)
       triples
   in
   match pre with
-    Some(id,m) -> `Propagated(id,m)
-  | None -> E.raise (E.of_string "explore_single_candidate_one_step(interpolant): not implemented")
+  | `Propagated(id,m) ->
+     let _ = printf "Successfuly propagated to the state %a at loc %a@." Z3Intf.pp_model m SpaceexComponent.pp_id id in
+     `Propagated(id,m)
+  | `Conflict(interpolant) ->
+     E.raise (E.of_string "explore_single_candidate_one_step(interpolant): not implemented")
+  | `Unknown ->
+     E.raise (E.of_string "explore_single_candidate_one_step: Cannot proceed.")
   (*
   let id,model = candidate in
   let post_cnf = Env.find_exn post id in
@@ -291,8 +301,10 @@ let rec exploreCE
   (* let _ = printf "vcgen:%a@." SpaceexComponent.pp hs in *)
   (* E.raise (E.of_string "exploreCE: not implemented") *)
   match candidates, t with
-  | [], _ -> `CENotFound t
-  | _::_, [] -> `CEFound candidates
+  | [], _ ->
+     `CENotFound t
+  | _::_, [] ->
+     `CEFound candidates
   | ((loc,m) as hd_cand)::tl_cand, hd_frame::tl_frame ->
      begin
        let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.frame_lift locs Cnf.cnf_true in
@@ -353,22 +365,30 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
   
 (* [XXX] Not tested *)
 let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
-  E.raise (E.of_string "verify: task: Sort out log messages before going further.");
+  (* E.raise (E.of_string "verify: task: Sort out log messages before going further."); *)
+  let _ = printf "@\n(** Iteration of verification **)@." in
   assert(candidates = []);
   let _ = printf "frames:%a@." pp_frames frames in
   let t = frames in
   (* Do induction as much as possible. *)
+  let _ = printf "(** Induction **)@." in
+  let _ = printf "Frames before: %a@." pp_frames t in
   let t = induction locs vcgen_partial t in
+  let _ = printf "Frames after: %a@." pp_frames t in
   (* Check whether the fixpoint is already reached. *)
   let res = is_valid t in
   match res with
-  | `Valid -> Ok t
+  | `Valid ->
+     let _ = printf "(** Safety is proved! **)@." in
+     let _ = printf "Frames: %a@." pp_frames t in
+     Ok t
   | `NotValid _ | `NotValidNoModel ->
      (* Inductive invariant is not yet found. *)
      begin
        match frames with
        | hd::_ ->
           (* Check whether the tip of the frames is safe. *)
+          let _ = printf "(** Check whether the frontier is safe **)@." in          
           let st =
             Env.fold ~init:`Valid
               ~f:(fun st (loc,c) ->
@@ -381,11 +401,15 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
             match st with
             | `Valid ->
                (* the tip of the frame is safe.  Expand the frames. *)
+               let _ = printf "(** The frontier is safe; expanding **)@." in          
                let newframe = Frame.frame_lift locs Cnf.cnf_true in
+               let newframes = newframe::frames in
+               let _ = printf "New frames: %a@." pp_frames newframes in
                (* Discard the candidates.  Continue verification. *)
-               verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:(newframe::frames)
+               verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes
             | `NotValid(loc,m) ->
                (* Counterexample is found. *)
+               let _ = printf "(** The frontier is not safe **)@." in
                let newcandidates = [(loc,m)] in
                (* Push back the counterexample. *)
                let res = exploreCE ~locs ~vcgen_total ~candidates:newcandidates ~t:t in

@@ -41,13 +41,15 @@ let pp_cont_triple_total fmt crp =
 
 
 (* [XXX] Premature rough implementation *)
-let discharge_vc_total ~(triple:cont_triple_total) : (SpaceexComponent.id * Z3.Model.model) option =
+let discharge_vc_total ~(triple:cont_triple_total) =
   let open Z3Intf in
-  let _ = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in
+  (* let _ = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in *)
   let res = callZ3 (mk_and triple.pre_total triple.post_total) in
   match res with
-  | `Unsat | `Unknown -> None
-  | `Sat m -> Some(triple.pre_loc_total, m)
+  | `Unsat ->
+     E.raise (E.of_string "discharge_vc_total(interpolant): not implemented.")
+  | `Unknown -> `Unknown
+  | `Sat m -> `Propagated(triple.pre_loc_total, m)
 (* E.raise (E.of_string "discharge_vc_total: not implemented.") *)
 
 (* [XXX] to be implememnted. *)
