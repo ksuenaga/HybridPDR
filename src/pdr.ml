@@ -244,6 +244,11 @@ let rec explore_single_candidate_one_step
       triples
   in
    *)
+  (*
+  let _ = printf "Propagating CE at %a: %s@." SpaceexComponent.pp_id triples. (Z3.Model.to_string m) in
+  let _ = printf "Post: %a@." Frame.pp_frame hd_frame in
+  let _ = printf "Pre: %a@." Frame.pp_frame hd2 in
+   *)
   let pre =
     List.fold_left
       ~init:`Unknown

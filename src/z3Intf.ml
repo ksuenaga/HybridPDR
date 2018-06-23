@@ -284,3 +284,20 @@ let%test _ =
   match res1,res2 with
   | `Unsat, `Sat _ -> true
   | _ -> false
+
+let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) : Z3.Expr.expr =
+  Util.not_implemented "interpolant"
+
+let%test _ =
+  let x = mk_real_var "x" in
+  let y = mk_real_var "y" in
+  (* let z = mk_real_var "z" in   *)
+  let e1 = mk_gt (mk_add x y) (mk_real_numeral_s "0.0") in
+  let e2 = mk_and (mk_lt x (mk_real_numeral_s "0.0")) (mk_lt y (mk_real_numeral_s "0.0")) in
+  let intp = interpolant e1 e2 in
+  let res1 = callZ3 (mk_not (mk_implies e1 intp)) in
+  let res2 = callZ3 (mk_not (mk_implies intp e2)) in
+  let res3 = callZ3 (mk_and e1 e2) in
+  match res1,res2,res3 with
+  | `Unsat,`Unsat,`Unsat -> true
+  | _,_,_ -> false

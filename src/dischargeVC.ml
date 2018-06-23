@@ -49,7 +49,7 @@ let rec backward_simulation
           ~(history : Z3.Expr.expr list) =
   let open Z3Intf in
   (* Check whether post is already empty. *)
-  let checkPostEmpty = callZ3 post in
+  let checkPostEmpty = callZ3 (mk_and inv post) in
   (* Check whether there is a CE. *)
   let checkCE = callZ3 (mk_and pre post) in
   match checkCE, checkPostEmpty with
@@ -74,9 +74,16 @@ let discharge_vc_total ~(triple:cont_triple_total) =
   let open Z3Intf in
   (* let _ = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in *)
   (*  in *)
+  let _ =
+    printf "Post: %s@." (Z3.Expr.to_string triple.post_total);
+    printf "Pre loc: %a@." SpaceexComponent.pp_id triple.pre_loc_total;
+    printf "Pre: %s@." (Z3.Expr.to_string triple.pre_total);
+    printf "Inv: %s@." (Z3.Expr.to_string triple.inv_total);
+    printf "Flow: %a@." SpaceexComponent.pp_flow triple.dynamics_total
+  in
   let res =
     backward_simulation
-      ~discretization_rate:0.1
+      ~discretization_rate:1.0
       ~pre_loc:triple.pre_loc_total
       ~post:triple.post_total
       ~flow:triple.dynamics_total

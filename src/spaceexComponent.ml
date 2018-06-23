@@ -308,8 +308,11 @@ let prev_time ~(discretization_rate:float) ~(flow:flow) ~(post:Z3.Expr.expr) : Z
       ~f:(fun (xs,es) (x,e) ->
         let xExp = mk_real_var x in
         let d = mk_real_numeral_float discretization_rate in
-        let e = mk_add xExp (mk_neg (mk_mul e d)) in
+        let e = mk_add xExp (mk_mul e d) in
         (x::xs), (e::es))
       flow
   in
-  simplify (substitute xs es post)
+  let res = callZ3 (substitute xs es post) in
+  match res with
+    `Sat m -> expr_of_model m
+  | _ -> Util.not_implemented "prev_time: unknown, unsat"
