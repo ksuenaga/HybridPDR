@@ -72,6 +72,16 @@ let%test _ =
   let module R = Z3.Arithmetic.Real in
   Expr.equal (mk_real_numeral_s "3.4") (R.mk_numeral_nd !ctx 34 10)
 
+let mk_real_numeral_float f =
+  let module R = Z3.Arithmetic.Real in
+  R.mk_numeral_s !ctx (sprintf "%f" f)
+
+let%test _ =
+  let module Expr = Z3.Expr in
+  let module R = Z3.Arithmetic.Real in
+  Expr.equal (mk_real_numeral_float 3.4) (R.mk_numeral_nd !ctx 34 10)
+
+
 let mk_neg e =
   let module A = Z3.Arithmetic in
   let module R = A.Real in
@@ -233,20 +243,40 @@ let%test _ =
      Z3.Expr.equal e1 e2
   | _ -> false
 
+(* Compute [es/xs]e *)
+let substitute (xs:string list) (es:Z3.Expr.expr list) (e:Z3.Expr.expr) : Z3.Expr.expr =
+  let syms : Z3.Symbol.symbol list = Z3.Symbol.mk_strings !ctx xs in
+  let xs = List.map ~f:(Z3.Arithmetic.Real.mk_const !ctx) syms in
+  (simplify (Z3.Expr.substitute e xs es))
+
+(* x + x * y *)
+let%test _ =
+  let x = mk_real_var "x" in
+  let y = mk_real_var "y" in
+  let e = mk_eq (mk_add x (mk_mul x y)) (mk_real_numeral_s "8.0") in
+  let e1 = substitute ["x";"y"] [(mk_real_numeral_s "2.0");(mk_real_numeral_s "3.0")] e in
+  let e2 = substitute ["y";"x"] [(mk_real_numeral_s "3.0");(mk_real_numeral_s "2.0")] e in
+  let e3 = substitute ["x";"y"] [(mk_real_numeral_s "1.0");(mk_real_numeral_s "1.0")] e in
+  let res1 = callZ3 e1 in
+  let res2 = callZ3 e2 in
+  let res3 = callZ3 e3 in
+  match res1,res2,res3 with
+  | `Sat _, `Sat _, `Unsat -> true
+  | _ -> false
+       
 (* Compute [e1/x]e *)
 let substitute_one (x:string) (e1:Z3.Expr.expr) (e:Z3.Expr.expr) : Z3.Expr.expr =
+  substitute [x] [e1] e
+  (*
   let sym = Z3.Symbol.mk_string !ctx x in
   let x = Z3.Arithmetic.Real.mk_const !ctx sym in
   (simplify (Z3.Expr.substitute_one e x e1))
+   *)
 
 (* x + x * x *)
 let%test _ =
   let x = mk_real_var "x" in
   let e = mk_eq (mk_add x (mk_mul x x)) (mk_real_numeral_s "6.0") in
-  (*
-  let _ = printf "e:%s@\n" (Z3.Expr.to_string e) in
-  let _ = printf "OK@." in
-   *)
   let e1 = substitute_one "x" (mk_real_numeral_s "0.0") e in
   let e2 = substitute_one "x" (mk_real_numeral_s "2.0") e in
   let res1 = callZ3 e1 in

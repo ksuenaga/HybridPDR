@@ -268,6 +268,10 @@ let%test_module _ =
        trans21.label = "hop" && trans21.guard = Cnf.parse "y>=0" && trans21.command = empty_command
    end)
 
+(* let substitute syms exprs e =
+ *   let open Z3.Expr in
+ *   Util.not_implemented "substitute" *)
+  
 (**************** WP computation ****************)
 
 let wp_command (cmd:command) cnf =
@@ -294,3 +298,18 @@ let wp_command_z3 (cmd:command) (e:Z3.Expr.expr) =
       cmd
   in
   simplify e
+
+let prev_time ~(discretization_rate:float) ~(flow:flow) ~(post:Z3.Expr.expr) : Z3.Expr.expr =
+  let open Z3Intf in
+  let _ = eprintf "post:%s@." (Z3.Expr.to_string post) in
+  let xs,es =
+    Env.fold
+      ~init:([],[])
+      ~f:(fun (xs,es) (x,e) ->
+        let xExp = mk_real_var x in
+        let d = mk_real_numeral_float discretization_rate in
+        let e = mk_add xExp (mk_neg (mk_mul e d)) in
+        (x::xs), (e::es))
+      flow
+  in
+  simplify (substitute xs es post)

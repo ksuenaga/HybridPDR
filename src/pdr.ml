@@ -334,7 +334,7 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
         let pre_source = Env.find_exn pre t.source in
         let post_target : Cnf.t = Env.find_exn post t.target in
         let wp : Z3.Expr.expr = Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target) in
-        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=Cnf.to_z3 pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=inv}::vcs
+        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=Cnf.to_z3 pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=(Cnf.to_z3 inv)}::vcs
       )
       hs.transitions
   in
@@ -355,7 +355,7 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
         (* let post_target : Cnf.t = Env.find_exn post t.target in *)
         let post_target = post in
         let wp : Z3.Expr.expr = Z3Intf.mk_and (Cnf.to_z3 t.guard) (SpaceexComponent.wp_command_z3 t.command post_target) in
-        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=Cnf.to_z3 pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv}::vcs
+        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=Cnf.to_z3 pre_source; post_total=wp; dynamics_total=dynamics; inv_total=Cnf.to_z3 inv}::vcs
       )
       hs.transitions
       (* E.raise (E.of_string "to_vcgen: not implemented") *)
