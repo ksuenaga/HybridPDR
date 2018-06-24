@@ -64,7 +64,24 @@ let rec backward_simulation
        ~inv ~pre ~history:(post::history)
   | (`Unsat | `Unknown), `Unsat ->
      (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
-     Util.not_implemented "discharge_vc_total(interpolant)"
+     let e1 = pre in
+     let e2 = List.fold_left ~init:mk_false ~f:mk_or history in
+     let _ = printf "e1:%s@." (Z3.Expr.to_string e1) in
+     let _ = printf "e2:%s@." (Z3.Expr.to_string e2) in                            
+     let intp = interpolant e1 e2 in
+     let _ =
+       begin
+         match intp with
+           `InterpolantFound intp ->
+            let _ = printf "Obtained interpolant: %s@." (Z3.Expr.to_string intp) in
+            Util.not_implemented "intp found"
+         | `InterpolantNotFound ->
+            Util.not_implemented "intp not found"
+         | `NotUnsatisfiable ->
+            assert(false)
+       end
+     in
+       Util.not_implemented "discharge_vc_total(interpolant)"
                   
 (*  Util.not_implemented "backward_simulation" *)
   

@@ -4,9 +4,16 @@ open Format
 module E = Error
 
 let ctx = ref (Z3.mk_context [])
+let param = ref (Z3.Params.mk_params !ctx)
 let solver =
+  Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "proof") true;
+  Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "produce-interpolants") true;  
   let solver = Z3.Solver.mk_simple_solver !ctx in
-  Z3.enable_trace "hpdr";
+  (*
+  let _ = printf "Help:%s@." (Z3.Solver.get_help solver) in
+  let _ = printf "Simplify Help:%s@." (Z3.Expr.get_simplify_help !ctx) in
+   *)
+  (* Z3.enable_trace "hpdr"; *)
   ref solver
 
 let pp_expr fmt e =
@@ -284,20 +291,63 @@ let%test _ =
   match res1,res2 with
   | `Unsat, `Sat _ -> true
   | _ -> false
-
-let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) : Z3.Expr.expr =
-  Util.not_implemented "interpolant"
+ 
+let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) =
+  let open Z3.Interpolation in
+  (*
+  let _ = printf "Taking interpolant of:@." in
+  let _ = printf "e1:%s@." (Z3.Expr.to_string e1) in
+  let _ = printf "e2:%s@." (Z3.Expr.to_string e2) in
+   *)
+  match callZ3 (mk_and e1 e2) with
+  | `Unsat ->
+     begin
+       let e1 = Z3.Interpolation.mk_interpolant !ctx e1 in
+       let params = Z3.Params.mk_params !ctx in
+       (*
+       let _ =
+         printf "e1: %s@." (Z3.Expr.to_string e1);
+         printf "e2: %s@." (Z3.Expr.to_string e2);
+         printf "params: %s@." (Z3.Params.to_string params)
+       in
+        *)
+       (* let es = get_interpolant !ctx e1 e2 params in *)
+       let _, res, _ = compute_interpolant !ctx (mk_and e1 e2) params in
+       (*
+       let _ = printf "Obtained interpolant: %a@."
+                 (Util.pp_option (Util.pp_list pp_expr)) res
+       in
+        *)
+       (* Util.not_implemented "interpolant" *)
+       match res with
+       | None -> `InterpolantNotFound
+       | Some (hd::_) -> `InterpolantFound hd
+       | Some [] -> assert(false)
+     end
+  | _ -> `NotUnsatisfiable
 
 let%test _ =
   let x = mk_real_var "x" in
   let y = mk_real_var "y" in
   (* let z = mk_real_var "z" in   *)
-  let e1 = mk_gt (mk_add x y) (mk_real_numeral_s "0.0") in
-  let e2 = mk_and (mk_lt x (mk_real_numeral_s "0.0")) (mk_lt y (mk_real_numeral_s "0.0")) in
-  let intp = interpolant e1 e2 in
-  let res1 = callZ3 (mk_not (mk_implies e1 intp)) in
-  let res2 = callZ3 (mk_not (mk_implies intp e2)) in
+  let e1 = mk_gt x (mk_real_numeral_s "1.0") in
+  let e2 = mk_lt x (mk_real_numeral_s "0.0") in
   let res3 = callZ3 (mk_and e1 e2) in
-  match res1,res2,res3 with
-  | `Unsat,`Unsat,`Unsat -> true
-  | _,_,_ -> false
+  (*
+  let _ =
+    match res3 with
+      `Unsat -> printf "OK@."
+    | _ -> Util.not_implemented "hoge"
+  in
+   *)
+  let intp = interpolant e1 e2 in
+  match intp with
+  | `InterpolantFound intp ->
+     begin
+       let res1 = callZ3 (mk_not (mk_implies e1 intp)) in
+       let res2 = callZ3 (mk_and intp e2) in
+       match res1,res2,res3 with
+       | `Unsat,`Unsat,`Unsat -> true
+       | _,_,_ -> false
+     end
+  | _ -> false
