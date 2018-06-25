@@ -301,6 +301,7 @@ let wp_command_z3 (cmd:command) (e:Z3.Expr.expr) =
 
 let prev_time ~(discretization_rate:float) ~(flow:flow) ~(post:Z3.Expr.expr) : Z3.Expr.expr =
   let open Z3Intf in
+  let _ = eprintf "flow(forward):%a@." pp_flow flow in
   let _ = eprintf "post:%s@." (Z3.Expr.to_string post) in
   let xs,es =
     Env.fold
@@ -312,7 +313,16 @@ let prev_time ~(discretization_rate:float) ~(flow:flow) ~(post:Z3.Expr.expr) : Z
         (x::xs), (e::es))
       flow
   in
+  substitute xs es post
+  (*
   let res = callZ3 (substitute xs es post) in
   match res with
     `Sat m -> expr_of_model m
-  | _ -> Util.not_implemented "prev_time: unknown, unsat"
+  | `Unsat -> Util.not_implemented "prev_time: unsat"
+  | `Unknown -> Util.not_implemented "prev_time: unknown"
+   *)
+
+let parse_flow s : flow =
+  let flow = List.fold_left ~f:(fun flow (k,v) -> Env.add k v flow) ~init:empty_flow (ParseFml.parse_flow s) in
+  flow
+                         

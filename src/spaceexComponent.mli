@@ -39,3 +39,5 @@ val string_of_id : id -> string
 val pp_flow : Format.formatter -> flow -> unit
 
 val prev_time : discretization_rate:float -> flow:flow -> post:Z3.Expr.expr -> Z3.Expr.expr
+
+val parse_flow : string -> flow

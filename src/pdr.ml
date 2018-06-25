@@ -263,8 +263,7 @@ let rec explore_single_candidate_one_step
   | `Propagated(id,m) ->
      let _ = printf "Successfuly propagated to the state %a at loc %a@." Z3Intf.pp_model m SpaceexComponent.pp_id id in
      `Propagated(id,m)
-  | `Conflict(interpolant) ->
-     E.raise (E.of_string "explore_single_candidate_one_step(interpolant): not implemented")
+  | `Conflict(loc,interpolant) -> `Conflict(loc,interpolant)
   | `Unknown ->
      E.raise (E.of_string "explore_single_candidate_one_step: Cannot proceed.")
   (*
@@ -292,7 +291,7 @@ let rec exploreCE
           ~(t : frames)
   =
   let open Format in
-  (*
+  let _ = printf "(* Iteration of exploreCE *)@." in
   let _ = printf "frames:%a@." pp_frames t in
   let _ = printf
             "candidates:%a@."
@@ -301,7 +300,6 @@ let rec exploreCE
                (fun fmt (loc,m) -> fprintf fmt "loc=%a:cand=%a" SpaceexComponent.pp_id loc pp_candidate m))
             candidates
   in
-   *)
   (* let _ = printf "hs:%a@." SpaceexComponent.pp hs in *)
   (* let _ = printf "vcgen:%a@." SpaceexComponent.pp hs in *)
   (* E.raise (E.of_string "exploreCE: not implemented") *)
@@ -315,9 +313,20 @@ let rec exploreCE
        let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.frame_lift locs Cnf.cnf_true in
        match explore_single_candidate_one_step ~locs ~candidate:hd_cand ~vcgen_total:vcgen_total ~post:hd_frame ~pre:hd2 with
        | `Propagated newcand ->
-          exploreCE ~locs ~vcgen_total ~candidates:(newcand::hd_cand::tl_cand) ~t:tl_frame
-       | `Conflict newframe ->
-          exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframe
+          begin
+            let res = exploreCE ~locs ~vcgen_total ~candidates:(newcand::hd_cand::tl_cand) ~t:tl_frame in
+            match res with
+            | `CENotFound resulting_frames -> `CENotFound (hd_frame::resulting_frames)
+            | `CEFound _ -> res
+          end
+       | `Conflict(loc,interpolant) ->
+          let original_frames = hd_frame::tl_frame in
+          let newframes = List.map ~f:(fun f -> Frame.strengthen ~loc:loc ~fml:(Cnf.z3_to_atomic interpolant) ~t:f) original_frames in
+          let _ =
+            printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames;
+            printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes;
+          in
+          exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframes
      end
 (* E.raise (E.of_string "exploreCE: not implemented") *)
        (*
@@ -424,6 +433,8 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
                     (* True counterexample is found. *)
                     Ng (List.map ~f:(fun (loc,m) -> (loc,m)) trace)
                  | `CENotFound newframes ->
+                    let _ = printf "CE is not found@." in
+                    let _ = printf "Next iteration with frames %a@." (Util.pp_list Frame.pp_frame) newframes in
                     (* The frames are refined with newly found predicates.  Continue verification. *)
                     verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes
                end

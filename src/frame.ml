@@ -37,6 +37,20 @@ let frame_lift_given_id
 let find_exn ~loc ~frame =
   Env.find_exn frame loc
 
-
 let equal f1 f2 = Env.equal f1 f2
   
+let strengthen ~loc ~fml ~t =
+  let p = Env.find_exn t loc in
+  let p = Cnf.cnf_and p (Cnf.cnf_lift_atomic fml) in
+  Env.add loc p t
+  (*
+  Env.fold
+    ~init:Env.empty
+    ~f:(fun env (l,p) ->
+      if l = loc then
+        let open Cnf in
+        Env.add l (cnf_and p (cnf_lift_atomic (z3_to_atomic fml))) env
+      else
+        Env.add l p env)
+    t
+   *)
