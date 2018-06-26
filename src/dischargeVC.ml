@@ -113,15 +113,15 @@ let rec backward_simulation
        (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
        let e1 = simplify pre in
        let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in
-       let _ = printf "e1:%s@." (Z3.Expr.to_string e1) in
-       let _ = printf "e2:%s@." (Z3.Expr.to_string e2) in                            
+       let _ = printf "e1:%s@." (Z3.Expr.to_string (simplify e1)) in
+       let _ = printf "e2:%s@." (Z3.Expr.to_string (simplify e2)) in                            
        let intp = interpolant e1 e2 in
        let res =
          begin
            match intp with
            | `InterpolantFound intp ->
               let intp = simplify intp in
-              let _ = printf "Obtained interpolant (at %a): %s@." SpaceexComponent.pp_id pre_loc (Z3.Expr.to_string intp) in
+              let () = printf "Obtained interpolant (at %a): %s@." SpaceexComponent.pp_id pre_loc (Z3.Expr.to_string intp) in
               `Conflict(pre_loc,intp)
            | `InterpolantNotFound ->
               Util.not_implemented "intp not found"
@@ -190,7 +190,8 @@ let discharge_vc_total ~(triple:cont_triple_total) =
   let open Z3Intf in
   (* let _ = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in *)
   (*  in *)
-  let _ =
+  let () =
+    printf "(* discharge_vc_total *)@.";
     printf "Post: %s@." (Z3.Expr.to_string triple.post_total);
     printf "Pre loc: %a@." SpaceexComponent.pp_id triple.pre_loc_total;
     printf "Pre: %s@." (Z3.Expr.to_string triple.pre_total);
@@ -206,6 +207,9 @@ let discharge_vc_total ~(triple:cont_triple_total) =
       ~inv:triple.inv_total
       ~pre:triple.pre_total
       ~history:[]
+  in
+  let () =
+    match res with `Propagated _ -> printf "Propagated.@." | `Conflict _ -> printf "Conflict.@."
   in
   res
 (* E.raise (E.of_string "discharge_vc_total: not implemented.") *)

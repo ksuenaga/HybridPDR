@@ -220,9 +220,11 @@ let rec explore_single_candidate_one_step
   (* If one of the triples has a correct precondition, then the entire vc is discharged *)
   let open Frame in
   let id, m = candidate in
-  let _ = printf "Counterexample at loc %a: %a@." SpaceexComponent.pp_id id Z3Intf.pp_model m in
-  let _ = printf "Try to propagate from the post region: %a@." Z3Intf.pp_expr (Z3Intf.expr_of_model m) in
-  let _ = printf "To the pre region: %a@." pp_frame pre in
+  let () =
+    printf "Counterexample at loc %a: %a@." SpaceexComponent.pp_id id Z3Intf.pp_model m;
+    printf "Try to propagate from the post region: %a@." Z3Intf.pp_expr (Z3Intf.expr_of_model m);
+    printf "To the pre region: %a@." pp_frame pre
+  in
   let triples = vcgen_total ~is_continuous:(Frame.is_continuous_frame post) ~pre:pre ~post:(Z3Intf.expr_of_model m) in
   (*
   let _ =
@@ -254,7 +256,7 @@ let rec explore_single_candidate_one_step
   in
   match propagated,pre with
   | true,[`Propagated(id,m)] ->
-    let _ = printf "Successfuly propagated to the state %a at loc %a@." Z3Intf.pp_model m SpaceexComponent.pp_id id in
+    let () = printf "Successfuly propagated to the state %a at loc %a@." Z3Intf.pp_model m SpaceexComponent.pp_id id in
     `Propagated(id,m)
   | false, res ->
      assert(List.for_all ~f:(function `Conflict _ -> true | _ -> false) res);
@@ -267,6 +269,10 @@ let rec explore_single_candidate_one_step
            | _ -> failwith "explore_single_candidate_one_step: cannot happen.")
          res
      in
+     let () =
+       printf "Conflict: Interpolant obtained@.";
+       printf "Interpolant: %a@." Frame.pp_locfmls r in
+         (* Z3Intf.pp_model m SpaceexComponent.pp_id id in *)
      `Conflict r
   | _ -> E.raise (E.of_string "explore_single_candidate_one_step: Cannot proceed.")
 
@@ -305,14 +311,15 @@ let rec exploreCE
           ~(t : frames)
   =
   let open Format in
-  let _ = printf "(* Iteration of exploreCE *)@." in
-  let _ = printf "frames:%a@." pp_frames t in
-  let _ = printf
-            "candidates:%a@."
-            (pp_print_list
-               ~pp_sep:(fun fmt _ -> fprintf fmt "@\n")
-               (fun fmt (loc,m) -> fprintf fmt "loc=%a:cand=%a" SpaceexComponent.pp_id loc pp_candidate m))
-            candidates
+  let () =
+    printf "(* Iteration of exploreCE *)@.";
+    printf "frames:%a@." pp_frames t;
+    printf
+      "candidates:%a@."
+      (pp_print_list
+         ~pp_sep:(fun fmt _ -> fprintf fmt "@\n")
+         (fun fmt (loc,m) -> fprintf fmt "loc=%a:cand=%a" SpaceexComponent.pp_id loc pp_candidate m))
+      candidates
   in
   (* let _ = printf "hs:%a@." SpaceexComponent.pp hs in *)
   (* let _ = printf "vcgen:%a@." SpaceexComponent.pp hs in *)
@@ -330,7 +337,9 @@ let rec exploreCE
           begin
             let res = exploreCE ~locs ~vcgen_total ~candidates:(newcand::hd_cand::tl_cand) ~t:tl_frame in
             match res with
-            | `CENotFound resulting_frames -> `CENotFound (hd_frame::resulting_frames)
+            | `CENotFound resulting_frames ->
+               assert(List.length resulting_frames = List.length tl_frame);
+               `CENotFound (hd_frame::resulting_frames)
             | `CEFound _ -> res
           end
        | `Conflict l ->
@@ -338,22 +347,21 @@ let rec exploreCE
           let newframes =
             List.map
               ~f:(fun frame ->
-                let pp_locfml fmt (l,z3) =
-                  fprintf fmt "loc %a: %s" SpaceexComponent.pp_id l (Z3.Expr.to_string z3)
-                in
-                let _ =
+                (*
+                let () =
                   printf "Strengthening frame %a@." Frame.pp_frame frame;
                   printf "with locfmls %a@." (Util.pp_list pp_locfml) l
                 in
+                 *)
                 let strengthened = Frame.strengthen ~locfmls:l ~t:frame in
-                let _ = printf "Strengthened frame %a@." Frame.pp_frame strengthened in
+                (* let () = printf "Strengthened frame %a@." Frame.pp_frame strengthened in *)
                 strengthened
               )
               original_frames
           in
-          let _ =
+          let () =
             printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames;
-            (* printf "Strengthened with interpolant: %s@." (Z3.Expr.to_string interpolant); *)
+            printf "Strengthened with interpolant: %a@." Frame.pp_locfmls l;
             printf "At location: %a@." SpaceexComponent.pp_id loc;
             printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes;
           in
@@ -371,21 +379,21 @@ let rec exploreCE
 (* [XXX] Not tested *)
 let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
   (* E.raise (E.of_string "verify: task: Sort out log messages before going further."); *)
-  let _ = printf "@\n(** Iteration of verification **)@." in
+  let () = printf "@\n(** Iteration of verification **)@." in
   assert(candidates = []);
-  let _ = printf "frames:%a@." pp_frames frames in
+  let () = printf "frames:%a@." pp_frames frames in
   let t = frames in
   (* Do induction as much as possible. *)
-  let _ = printf "(** Induction **)@." in
-  let _ = printf "Frames before: %a@." pp_frames t in
+  let () = printf "(** Induction **)@." in
+  let () = printf "Frames before: %a@." pp_frames t in
   let t = induction locs vcgen_partial t in
-  let _ = printf "Frames after: %a@." pp_frames t in
+  let () = printf "Frames after: %a@." pp_frames t in
   (* Check whether the fixpoint is already reached. *)
   let res = is_valid t in
   match res with
   | `Valid ->
-     let _ = printf "(** Safety is proved! **)@." in
-     let _ = printf "Frames: %a@." pp_frames t in
+     let () = printf "(** Safety is proved! **)@." in
+     let () = printf "Frames: %a@." pp_frames t in
      Ok t
   | `NotValid _ | `NotValidNoModel ->
      (* Inductive invariant is not yet found. *)
@@ -394,7 +402,7 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
        | hd::tl ->
           assert(Frame.is_continuous_frame hd);
           (* Check whether the tip of the frames is safe. *)
-          let _ = printf "(** Check whether the frontier is safe **)@." in          
+          let () = printf "(** Check whether the frontier is safe **)@." in          
           let st = Frame.is_valid_implication_cnf hd safe in
             (*
             Env.fold ~init:`Valid
@@ -408,16 +416,16 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
             match st with
             | `Valid ->
                (* the tip of the frame is safe.  Expand the frames. *)
-               let _ = printf "(** The frontier is safe; expanding **)@." in          
+               let () = printf "(** The frontier is safe; expanding **)@." in          
                let newframe_continuous = Frame.continuous_frame_lift locs Cnf.cnf_true in
                let newframe_hybrid = Frame.hybrid_frame_lift locs Cnf.cnf_true in
                let newframes = newframe_continuous::newframe_hybrid::tl in
-               let _ = printf "New frames: %a@." pp_frames newframes in
+               let () = printf "New frames: %a@." pp_frames newframes in
                (* Discard the candidates.  Continue verification. *)
                verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes
             | `NotValid(loc,m) ->
                (* Counterexample is found. *)
-               let _ = printf "(** The frontier is not safe **)@." in
+               let () = printf "(** The frontier is not safe **)@." in
                let newcandidates = [(loc,m)] in
                (* Push back the counterexample. *)
                let res = exploreCE ~locs ~vcgen_total ~candidates:newcandidates ~t:t in
@@ -427,8 +435,8 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
                     (* True counterexample is found. *)
                     Ng (List.map ~f:(fun (loc,m) -> (loc,m)) trace)
                  | `CENotFound newframes ->
-                    let _ = printf "CE is not found@." in
-                    let _ = printf "Next iteration with frames %a@." (Util.pp_list Frame.pp_frame) newframes in
+                    let () = printf "CE is not found@." in
+                    let () = printf "Next iteration with frames %a@." (Util.pp_list Frame.pp_frame) newframes in
                     (* The frames are refined with newly found predicates.  Continue verification. *)
                     verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes
                end

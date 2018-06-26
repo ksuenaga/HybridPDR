@@ -18,3 +18,5 @@ val is_continuous_frame : frame -> bool
 val strengthen : locfmls:(SpaceexComponent.id*Z3.Expr.expr) list -> t:frame -> frame
 
 val find_exn : frame -> SpaceexComponent.id -> Cnf.t
+
+val pp_locfmls : Format.formatter -> (SpaceexComponent.id*Z3.Expr.expr) list -> unit

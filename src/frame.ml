@@ -6,8 +6,8 @@ let pp_pre_frame fmt (pre:pre_frame) =
   Env.fold
     ~init:()
     ~f:(fun _ (id,cnf) ->
-    (* fprintf fmt "(%a -> %s) " SpaceexComponent.pp_id id (Z3.Expr.to_string (Cnf.to_z3 cnf)) *)
-      fprintf fmt "(%a -> %a) " SpaceexComponent.pp_id id Cnf.pp cnf
+      fprintf fmt "(%a -> %s) " SpaceexComponent.pp_id id (Z3.Expr.to_string (Cnf.to_z3 cnf))
+    (* fprintf fmt "(%a -> %a) " SpaceexComponent.pp_id id Cnf.pp cnf *)
     )
     pre
   
@@ -72,31 +72,37 @@ let pp_locfmls fmt l =
   fprintf fmt "%a" (Util.pp_list pp_locfml) l
                 
 let strengthen ~(locfmls:(SpaceexComponent.id*Z3.Expr.expr) list) ~(t:frame) : frame =
+  (*
   let _ = printf "(** strengthen **)@." in
   let _ = printf "Passed frame: %a@." pp_frame t in
   let _ = printf "locfmls: %a@." pp_locfmls locfmls in
+   *)
   let ret =
     List.fold_left
       ~init:t
       ~f:(fun frame (loc,fml) ->
+        (*
         let _ = printf "before frame: %a@." pp_frame frame in
         let _ = printf "loc: %a@." SpaceexComponent.pp_id loc in
+         *)
         let p =
           match t with
           | (Continuous pf | Hybrid pf) -> Env.find_exn pf loc
         in
         let fml = Cnf.cnf_lift_atomic (Cnf.z3_to_atomic fml) in
+        (*
         let _ = printf "fml: %a@." Cnf.pp fml in
         let _ = printf "p(before): %a@." Cnf.pp p in
+         *)
         let p = Cnf.cnf_and p fml in
-        let _ = printf "p(after): %a@." Cnf.pp p in
+        (* let _ = printf "p(after): %a@." Cnf.pp p in *)
         let frame = lift_frame_pf (Env.add loc p) frame in
-        let _ = printf "after frame: %a@." pp_frame frame in
+        (* let _ = printf "after frame: %a@." pp_frame frame in *)
         frame
       )
       locfmls
   in
-  let _ = printf "Returned frame: %a@." pp_frame ret in
+  (* let _ = printf "Returned frame: %a@." pp_frame ret in *)
   ret
 
 let mk_pf_from_assoclist l : pre_frame =

@@ -49,6 +49,13 @@ let callZ3 z3expr =
   in
   Z3.Solver.pop !solver 1;
   res
+
+  
+let pp_result_callZ3 fmt res =
+  match res with
+    `Unsat -> fprintf fmt "Unsat"
+  | `Sat m -> fprintf fmt "Sat %s" (Z3.Model.to_string m)
+  | `Unknown -> fprintf fmt "Unknown"
       
 let parse_smtlib2_expr s =
   let open Z3.SMT in
@@ -302,26 +309,35 @@ let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) =
   match callZ3 (mk_and e1 e2) with
   | `Unsat ->
      begin
-       let e1 = Z3.Interpolation.mk_interpolant !ctx e1 in
+       let e1intp = Z3.Interpolation.mk_interpolant !ctx e1 in
        let params = Z3.Params.mk_params !ctx in
-       (*
        let _ =
          printf "e1: %s@." (Z3.Expr.to_string e1);
+         printf "e1intp: %s@." (Z3.Expr.to_string e1intp);
          printf "e2: %s@." (Z3.Expr.to_string e2);
          printf "params: %s@." (Z3.Params.to_string params)
        in
-        *)
        (* let es = get_interpolant !ctx e1 e2 params in *)
-       let _, res, _ = compute_interpolant !ctx (mk_and e1 e2) params in
-       (*
+       let _, res, _ = compute_interpolant !ctx (mk_and e1intp e2) params in
        let _ = printf "Obtained interpolant: %a@."
                  (Util.pp_option (Util.pp_list pp_expr)) res
        in
-        *)
        (* Util.not_implemented "interpolant" *)
        match res with
        | None -> `InterpolantNotFound
-       | Some (hd::_) -> `InterpolantFound hd
+       | Some (hd::_) ->
+          let () =
+            let vc1 = callZ3 (mk_and e1 (mk_not hd)) in
+            let vc2 = callZ3 (mk_and hd e2) in
+            (*
+            printf "vc1:%a@." pp_result_callZ3 vc1;
+            printf "vc2:%a@." pp_result_callZ3 vc2;
+             *)
+            assert(vc1 = `Unsat);
+            assert(vc2 = `Unsat);
+            ()
+          in
+          `InterpolantFound hd
        | Some [] -> assert(false)
      end
   | _ -> `NotUnsatisfiable
@@ -344,10 +360,19 @@ let%test _ =
   match intp with
   | `InterpolantFound intp ->
      begin
-       let res1 = callZ3 (mk_not (mk_implies e1 intp)) in
-       let res2 = callZ3 (mk_and intp e2) in
+       let res1 = callZ3 (simplify (mk_not (mk_implies e1 intp))) in
+       let res2 = callZ3 (simplify (mk_and intp e2)) in
        match res1,res2,res3 with
        | `Unsat,`Unsat,`Unsat -> true
        | _,_,_ -> false
      end
   | _ -> false
+
+let%test _ =
+  let e1 = mk_le (mk_real_var "x") (mk_real_numeral_float 1.0) in
+  (* let e1intp = Z3.Interpolation.mk_interpolant !ctx e1 in *)
+  let e2 = mk_not (mk_le (mk_real_var "x") (mk_real_numeral_float 1.0)) in
+  let res =
+    callZ3 (mk_and e1 e2)
+  in
+  res = `Unsat

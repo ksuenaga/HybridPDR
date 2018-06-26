@@ -301,8 +301,10 @@ let wp_command_z3 (cmd:command) (e:Z3.Expr.expr) =
 
 let prev_time ~(discretization_rate:float) ~(flow:flow) ~(post:Z3.Expr.expr) : Z3.Expr.expr =
   let open Z3Intf in
+  (*
   let _ = eprintf "flow(forward):%a@." pp_flow flow in
   let _ = eprintf "post:%s@." (Z3.Expr.to_string post) in
+   *)
   let xs,es =
     Env.fold
       ~init:([],[])
