@@ -19,6 +19,7 @@ type cont_triple_total =
     dynamics_total : SpaceexComponent.flow;
     inv_total : Z3.Expr.expr }
 
+ 
 let pp_cont_triple_partial fmt crp =
   fprintf fmt
     "{ pre_loc=%a;@\n post_loc=%a;@\n pre = %s;@\n post = %s;@\n dynamics = %a;@\n inv = %s }"
@@ -38,7 +39,60 @@ let pp_cont_triple_total fmt crp =
     (* SpaceexComponent.pp_id crp.pre_loc *)
     SpaceexComponent.pp_flow crp.dynamics_total
     (Z3.Expr.to_string crp.inv_total)
+
+type vcgen_partial = pre:Frame.frame -> post:Frame.frame -> cont_triple_partial list
+type vcgen_total = is_continuous:bool -> pre:Frame.frame -> post:Z3.Expr.expr -> cont_triple_total list
   
+let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
+  let open Frame in
+  let open SpaceexComponent in
+  let open DischargeVC in
+  let ret ~(pre:frame) ~(post:frame) =
+    MySet.fold
+      ~init:[]
+      ~f:(fun vcs t ->
+        let srcloc = Env.find_exn hs.locations t.source in
+        let dynamics,inv = srcloc.flow,srcloc.inv in
+        let pre_source = Frame.find_exn pre t.source in
+        let post_target : Cnf.t = Frame.find_exn post t.target in
+        let wp : Z3.Expr.expr =
+          if Frame.is_continuous_frame post then
+            Cnf.to_z3 post_target
+          else
+            Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target)
+        in
+        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=Cnf.to_z3 pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=(Cnf.to_z3 inv)}::vcs
+      )
+      hs.transitions
+  in
+  ret
+
+let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
+  let open Frame in
+  let open SpaceexComponent in
+  let open DischargeVC in
+  let ret ~(is_continuous:bool) ~(pre:frame) ~(post:Z3.Expr.expr) =
+    MySet.fold
+      ~init:[]
+      ~f:(fun vcs t ->
+        let srcloc = Env.find_exn hs.locations t.source in
+        let dynamics,inv = srcloc.flow,srcloc.inv in
+        let pre_source = Frame.find_exn pre t.source in
+        (* let post_target : Cnf.t = Env.find_exn post t.target in *)
+        let post_target = post in
+        let wp : Z3.Expr.expr =
+          if is_continuous then
+            post_target
+          else
+            Z3Intf.mk_and (Cnf.to_z3 t.guard) (SpaceexComponent.wp_command_z3 t.command post_target)
+        in
+        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=Cnf.to_z3 pre_source; post_total=wp; dynamics_total=dynamics; inv_total=Cnf.to_z3 inv}::vcs
+      )
+      hs.transitions
+      (* E.raise (E.of_string "to_vcgen: not implemented") *)
+  in
+  ret
+
 let rec backward_simulation
           ?(discretization_rate = 0.01)
           ~(pre_loc : SpaceexComponent.id)

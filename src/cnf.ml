@@ -147,7 +147,15 @@ let rec extract_atomics (hd:t) : atomic list =
    *)
   
 (* [XXX] not tested *)
-let cnf_and hd1 hd2 = hd1 @ hd2
+let cnf_and (hd1:t) (hd2:t) =
+  let ret = hd1 @ hd2 in
+  let _ =
+    printf "cnf_and:@.";
+    printf "hd1:%a@." pp_cnf hd1;
+    printf "hd2:%a@." pp_cnf hd2;
+    printf "ret:%a@." pp_cnf ret
+  in
+  ret
 
 let rec choose (l : 'a list list) : 'a list list =
   match l with
@@ -255,3 +263,11 @@ let substitute_one x e cnf =
     cnf
 
 let to_z3 = conj_to_z3
+
+(* If (and hd1 (not hd2)) is unsatisfiable, then (imply hd1 hd2) is valid. *)
+(* [XXX] not tested *)
+let is_valid_implication loc (c1:t) (c2:t) =
+  match sat_andneg c1 c2 with
+  | `Unsat -> `Valid
+  | `Sat m -> `NotValid (loc,m)
+  | `Unknown -> `NotValidNoModel

@@ -1,13 +1,11 @@
 open Core_kernel
 module E = Error
 
-open Frame
-
 open Format
 
-(* ((n,fs) : frames) is a configuration of PDR procedure.
-   Invariant n = List.length fs holds.
-   The list fs is arranged as follows: fs = [R_{n-1}; R_{n-2}; ...; R_0]. *)
+(* Configuration of PDR procedure.  The list fs is arranged as
+   follows: fs = [Continous R_{rem}; Hybrid R_{n-1}; Hybrid R_{n-2};
+   ...; Hybrid R_0]. *)
 type frames = Frame.frame list [@@deriving show]
           
 type result =
@@ -15,34 +13,34 @@ type result =
   | Ng of (SpaceexComponent.id * Z3.Model.model) list
 let pp_result fmt r =
   match r with
-  | Ok fs -> fprintf fmt "Ok:%a" (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n") pp_frame) fs
+  | Ok fs -> fprintf fmt "Ok:%a" (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n") Frame.pp_frame) fs
   | Ng ms ->
      fprintf fmt "Ng(%a)"
        (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n")
           (fun fmt (id,m) -> fprintf fmt "%a:%s" SpaceexComponent.pp_id id (Z3.Model.to_string m)))
        ms
-        
+
 type vc_partial = DischargeVC.cont_triple_partial
 type vc_total = DischargeVC.cont_triple_total
   
 exception Unsafe of Z3.Model.model list
-
-type vcgen_partial = pre:frame -> post:frame -> DischargeVC.cont_triple_partial list
-type vcgen_total = pre:frame -> post:Z3.Expr.expr -> DischargeVC.cont_triple_total list
 
 (* [XXX] not tested *)        
 let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : frames =
   let st = Cnf.sat_andneg i s  in
   match st with
   | `Unsat -> 
-     [Frame.frame_lift locs s; Frame.frame_lift_given_id locs initloc (*Cnf.cnf_true*) i]
+     [Frame.continuous_frame_lift locs Cnf.cnf_true;
+      Frame.hybrid_frame_lift locs Cnf.cnf_true;
+      Frame.hybrid_frame_lift_given_id locs initloc i]
   | `Sat m ->
      raise (Unsafe [m])
   | `Unknown ->
      E.raise (E.of_string "init: unknown: Cannot proceed.")
     
 (* [XXX] not tested *)
-let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : vcgen_partial) (fs : frames) : frames =
+let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.vcgen_partial) (fs : frames) : frames =
+  let open Frame in
   match fs with
   | [] -> []
   | hd1::tl ->
@@ -50,12 +48,15 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : vcgen_partial
      match fs with
      | [] -> [hd1]
      | hd2::tl ->
-        let atomics = extract_atomics hd2 in
+        let atomics = Frame.extract_atomics hd2 in
         let local_invs =
           List.fold_left
             ~init:[]
             ~f:(fun l d ->
-              let vcs = vcgen_partial ~pre:(frame_and_cnf hd2 (Cnf.cnf_lift_atomic d)) ~post:(frame_lift locs (Cnf.cnf_lift_atomic d)) in
+              let lifter1 = Frame.mk_lifter hd1 in
+              let vcs = vcgen_partial
+                          ~pre:(Frame.frame_and_cnf hd2 (Cnf.cnf_lift_atomic d))
+                          ~post:(lifter1 locs (Cnf.cnf_lift_atomic d)) in
               let res = List.fold_left ~init:true ~f:(fun res vc -> if res then DischargeVC.discharge_vc_partial vcs else res) vcs in
               if res then d::l else l)
             atomics
@@ -101,33 +102,16 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : vcgen_partial
         E.raise (E.of_string "induction: should not happen.")        
  *)
 
-(* If (and hd1 (not hd2)) is unsatisfiable, then (imply hd1 hd2) is valid. *)
-(* [XXX] not tested *)
-let is_valid_implication_cnf loc (c1:Cnf.t) (c2:Cnf.t) =
-  match Cnf.sat_andneg c1 c2 with
-  | `Unsat -> `Valid
-  | `Sat m -> `NotValid (loc,m)
-  | `Unknown -> `NotValidNoModel
-              
-let is_valid_implication_frame (e1:frame) (e2:frame) =
-  Env.fold2
-    e1 e2
-    ~init:`Valid
-    ~f:(fun res (loc1,c1) (loc2,c2) ->
-      assert(loc1=loc2);
-      match res with
-      | `Valid | `NotValidNoModel ->
-         is_valid_implication_cnf loc1 c1 c2
-      | `NotValid (loc,m) -> `NotValid (loc,m))
+
   
 (* [XXX] not tested *)
 let is_valid (fs : frames) =
   (* assert(n = List.length fs); *)
   match fs with
-  | hd1::hd2::_ ->
+  | hd1::hd2::hd3::_ ->
      begin
        (* Check whether hd1->hd2 is valid. *)
-       is_valid_implication_frame hd1 hd2
+       Frame.is_valid_implication_frame hd2 hd3
      end
   | _ ->
      E.raise (E.of_string "is_valid: Should not happen.")
@@ -136,25 +120,30 @@ let is_valid (fs : frames) =
 let expand locs (safe:Cnf.t) (fs : frames) =
   (* assert(n = List.length fs); *)
   match fs with
-  | hd::_ ->
-     let st =
+  | hd::tl ->
+     assert(Frame.is_continuous_frame hd);
+     let st = Frame.is_valid_implication_cnf hd safe in
+     (*
        Env.fold ~init:`Valid
          ~f:(fun st (loc,c) ->
            match st with
            | `NotValidNoModel | `NotValid _ -> st
-           | _ -> is_valid_implication_cnf loc c safe)
+           | _ -> Frame.is_valid_implication_cnf c safe)
          hd
      in
+      *)
      begin
        match st with
        | `Valid ->
-          let newframe =
+          let newframe = Frame.continuous_frame_lift locs Cnf.cnf_true in
+          (*
             List.fold_left
               ~init:Env.empty
               ~f:(fun e id -> Env.add id Cnf.cnf_true e)
               locs
           in
-          `Expandable(newframe::fs)
+           *)
+          `Expandable(newframe::tl)
        | `NotValid m ->
           `NonExpandable m
        | `NotValidNoModel ->
@@ -224,9 +213,9 @@ let rec explore_single_candidate ~loc (*~(hs:SpaceexComponent.t)*) ~(vcgen_total
 let rec explore_single_candidate_one_step
           ~locs
           ~(candidate : (SpaceexComponent.id * Z3.Model.model))
-          ~(vcgen_total : vcgen_total)
-          ~(pre : frame)
-          ~(post : frame)
+          ~(vcgen_total : DischargeVC.vcgen_total)
+          ~(pre : Frame.frame)
+          ~(post : Frame.frame)
   =
   (* If one of the triples has a correct precondition, then the entire vc is discharged *)
   let open Frame in
@@ -234,7 +223,7 @@ let rec explore_single_candidate_one_step
   let _ = printf "Counterexample at loc %a: %a@." SpaceexComponent.pp_id id Z3Intf.pp_model m in
   let _ = printf "Try to propagate from the post region: %a@." Z3Intf.pp_expr (Z3Intf.expr_of_model m) in
   let _ = printf "To the pre region: %a@." pp_frame pre in
-  let triples = vcgen_total ~pre:pre ~post:(Z3Intf.expr_of_model m) in
+  let triples = vcgen_total ~is_continuous:(Frame.is_continuous_frame post) ~pre:pre ~post:(Z3Intf.expr_of_model m) in
   (*
   let _ =
     printf "triples_total:%a@."
@@ -249,16 +238,39 @@ let rec explore_single_candidate_one_step
   let _ = printf "Post: %a@." Frame.pp_frame hd_frame in
   let _ = printf "Pre: %a@." Frame.pp_frame hd2 in
    *)
-  let pre =
+  let propagated,pre =
+    let discharge_results =
+      List.map ~f:(fun triple -> DischargeVC.discharge_vc_total ~triple:triple) triples
+    in
     List.fold_left
-      ~init:`Unknown
-      ~f:(fun sol triple ->
-        match sol with
-        | `Propagated _ -> sol
-        | _ ->
-           DischargeVC.discharge_vc_total triple)
-      triples
+      ~init:(false,[])
+      ~f:(fun (propagated,acc) res ->
+        match propagated,res with
+        | true, _ -> (true,acc)
+        | _, `Propagated _ -> (true,[res])
+        | _, `Unknown -> (propagated,acc)
+        | _,`Conflict _ -> (propagated,res::acc))
+      discharge_results
   in
+  match propagated,pre with
+  | true,[`Propagated(id,m)] ->
+    let _ = printf "Successfuly propagated to the state %a at loc %a@." Z3Intf.pp_model m SpaceexComponent.pp_id id in
+    `Propagated(id,m)
+  | false, res ->
+     assert(List.for_all ~f:(function `Conflict _ -> true | _ -> false) res);
+     let r =
+       List.fold_left
+         ~init:[]
+         ~f:(fun acc res ->
+           match res with
+             `Conflict(loc,intp) -> (loc,intp)::acc
+           | _ -> failwith "explore_single_candidate_one_step: cannot happen.")
+         res
+     in
+     `Conflict r
+  | _ -> E.raise (E.of_string "explore_single_candidate_one_step: Cannot proceed.")
+
+  (*
   match pre with
   | `Propagated(id,m) ->
      let _ = printf "Successfuly propagated to the state %a at loc %a@." Z3Intf.pp_model m SpaceexComponent.pp_id id in
@@ -266,6 +278,8 @@ let rec explore_single_candidate_one_step
   | `Conflict(loc,interpolant) -> `Conflict(loc,interpolant)
   | `Unknown ->
      E.raise (E.of_string "explore_single_candidate_one_step: Cannot proceed.")
+   *)
+  
   (*
   let id,model = candidate in
   let post_cnf = Env.find_exn post id in
@@ -286,7 +300,7 @@ let rec explore_single_candidate_one_step
 (* Invariant: List.hd candidates is the counterexample of List.hd t *)
 let rec exploreCE
           ~(locs:SpaceexComponent.id list)
-          ~(vcgen_total:vcgen_total)
+          ~(vcgen_total:DischargeVC.vcgen_total)
           ~(candidates : (SpaceexComponent.id * Z3.Model.model) list)
           ~(t : frames)
   =
@@ -310,7 +324,7 @@ let rec exploreCE
      `CEFound candidates
   | ((loc,m) as hd_cand)::tl_cand, hd_frame::tl_frame ->
      begin
-       let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.frame_lift locs Cnf.cnf_true in
+       let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.hybrid_frame_lift locs Cnf.cnf_true in
        match explore_single_candidate_one_step ~locs ~candidate:hd_cand ~vcgen_total:vcgen_total ~post:hd_frame ~pre:hd2 with
        | `Propagated newcand ->
           begin
@@ -319,11 +333,28 @@ let rec exploreCE
             | `CENotFound resulting_frames -> `CENotFound (hd_frame::resulting_frames)
             | `CEFound _ -> res
           end
-       | `Conflict(loc,interpolant) ->
+       | `Conflict l ->
           let original_frames = hd_frame::tl_frame in
-          let newframes = List.map ~f:(fun f -> Frame.strengthen ~loc:loc ~fml:(Cnf.z3_to_atomic interpolant) ~t:f) original_frames in
+          let newframes =
+            List.map
+              ~f:(fun frame ->
+                let pp_locfml fmt (l,z3) =
+                  fprintf fmt "loc %a: %s" SpaceexComponent.pp_id l (Z3.Expr.to_string z3)
+                in
+                let _ =
+                  printf "Strengthening frame %a@." Frame.pp_frame frame;
+                  printf "with locfmls %a@." (Util.pp_list pp_locfml) l
+                in
+                let strengthened = Frame.strengthen ~locfmls:l ~t:frame in
+                let _ = printf "Strengthened frame %a@." Frame.pp_frame strengthened in
+                strengthened
+              )
+              original_frames
+          in
           let _ =
             printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames;
+            (* printf "Strengthened with interpolant: %s@." (Z3.Expr.to_string interpolant); *)
+            printf "At location: %a@." SpaceexComponent.pp_id loc;
             printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes;
           in
           exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframes
@@ -335,46 +366,6 @@ let rec exploreCE
      end
         *)
   
-let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
-  let open Frame in
-  let open SpaceexComponent in
-  let open DischargeVC in
-  let ret ~(pre:frame) ~(post:frame) =
-    MySet.fold
-      ~init:[]
-      ~f:(fun vcs t ->
-        let srcloc = Env.find_exn hs.locations t.source in
-        let dynamics,inv = srcloc.flow,srcloc.inv in
-        let pre_source = Env.find_exn pre t.source in
-        let post_target : Cnf.t = Env.find_exn post t.target in
-        let wp : Z3.Expr.expr = Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target) in
-        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=Cnf.to_z3 pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=(Cnf.to_z3 inv)}::vcs
-      )
-      hs.transitions
-  in
-  (* E.raise (E.of_string "to_vcgen: not implemented") *)
-  ret
-
-let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
-  let open Frame in
-  let open SpaceexComponent in
-  let open DischargeVC in
-  let ret ~(pre:frame) ~(post:Z3.Expr.expr) =
-    MySet.fold
-      ~init:[]
-      ~f:(fun vcs t ->
-        let srcloc = Env.find_exn hs.locations t.source in
-        let dynamics,inv = srcloc.flow,srcloc.inv in
-        let pre_source = Env.find_exn pre t.source in
-        (* let post_target : Cnf.t = Env.find_exn post t.target in *)
-        let post_target = post in
-        let wp : Z3.Expr.expr = Z3Intf.mk_and (Cnf.to_z3 t.guard) (SpaceexComponent.wp_command_z3 t.command post_target) in
-        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=Cnf.to_z3 pre_source; post_total=wp; dynamics_total=dynamics; inv_total=Cnf.to_z3 inv}::vcs
-      )
-      hs.transitions
-      (* E.raise (E.of_string "to_vcgen: not implemented") *)
-  in
-  ret
 
   
 (* [XXX] Not tested *)
@@ -400,24 +391,27 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
      (* Inductive invariant is not yet found. *)
      begin
        match frames with
-       | hd::_ ->
+       | hd::tl ->
+          assert(Frame.is_continuous_frame hd);
           (* Check whether the tip of the frames is safe. *)
           let _ = printf "(** Check whether the frontier is safe **)@." in          
-          let st =
+          let st = Frame.is_valid_implication_cnf hd safe in
+            (*
             Env.fold ~init:`Valid
               ~f:(fun st (loc,c) ->
                 match st with
                 | `NotValidNoModel | `NotValid _ -> st
-                | _ -> is_valid_implication_cnf loc c safe)
+                | _ -> Cnf.is_valid_implication loc c safe)
               hd
-          in
+             *)
           begin
             match st with
             | `Valid ->
                (* the tip of the frame is safe.  Expand the frames. *)
                let _ = printf "(** The frontier is safe; expanding **)@." in          
-               let newframe = Frame.frame_lift locs Cnf.cnf_true in
-               let newframes = newframe::frames in
+               let newframe_continuous = Frame.continuous_frame_lift locs Cnf.cnf_true in
+               let newframe_hybrid = Frame.hybrid_frame_lift locs Cnf.cnf_true in
+               let newframes = newframe_continuous::newframe_hybrid::tl in
                let _ = printf "New frames: %a@." pp_frames newframes in
                (* Discard the candidates.  Continue verification. *)
                verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes
