@@ -20,8 +20,6 @@ let pp_expr fmt e =
   fprintf fmt "%s" (Z3.Expr.to_string e)
 let pp_symbol fmt e =
   fprintf fmt "%s" (Z3.Symbol.to_string e)
-let pp_model fmt m =
-  fprintf fmt "%s" (Z3.Model.to_string m)
   
 let set_context param = ctx := Z3.mk_context param
                       
@@ -311,12 +309,14 @@ let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) =
      begin
        let e1intp = Z3.Interpolation.mk_interpolant !ctx e1 in
        let params = Z3.Params.mk_params !ctx in
+       (*
        let _ =
          printf "e1: %s@." (Z3.Expr.to_string e1);
          printf "e1intp: %s@." (Z3.Expr.to_string e1intp);
          printf "e2: %s@." (Z3.Expr.to_string e2);
          printf "params: %s@." (Z3.Params.to_string params)
        in
+        *)
        (* let es = get_interpolant !ctx e1 e2 params in *)
        let _, res, _ = compute_interpolant !ctx (mk_and e1intp e2) params in
        let _ = printf "Obtained interpolant: %a@."
@@ -344,7 +344,7 @@ let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) =
 
 let%test _ =
   let x = mk_real_var "x" in
-  let y = mk_real_var "y" in
+  (* let y = mk_real_var "y" in *)
   (* let z = mk_real_var "z" in   *)
   let e1 = mk_gt x (mk_real_numeral_s "1.0") in
   let e2 = mk_lt x (mk_real_numeral_s "0.0") in
@@ -376,3 +376,7 @@ let%test _ =
     callZ3 (mk_and e1 e2)
   in
   res = `Unsat
+
+let pp_model fmt m =
+  (* fprintf fmt "%s" (Z3.Model.to_string m) *)
+  fprintf fmt "%s" (Z3.Expr.to_string (expr_of_model m))

@@ -113,8 +113,12 @@ let rec backward_simulation
        (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
        let e1 = simplify pre in
        let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in
-       let _ = printf "e1:%s@." (Z3.Expr.to_string (simplify e1)) in
-       let _ = printf "e2:%s@." (Z3.Expr.to_string (simplify e2)) in                            
+       (*
+       let () =
+         printf "e1:%s@." (Z3.Expr.to_string (simplify e1));
+         printf "e2:%s@." (Z3.Expr.to_string (simplify e2))
+       in
+        *)
        let intp = interpolant e1 e2 in
        let res =
          begin

@@ -256,7 +256,11 @@ let rec explore_single_candidate_one_step
   in
   match propagated,pre with
   | true,[`Propagated(id,m)] ->
-    let () = printf "Successfuly propagated to the state %a at loc %a@." Z3Intf.pp_model m SpaceexComponent.pp_id id in
+     let () =
+       printf "Successfuly propagated to the state %a at loc %a@."
+         Z3Intf.pp_model m
+         SpaceexComponent.pp_id id
+     in
     `Propagated(id,m)
   | false, res ->
      assert(List.for_all ~f:(function `Conflict _ -> true | _ -> false) res);
@@ -365,7 +369,8 @@ let rec exploreCE
             printf "At location: %a@." SpaceexComponent.pp_id loc;
             printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes;
           in
-          exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframes
+          (* exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframes *)
+          `CENotFound newframes
      end
 (* E.raise (E.of_string "exploreCE: not implemented") *)
        (*
