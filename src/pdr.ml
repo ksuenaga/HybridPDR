@@ -43,7 +43,8 @@ let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : fra
   | `Unsat -> 
      [| Frame.frame_lift_given_id locs initloc i;
         Frame.frame_lift locs Cnf.cnf_true;
-        Frame.frame_lift locs Cnf.cnf_true |]
+        Frame.frame_lift locs Cnf.cnf_true
+     |]
   | `Sat m ->
      raise (Unsafe [m])
   | `Unknown ->
@@ -119,7 +120,13 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.v
 (* [XXX] not tested *)
 let is_valid (fs : frames) =
   (* assert(n = List.length fs); *)
-  Frame.is_valid_implication_frame fs.(Array.length fs - 1) fs.(Array.length fs - 2)
+  (*
+  let () =
+    printf "fspre: %a@." Frame.pp_frame fs.(Array.length fs - 2);
+    printf "fspost: %a@." Frame.pp_frame fs.(Array.length fs - 1)
+  in
+   *)
+  Frame.is_valid_implication_frame fs.(Array.length fs - 2) fs.(Array.length fs - 3)
   (*
   match fs with
   | hd1::hd2::hd3::_ ->
@@ -141,7 +148,8 @@ let expand locs (safe:Cnf.t) (fs : frames) =
      in
      let tail_part =
        [| Frame.frame_lift locs Cnf.cnf_true;
-          Frame.frame_lift locs Cnf.cnf_true |]
+          Frame.frame_lift locs Cnf.cnf_true;
+       |]
      in
      let newframes = Array.concat [subfs; tail_part] in
      `Expandable(newframes)
@@ -192,7 +200,7 @@ let rec explore_single_candidate_one_step
          (Util.pp_list DischargeVC.pp_propagated_conflict)
          l
      in
-     let pre = List.map ~f:(function Conflict(loc,m,id) -> (loc,m,id) | _ -> assert(false)) pre in
+     let pre = List.map ~f:(function Propagated(loc,m,id) -> (loc,Z3Intf.expr_of_model m,id) | _ -> assert(false)) pre in
      propagated, `Propagated pre
   | false, res ->
      assert(List.for_all ~f:(function Conflict _ -> true | _ -> false) res);
