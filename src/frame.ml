@@ -19,7 +19,7 @@ let extract_atomics (f:frame) =
     f
 
 let frame_and_cnf (frame:frame) d =
-  Env.map ~f:(fun c -> Z3Intf.mk_and c d) frame
+  Env.map ~f:(fun c -> Z3Intf.simplify (Z3Intf.mk_and c d)) frame
 
 let frame_lift (locs:SpaceexComponent.id list) (cnf : Cnf.t) : frame =
   List.fold_left
@@ -55,7 +55,7 @@ let strengthen ~(locfmls:(SpaceexComponent.id*Z3.Expr.expr) list) ~(t:frame) : f
         let _ = printf "fml: %a@." Cnf.pp fml in
         let _ = printf "p(before): %a@." Cnf.pp p in
          *)
-        let p = Z3Intf.mk_and p fml in
+        let p = Z3Intf.simplify (Z3Intf.mk_and p fml) in
         (* let _ = printf "p(after): %a@." Cnf.pp p in *)
         let frame = Env.add loc p frame in
         (* let _ = printf "after frame: %a@." pp_frame frame in *)

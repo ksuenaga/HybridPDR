@@ -59,9 +59,15 @@ let parse_smtlib2_expr s =
   let open Z3.SMT in
   parse_smtlib2_string !ctx s [] [] [] []
 
+let symbol s =
+  Z3.Symbol.mk_string !ctx s
+  
 let simplify e =
   let module Expr = Z3.Expr in
-  Expr.simplify e None
+  let module P = Z3.Params in
+  let param = P.mk_params !ctx in
+  let () = P.add_bool param (symbol "eq2ineq") true in
+  Expr.simplify e (Some(param))
 
 let expr_equal e1 e2 = Z3.Expr.equal e1 e2
   

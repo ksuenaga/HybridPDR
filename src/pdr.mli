@@ -3,11 +3,9 @@ type vcgen_partial (* [@@deriving show] *)
 type vcgen_total (* [@@deriving show] *)
  *)
 type frames
-type index
-type ce
 type result =
   | Ok of frames
-  | Ng of ce
+  | Ng of DischargeVC.ce
 
         (*
 val to_vcgen_partial : SpaceexComponent.t -> vcgen_partial

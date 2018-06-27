@@ -1,5 +1,6 @@
 open Core_kernel
 module E = Error
+module D = DischargeVC
 
 open Format
 
@@ -10,20 +11,16 @@ let pp_frames fmt fs =
   for i = 0 to Array.length fs - 1 do
     printf "%d -> %a@." i Frame.pp_frame fs.(i)
   done
-type index = int (* Index for the frames. *) [@@deriving show]
-type ce = SpaceexComponent.id * Z3.Expr.expr * index
-let pp_ce fmt (loc,e,idx) =
-  fprintf fmt "At location %a, at frame %d, CE: %a" SpaceexComponent.pp_id loc idx Z3Intf.pp_expr e
           
 type result =
   | Ok of frames
-  | Ng of (*(SpaceexComponent.id * Z3.Model.model) ce list*) ce (* Counterexamlpe at the initial state. *)
+  | Ng of (*(SpaceexComponent.id * Z3.Model.model) ce list*) D.ce (* Counterexamlpe at the initial state. *)
 let pp_result fmt r =
   match r with
   | Ok fs ->
      fprintf fmt "Ok:%a" (*(pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n") Frame.pp_frame)*) (Util.pp_array Frame.pp_frame) fs
   | Ng ce ->
-     fprintf fmt "Ng:%a" pp_ce ce
+     fprintf fmt "Ng:%a" D.pp_ce ce
 (*
      fprintf fmt "Ng(%a)"
        (pp_print_list ~pp_sep:(fun fmt _ -> fprintf fmt "@\n")
@@ -75,7 +72,7 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.v
           if res then d::l else l)
         atomics
     in
-    for j = 0 to i + 1 do
+    for j = 1 to i + 1 do
       List.iter
         ~f:(fun inv -> fs.(j) <- Frame.frame_and_cnf fs.(j) inv)
         local_invs
@@ -156,7 +153,9 @@ let expand locs (safe:Cnf.t) (fs : frames) =
      let newframes = Array.concat [subfs; tail_part] in
      `Expandable(newframes)
   | `NotValid(loc,m) ->
-     `NonExpandable(loc,Z3Intf.expr_of_model m)
+     let f = Frame.frame_and_cnf fs.(Array.length fs - 1) (mk_not safe) in
+     let e = Frame.find_exn f loc in
+     `NonExpandable(loc,e)
   | `NotValidNoModel -> E.raise (E.of_string "expand: Unknown, cannot proceed.")
 
 let pp_candidate fmt m =
@@ -165,22 +164,22 @@ let pp_candidate fmt m =
 let rec explore_single_candidate_one_step
           ~locs
           ~(is_continuous : bool)
-          ~(candidate : (SpaceexComponent.id * Z3.Expr.expr))
+          ~(candidate : (SpaceexComponent.id * Z3.Expr.expr * int))
           ~(vcgen_total : DischargeVC.vcgen_total)
           ~(pre : Frame.frame)
-          (* ~(post : Frame.frame) *)
+          ~(post : Frame.frame)
           ~(idx_pre : int)
   =
   (* If one of the triples has a correct precondition, then the entire vc is discharged *)
   let open Frame in
   let open DischargeVC in
-  let id, e = candidate in
+  let id, e, idx = candidate in
   let () =
-    printf "Counterexample at loc %a: %a@." SpaceexComponent.pp_id id Z3Intf.pp_expr e;
-    (* printf "Try to propagate from the post region: %a@." Z3Intf.pp_expr (Cnf.to_z3 (Frame.find_exn post id)); *)
+    printf "Counterexample at loc %a in frame %d: %a@." SpaceexComponent.pp_id id idx Z3Intf.pp_expr e;
+    printf "Try to propagate from the post region: %a@." pp_frame post;
     printf "Try to propgate to the pre region: %a@." pp_frame pre
   in
-  let triples = vcgen_total ~is_continuous:is_continuous ~pre:pre ~post:e in
+  let triples = vcgen_total ~is_continuous:is_continuous ~pre:pre ~post:post ~candidate:candidate in
   let propagated,pre =
     let discharge_results =
       List.map ~f:(fun triple -> DischargeVC.discharge_vc_total ~triple:triple ~idx_pre:idx_pre) triples
@@ -203,7 +202,7 @@ let rec explore_single_candidate_one_step
          (Util.pp_list DischargeVC.pp_propagated_conflict)
          l
      in
-     let pre = List.map ~f:(function Propagated(loc,m,id) -> (loc,Z3Intf.expr_of_model m,id) | _ -> assert(false)) pre in
+     let pre = List.map ~f:(function Propagated(loc,e,id) -> (loc,e,id) | _ -> assert(false)) pre in
      propagated, `Propagated pre
   | false, res ->
      assert(List.for_all ~f:(function Conflict _ -> true | _ -> false) res);
@@ -226,7 +225,7 @@ let rec explore_single_candidate_one_step
 let rec exploreCE
           ~(locs:SpaceexComponent.id list)
           ~(vcgen_total:DischargeVC.vcgen_total)
-          ~(candidates : ce list)
+          ~(candidates : D.ce list)
           ~(t : frames) =
   let open Format in
   let () =
@@ -234,7 +233,7 @@ let rec exploreCE
     printf "frames:%a@." pp_frames t;
     printf
       "candidates:%a@."
-      (Util.pp_list pp_ce)
+      (Util.pp_list D.pp_ce)
       candidates
   in
   (* let _ = printf "hs:%a@." SpaceexComponent.pp hs in *)
@@ -252,9 +251,10 @@ let rec exploreCE
          (* let postframe = t.(idx) in *)
          (* NB: idx > 0 *)
          let preframe = t.(idx - 1) in
+         let postframe = t.(idx) in
          let is_continuous = (idx = Array.length t - 1) in
          (* let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.hybrid_frame_lift locs Cnf.cnf_true in *) 
-         let propagated,res = explore_single_candidate_one_step ~locs ~is_continuous:is_continuous ~candidate:(loc,m) ~vcgen_total:vcgen_total (*~post:postframe*) ~pre:preframe ~idx_pre:(idx-1) in
+         let propagated,res = explore_single_candidate_one_step ~locs ~is_continuous:is_continuous ~candidate:(loc,m,idx) ~vcgen_total:vcgen_total ~post:postframe ~pre:preframe ~idx_pre:(idx-1) in
          match res with
          | `Propagated l ->
            (* All the l are `Propagated *)
@@ -272,24 +272,11 @@ let rec exploreCE
          | `Conflict l ->
            (* All the l are `Conflict *)
            let () =
-             for i = 0 to idx + 1 do
+             for i = 1 to idx do
                t.(i) <- Frame.strengthen ~locfmls:l ~t:t.(i)
-                          (*
-              List.iter
-                ~f:(fun frame ->
-                  (*
-                let     () =
-                  printf    "Strengthening frame %a@." Frame.pp_frame frame;
-                  printf "with locfmls %a@." (Util.pp_list pp_locfml) l
-                in       
-                   *)
-                  let strengthened = Frame.strengthen ~locfmls:l ~t:frame in
-                  (* let () = printf "Strengthened frame %a@." Frame.pp_frame strengthened in *)
-                  strengthened
-                )
-                original_frames
-                           *)
-             done
+             done;
+             if idx < Array.length t - 1 then
+               t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx)
            in
            (*
             let () =

@@ -19,9 +19,14 @@ type cont_triple_total =
     dynamics_total : SpaceexComponent.flow;
     inv_total : Z3.Expr.expr }
 
+type index = int (* Index for the frames. *) [@@deriving show]
+type ce = SpaceexComponent.id * Z3.Expr.expr * index
+let pp_ce fmt (loc,e,idx) =
+  fprintf fmt "At location %a, at frame %d, CE: %a" SpaceexComponent.pp_id loc idx Z3Intf.pp_expr e
+  
 type result =
-  Conflict of SpaceexComponent.id * Z3.Expr.expr * int
-| Propagated of SpaceexComponent.id * Z3.Model.model * int
+  Conflict of ce
+| Propagated of ce
 
  
 let pp_cont_triple_partial fmt crp =
@@ -45,7 +50,7 @@ let pp_cont_triple_total fmt crp =
     (Z3.Expr.to_string crp.inv_total)
 
 type vcgen_partial = is_continuous:bool -> pre:Frame.frame -> post:Frame.frame -> cont_triple_partial list
-type vcgen_total = is_continuous:bool -> pre:Frame.frame -> post:Z3.Expr.expr -> cont_triple_total list
+type vcgen_total = is_continuous:bool -> pre:Frame.frame -> post:Frame.frame -> candidate:ce -> cont_triple_total list
   
 let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
   let open Frame in
@@ -75,7 +80,9 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
   let open Frame in
   let open SpaceexComponent in
   let open DischargeVC in
-  let ret ~(is_continuous:bool) ~(pre:frame) ~(post:Z3.Expr.expr) =
+  let ret ~(is_continuous:bool) ~(pre:frame) ~(post:frame) ~(candidate:ce) =
+    let loc,e,_ = candidate in
+    let transitions = MySet.filter ~f:(fun t -> t.target = loc) hs.transitions in
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
@@ -83,7 +90,7 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
         let dynamics,inv = srcloc.flow,srcloc.inv in
         let pre_source = Frame.find_exn pre t.source in
         (* let post_target : Cnf.t = Env.find_exn post t.target in *)
-        let post_target = post in
+        let post_target = Z3Intf.mk_and (Frame.find_exn post t.target) e in
         let wp : Z3.Expr.expr =
           if is_continuous then
             post_target
@@ -92,7 +99,7 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
         in
         {pre_loc_total=t.source; post_loc_total=t.target; pre_total=pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv}::vcs
       )
-      hs.transitions
+      transitions
       (* E.raise (E.of_string "to_vcgen: not implemented") *)
   in
   ret
@@ -109,7 +116,7 @@ let rec backward_simulation
   let open Z3Intf in
   let checkCE = callZ3 (mk_and post pre) in
   match checkCE with
-    `Sat m -> Propagated(pre_loc, m, idx_pre)
+  | `Sat _ -> Propagated(pre_loc, mk_and post pre, idx_pre)
   | (`Unsat | `Unknown) ->
      let newpost = mk_and inv (SpaceexComponent.prev_time ~discretization_rate ~flow ~post) in
      let () = printf "newpost:%a@." pp_expr newpost in
@@ -118,7 +125,8 @@ let rec backward_simulation
      | `Unsat ->
        (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
        let e1 = simplify pre in
-       let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in
+       (* let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in *)
+       let e2 = post in
        let () =
          printf "e1:%s@." (Z3.Expr.to_string (simplify e1));
          printf "e2:%s@." (Z3.Expr.to_string (simplify e2))
@@ -195,8 +203,8 @@ let%test _ =
   
 let pp_propagated_conflict fmt p =
   match p with
-  | Propagated(id,m,idx_pre) ->
-     printf "Propagated to loc: %a, model: %s, idx_pre:%d" SpaceexComponent.pp_id id (Z3.Model.to_string m) idx_pre
+  | Propagated(id,e,idx_pre) ->
+     printf "Propagated to loc: %a, sample: %a, idx_pre:%d" SpaceexComponent.pp_id id Z3Intf.pp_expr e idx_pre
   | Conflict(id, intp, idx_pre) ->
      printf "Conflict at loc: %a, interp: %s, idx_pre:%d" SpaceexComponent.pp_id id (Z3.Expr.to_string intp) idx_pre
 

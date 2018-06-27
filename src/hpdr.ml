@@ -54,9 +54,9 @@ let%test _ =
   let open Z3Intf in
   let open Cnf in
   let open ParseFml in
-  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line/line.xml")) in
+  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
   let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
+  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
 
@@ -64,9 +64,9 @@ let%test _ =
   let open Z3Intf in
   let open Cnf in
   let open ParseFml in
-  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
+  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line/line.xml")) in
   let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
+  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
 
