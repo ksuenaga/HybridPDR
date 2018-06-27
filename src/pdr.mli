@@ -23,6 +23,7 @@ val verify : locs:SpaceexComponent.id list ->
              safe:Cnf.t ->
              candidates:(SpaceexComponent.id*Z3.Model.model) list ->
              frames:frames ->
+             iteration_num:int ->
              result
   
 val pp_result : Format.formatter -> result -> unit

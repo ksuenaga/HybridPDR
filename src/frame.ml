@@ -12,20 +12,6 @@ let pp_pre_frame fmt (pre:pre_frame) =
     pre
   
 type frame = pre_frame [@@deriving show]
-  (*
-  (* Involve only purely continous transition. *)
-  | Continuous of pre_frame
-  (* May involve continous and discrete transition. *)
-  | Hybrid of pre_frame
-   *)
-
-(*
-let pp_frame fmt (f:frame) =
-  match f with
-  | Continuous pf -> fprintf fmt "Continuous %a" pp_pre_frame pf
-  | Hybrid pf -> fprintf fmt "Hybrid %a" pp_pre_frame pf
- *)
-
 module E = Error
            
 
@@ -35,13 +21,6 @@ let extract_atomics (f:frame) =
     ~f:(fun l (_,c) -> (Cnf.extract_atomics c) @ l)
     f
 
-  (*
-let lift_frame_pf (f:pre_frame -> pre_frame) (frame:frame) : frame =
-  match frame with
-  | Continuous pf -> Continuous (f pf)
-  | Hybrid pf -> Hybrid (f pf)
-   *)
-    
 let frame_and_cnf (frame:frame) d =
   Env.map ~f:(fun c -> Cnf.cnf_and c d) frame
 
@@ -50,11 +29,6 @@ let frame_lift (locs:SpaceexComponent.id list) (cnf : Cnf.t) : frame =
     ~init:Env.empty
     ~f:(fun e (l:SpaceexComponent.id) -> Env.add l cnf e)
     locs
-  (*
-let continuous_frame_lift locs cnf = frame_lift locs cnf (fun pf -> Continuous pf)
-let hybrid_frame_lift locs cnf = frame_lift locs cnf (fun pf -> Hybrid pf)
-   *)
-  
 let frame_lift_given_id
       (locs:SpaceexComponent.id list)
       (id:SpaceexComponent.id)
@@ -62,9 +36,6 @@ let frame_lift_given_id
     : frame =
   let default = frame_lift locs Cnf.cnf_false in
   Env.add id cnf default
-(* let hybrid_frame_lift_given_id locs id cnf = frame_lift_given_id locs id cnf (fun pf -> Hybrid pf) *)
-                               
-
 let equal f1 f2 = Env.equal f1 f2
 
 let pp_locfml fmt (id,e) =
@@ -73,11 +44,6 @@ let pp_locfmls fmt l =
   fprintf fmt "%a" (Util.pp_list pp_locfml) l
                 
 let strengthen ~(locfmls:(SpaceexComponent.id*Z3.Expr.expr) list) ~(t:frame) : frame =
-  (*
-  let _ = printf "(** strengthen **)@." in
-  let _ = printf "Passed frame: %a@." pp_frame t in
-  let _ = printf "locfmls: %a@." pp_locfmls locfmls in
-   *)
   let ret =
     List.fold_left
       ~init:t
@@ -136,18 +102,6 @@ let%test _ =
   in
   Z3Intf.expr_equal e1' e2'
 
-  (*
-let mk_lifter f =
-  match f with Hybrid _ -> hybrid_frame_lift
-             | Continuous _ -> continuous_frame_lift
-;;
-   *)
-
-  (*
-let preframe_of_frame f =
-  match f with Continuous pf | Hybrid pf -> pf
-   *)
-
 let find_exn frame loc = Env.find_exn frame loc
                                           
 let is_valid_implication_frame (e1:frame) (e2:frame) =
@@ -165,4 +119,3 @@ let is_valid_implication_cnf (e:frame) (c:Cnf.t) =
   let locs = Env.domain e in
   is_valid_implication_frame e (frame_lift locs c)
 
-                             (* let is_continuous_frame f = match f with Continuous _ -> true | Hybrid _ -> false *)

@@ -319,9 +319,11 @@ let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) =
         *)
        (* let es = get_interpolant !ctx e1 e2 params in *)
        let _, res, _ = compute_interpolant !ctx (mk_and e1intp e2) params in
+       (*
        let _ = printf "Obtained interpolant: %a@."
                  (Util.pp_option (Util.pp_list pp_expr)) res
        in
+        *)
        (* Util.not_implemented "interpolant" *)
        match res with
        | None -> `InterpolantNotFound

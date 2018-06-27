@@ -41,7 +41,7 @@ let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr
   let locs = locations model in
   let t = Pdr.init locs init_id init safe in
   (* let _ = printf "verify: %a@." Pdr.pp_frames t in *)
-  let result = Pdr.verify ~hs:model ~locs:locs ~vcgen_partial:(DischargeVC.to_vcgen_partial model) ~vcgen_total:(DischargeVC.to_vcgen_total model) ~safe:safe ~candidates:[] ~frames:t in
+  let result = Pdr.verify ~hs:model ~locs:locs ~vcgen_partial:(DischargeVC.to_vcgen_partial model) ~vcgen_total:(DischargeVC.to_vcgen_total model) ~safe:safe ~candidates:[] ~frames:t ~iteration_num:0 in
   (* let result = printf "result:%a@." Pdr.pp_result result in *)
   result
 
@@ -54,9 +54,19 @@ let%test _ =
   let open Z3Intf in
   let open Cnf in
   let open ParseFml in
-  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
+  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line/line.xml")) in
   let model = List.hd_exn models in
   let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(listlist_to_cnf (parse_to_cnf "x == 0.5 & y == 0.0")) (* Cnf.cnf_true *) ~safe:(listlist_to_cnf (parse_to_cnf "x <= 1.0")) in
+  let _ = printResult res in
+  true
+
+let%test _ =
+  let open Z3Intf in
+  let open Cnf in
+  let open ParseFml in
+  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
+  let model = List.hd_exn models in
+  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(listlist_to_cnf (parse_to_cnf "x == 0.5")) (* Cnf.cnf_true *) ~safe:(listlist_to_cnf (parse_to_cnf "x <= 1.0")) in
   let _ = printResult res in
   true
 

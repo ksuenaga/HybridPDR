@@ -153,7 +153,8 @@ let expand locs (safe:Cnf.t) (fs : frames) =
      in
      let newframes = Array.concat [subfs; tail_part] in
      `Expandable(newframes)
-  | `NotValid(loc,m) -> `NonExpandable(loc,m)
+  | `NotValid(loc,m) ->
+     `NonExpandable(loc,Z3Intf.expr_of_model m)
   | `NotValidNoModel -> E.raise (E.of_string "expand: Unknown, cannot proceed.")
 
 let pp_candidate fmt m =
@@ -165,7 +166,7 @@ let rec explore_single_candidate_one_step
           ~(candidate : (SpaceexComponent.id * Z3.Expr.expr))
           ~(vcgen_total : DischargeVC.vcgen_total)
           ~(pre : Frame.frame)
-          ~(post : Frame.frame)
+          (* ~(post : Frame.frame) *)
           ~(idx_pre : int)
   =
   (* If one of the triples has a correct precondition, then the entire vc is discharged *)
@@ -174,8 +175,8 @@ let rec explore_single_candidate_one_step
   let id, e = candidate in
   let () =
     printf "Counterexample at loc %a: %a@." SpaceexComponent.pp_id id Z3Intf.pp_expr e;
-    printf "Try to propagate from the post region: %a@." Cnf.pp (Frame.find_exn post id);
-    printf "To the pre region: %a@." pp_frame pre
+    (* printf "Try to propagate from the post region: %a@." Z3Intf.pp_expr (Cnf.to_z3 (Frame.find_exn post id)); *)
+    printf "Try to propgate to the pre region: %a@." pp_frame pre
   in
   let triples = vcgen_total ~is_continuous:is_continuous ~pre:pre ~post:e in
   let propagated,pre =
@@ -246,12 +247,12 @@ let rec exploreCE
      else
        (* idx > 0 *)
        begin
-         let postframe = t.(idx) in
+         (* let postframe = t.(idx) in *)
          (* NB: idx > 0 *)
          let preframe = t.(idx - 1) in
          let is_continuous = (idx = Array.length t - 1) in
          (* let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.hybrid_frame_lift locs Cnf.cnf_true in *) 
-         let propagated,res = explore_single_candidate_one_step ~locs ~is_continuous:is_continuous ~candidate:(loc,m) ~vcgen_total:vcgen_total ~post:postframe ~pre:preframe ~idx_pre:(idx-1) in
+         let propagated,res = explore_single_candidate_one_step ~locs ~is_continuous:is_continuous ~candidate:(loc,m) ~vcgen_total:vcgen_total (*~post:postframe*) ~pre:preframe ~idx_pre:(idx-1) in
          match res with
          | `Propagated l ->
            (* All the l are `Propagated *)
@@ -309,9 +310,9 @@ let rec exploreCE
 
   
 (* [XXX] Not tested *)
-let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
+let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames ~iteration_num =
   (* E.raise (E.of_string "verify: task: Sort out log messages before going further."); *)
-  let () = printf "@\n(** Iteration of verification **)@." in
+  let () = printf "@\n(** Iteration of verification: %d **)@." iteration_num in
   assert(candidates = []);
   let () = printf "frames:%a@." pp_frames frames in
   let t = frames in
@@ -353,11 +354,11 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
            *)
           let () = printf "New frames: %a@." pp_frames newframes in
           (* Discard the candidates.  Continue verification. *)
-          verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes
-       | `NonExpandable(loc,m) ->
+          verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes ~iteration_num:(iteration_num+1)
+       | `NonExpandable(loc,e) ->
           (* Counterexample is found. *)
           let () = printf "(** The frontier is not safe **)@." in
-          let newcandidates = [(loc, Z3Intf.expr_of_model m, Array.length t - 1)] in
+          let newcandidates = [(loc, e, Array.length t - 1)] in
           (* Push back the counterexample. *)
           let res = exploreCE ~locs ~vcgen_total ~candidates:newcandidates ~t:t in
           begin
@@ -369,7 +370,7 @@ let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames =
                let () = printf "CE is not found@." in
                let () = printf "Next iteration with frames %a@." (Util.pp_array Frame.pp_frame) newframes in
                (* The frames are refined with newly found predicates.  Continue verification. *)
-               verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes
+               verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes ~iteration_num:(iteration_num+1)
           end
        | `NotValidNoModel ->
           (* Got stuck. *)

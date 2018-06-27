@@ -112,18 +112,17 @@ let rec backward_simulation
     `Sat m -> Propagated(pre_loc, m, idx_pre)
   | (`Unsat | `Unknown) ->
      let newpost = mk_and inv (SpaceexComponent.prev_time ~discretization_rate ~flow ~post) in
+     let () = printf "newpost:%a@." pp_expr newpost in
      let checkConflict = callZ3 newpost in
      match checkConflict with
      | `Unsat ->
        (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
        let e1 = simplify pre in
        let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in
-       (*
        let () =
          printf "e1:%s@." (Z3.Expr.to_string (simplify e1));
          printf "e2:%s@." (Z3.Expr.to_string (simplify e2))
        in
-        *)
        let intp = interpolant e1 e2 in
        let res =
          begin
@@ -194,6 +193,12 @@ let%test _ =
                   
 (*  Util.not_implemented "backward_simulation" *)
   
+let pp_propagated_conflict fmt p =
+  match p with
+  | Propagated(id,m,idx_pre) ->
+     printf "Propagated to loc: %a, model: %s, idx_pre:%d" SpaceexComponent.pp_id id (Z3.Model.to_string m) idx_pre
+  | Conflict(id, intp, idx_pre) ->
+     printf "Conflict at loc: %a, interp: %s, idx_pre:%d" SpaceexComponent.pp_id id (Z3.Expr.to_string intp) idx_pre
 
 (* [XXX] Premature rough implementation *)
 let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
@@ -220,17 +225,12 @@ let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
       ~idx_pre:idx_pre
   in
   let () =
-    match res with Propagated _ -> printf "Propagated.@." | Conflict _ -> printf "Conflict.@."
+    printf "Result: %a@." pp_propagated_conflict res
+    (* match res with Propagated(id,m,_) -> printf "Propagated@." | Conflict _ -> printf "Conflict.@." *)
   in
   res
 (* E.raise (E.of_string "discharge_vc_total: not implemented.") *)
 
-let pp_propagated_conflict fmt p =
-  match p with
-  | Propagated(id,m,idx_pre) ->
-     printf "loc: %a, model: %s, idx_pre:%d" SpaceexComponent.pp_id id (Z3.Model.to_string m) idx_pre
-  | Conflict(id, intp, idx_pre) ->
-     printf "loc: %a, interp: %s, idx_pre:%d" SpaceexComponent.pp_id id (Z3.Expr.to_string intp) idx_pre
 
 (* [XXX] to be implememnted. *)
 let discharge_vc_partial vc =
