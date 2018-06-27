@@ -61,11 +61,11 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
         let post_target : Cnf.t = Frame.find_exn post t.target in
         let wp : Z3.Expr.expr =
           if (* Frame.is_continuous_frame post *) is_continuous then
-            Cnf.to_z3 post_target
+            post_target
           else
-            Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target)
+            Z3Intf.mk_implies t.guard (SpaceexComponent.wp_command t.command post_target)
         in
-        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=Cnf.to_z3 pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=(Cnf.to_z3 inv)}::vcs
+        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=inv}::vcs
       )
       hs.transitions
   in
@@ -88,9 +88,9 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
           if is_continuous then
             post_target
           else
-            Z3Intf.mk_and (Cnf.to_z3 t.guard) (SpaceexComponent.wp_command_z3 t.command post_target)
+            Z3Intf.mk_and t.guard (SpaceexComponent.wp_command_z3 t.command post_target)
         in
-        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=Cnf.to_z3 pre_source; post_total=wp; dynamics_total=dynamics; inv_total=Cnf.to_z3 inv}::vcs
+        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv}::vcs
       )
       hs.transitions
       (* E.raise (E.of_string "to_vcgen: not implemented") *)

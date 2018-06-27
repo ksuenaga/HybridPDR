@@ -109,7 +109,7 @@ and param (xml : Xml.xml) (t : t) : t =
 and location (xml : Xml.xml) (t : t) : t =
   let id = Xml.attrib xml "id" in
   let name = Xml.attrib xml "name" in
-  let loc = { name; inv = Cnf.cnf_true; flow = empty_flow } in
+  let loc = { name; inv = Z3Intf.mk_true; flow = empty_flow } in
   let loc =
     List.fold_left ~init:loc
       ~f:(fun (t : loc) x ->
@@ -130,7 +130,7 @@ and location (xml : Xml.xml) (t : t) : t =
 and transition (xml : Xml.xml) (t : t) : t =
   let source = Xml.attrib xml "source" in
   let target = Xml.attrib xml "target" in
-  let trans = { source; target; guard = Cnf.cnf_true; label = ""; command = Env.empty } in
+  let trans = { source; target; guard = Z3Intf.mk_true; label = ""; command = Env.empty } in
   let trans =
     List.fold_left
       ~init:trans
@@ -283,7 +283,7 @@ let wp_command (cmd:command) cnf =
     Env.fold
       ~init:cnf
       ~f:(fun cnf (k,v) ->
-        Cnf.substitute_one k v cnf)
+        Z3Intf.substitute_one k v cnf)
       cmd
   in
   cnf

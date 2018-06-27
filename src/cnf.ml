@@ -2,7 +2,44 @@
 
 open Core_kernel
 open Format
+module E = Error
 
+type t = Z3.Expr.expr
+type atomic = t
+let pp  = Z3Intf.pp_expr
+let parse s = ParseFml.parse_to_cnf s
+
+let rec extract_atomics (hd:t) : atomic list = [hd]
+  (*
+  let module Expr =  Z3.Expr in
+  let module A =  Z3.AST in
+  let open Sexp in
+  let open Format in
+  let sexp = Sexp.of_string (Expr.to_string hd) in
+  let _ = printf "sexp: %a@." Sexp.pp sexp in
+  let rec sexp_to_atomics s =
+    match s with
+      Atom "true" -> []
+    | Atom "false" -> []
+    | List ((Atom s)::tl) ->
+       begin
+         E.raise (E.of_string "extract_atomics: not implemented.")         
+       end
+    | Atom _ -> E.raise (E.of_string "extract_atomics: atom should not appear here.")
+    | List _ -> E.raise (E.of_string "extract_atomics: list malformed.")
+  in
+  sexp_to_atomics sexp
+   *)
+  
+(* If (and hd1 (not hd2)) is unsatisfiable, then (imply hd1 hd2) is valid. *)
+(* [XXX] not tested *)
+let is_valid_implication loc (c1:t) (c2:t) =
+  match Z3Intf.callZ3 (Z3Intf.mk_and c1 (Z3Intf.mk_not c2)) with
+  | `Unsat -> `Valid
+  | `Sat m -> `NotValid (loc,m)
+  | `Unknown -> `NotValidNoModel
+
+   (*
 module E = Error
 module U = Util
 
@@ -11,9 +48,11 @@ type atomic = Z3.Expr.expr
 let pp_atomic fmt a = fprintf fmt "%s" (Z3.Expr.to_string a)
 (* let pp_expr fmt e = fprintf fmt "%s" (Z3.Expr.to_string e) *)
 
+                    (*
 type disj = atomic list [@@deriving show]
 type cnf = disj list [@@deriving show]
-type t = cnf [@@deriving show]
+                     *)
+
 
 (* [] is true *)
 (* [[]] is false *)
@@ -23,17 +62,18 @@ type t = cnf [@@deriving show]
 let set_context = Z3Intf.set_context
 let ctx = Z3Intf.ctx
 
-(* let pp fmt t = Format.fprintf fmt "%s" (Z3.Expr.to_string t) *)
+(*  *)
 
 
-let parse s = ParseFml.parse_to_cnf s
+
 
 (* [] is true *)
-let cnf_true : t = []
+let cnf_true : t = Z3Intf.mk_true
 (* [[]] is false *)
-let cnf_false : t = [[]]
+let cnf_false : t = Z3Intf.mk_false
 
 (* [XXX] not tested *)
+                  (*
 let disj_to_z3 (t:disj) : Z3.Expr.expr =
   List.fold_left
     ~init:(Z3.Boolean.mk_false !ctx)
@@ -49,7 +89,6 @@ let conj_to_z3 (t:cnf) : Z3.Expr.expr =
         Z3.Boolean.mk_and !ctx [z3expr; (disj_to_z3 d)]) t
   in
   Z3Intf.simplify ret
-
 let%test _ =
   let open Z3Intf in
   expr_equal (conj_to_z3 cnf_true) mk_true
@@ -81,7 +120,8 @@ let%test _ =
     | `Sat _ | `Unknown  -> false
   in
   res
-  
+                   *)
+                  
 (* Check satisfiability of (and i (neg s)). *)
 (* [XXX] not tested *)
 let sat_andneg (i:t) (s:t) =
@@ -266,10 +306,4 @@ let substitute_one x e cnf =
 
 let to_z3 = conj_to_z3
 
-(* If (and hd1 (not hd2)) is unsatisfiable, then (imply hd1 hd2) is valid. *)
-(* [XXX] not tested *)
-let is_valid_implication loc (c1:t) (c2:t) =
-  match sat_andneg c1 c2 with
-  | `Unsat -> `Valid
-  | `Sat m -> `NotValid (loc,m)
-  | `Unknown -> `NotValidNoModel
+    *)

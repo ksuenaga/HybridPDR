@@ -103,6 +103,7 @@ let rec expr_to_cnf res : Z3.Expr.expr list list =
    *)
   
 let rec expr_to_z3 (res:expr) : Z3.Expr.expr =
+  (* let () = printf "res:%a@." pp_expr res in *)
   let open Z3Intf in
   let float f = mk_real_numeral_s (string_of_float f) in
   (* [XXX] Consider the type of x *)
@@ -124,6 +125,13 @@ let rec expr_to_z3 (res:expr) : Z3.Expr.expr =
          | Sub -> mk_sub
          | Mul -> mk_mul
          | Div -> mk_div
+         | Ge -> mk_ge
+         | Gt -> mk_gt
+         | Eq -> mk_eq
+         | Le -> mk_le
+         | Lt -> mk_lt
+         | Or -> mk_or
+         | And -> mk_and
          | _ -> E.raise (E.of_string "expr_to_z3: binop: should not occur")
        in
        op_f (expr_to_z3 a) (expr_to_z3 b)
@@ -183,8 +191,8 @@ let rec predexpr_to_cnf (res:expr) : Z3.Expr.expr list list =
 let parse_to_cnf s =
   match MParser.parse_string expr s () with
   | Success e ->
-  (* expr_to_z3 e *)
-     predexpr_to_cnf e
+     expr_to_z3 e
+  (* predexpr_to_cnf e *)
   (* e *)
   | Failed (msg, e) ->
      failwith msg
@@ -211,18 +219,19 @@ let%test_module _ =
                                       
      let%test _ =
        let s = parse_to_cnf "x >= y" in
-       let s = cnf_to_z3 s in
+       (* let s = cnf_to_z3 s in *)
        let expected = cnf_to_z3 [[(mk_ge (mk_real_var "x") (mk_real_var "y"))]] in
        (*
        let _ = printf "s:%s@." (Z3.Expr.to_string s) in
        let _ = printf "expected:%s@." (Z3.Expr.to_string expected) in
         *)
-       expr_equal s expected
-       
+       expr_equal (simplify s) (simplify expected)
+
+       (*
      let%test _ =
        let s = parse_to_cnf "4*x+10*x >= y & z >= 5 | z >= 6" in
-       let s = Z3Intf.simplify (cnf_to_z3 s) in
-       (* let _ = printf "s:%s@." (Z3.Expr.to_string s) in *)
+       let s = Z3Intf.simplify s in
+       let () = printf "s:%s@." (Z3.Expr.to_string s) in
        let expected =
          Z3Intf.simplify
            (cnf_to_z3
@@ -245,8 +254,9 @@ let%test_module _ =
                    (mk_real_var "z")
                    (mk_real_numeral_s "6.0"))]])
        in
-       (* let _ = printf "expected:%s@." (Z3.Expr.to_string expected) in *)
-       expr_equal s expected
+       let () = printf "expected:%s@." (Z3.Expr.to_string expected) in
+       expr_equal (simplify s) (simplify expected)
+        *)
    end)
 
 let assignment_parser s =

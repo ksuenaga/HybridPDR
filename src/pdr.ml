@@ -38,12 +38,13 @@ exception Unsafe of Z3.Model.model list
 
 (* [XXX] not tested *)        
 let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : frames =
-  let st = Cnf.sat_andneg i s  in
+  let open Z3Intf in
+  let st = callZ3 (mk_and i (mk_not s))  in
   match st with
   | `Unsat -> 
      [| Frame.frame_lift_given_id locs initloc i;
-        Frame.frame_lift locs Cnf.cnf_true;
-        Frame.frame_lift locs Cnf.cnf_true
+        Frame.frame_lift locs mk_true;
+        Frame.frame_lift locs mk_true
      |]
   | `Sat m ->
      raise (Unsafe [m])
@@ -68,15 +69,15 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.v
                          fs.(n-1) (i.e., remeinder frame) , then this
                          is a purely continous move. *)
                       ~is_continuous:(i = Array.length fs - 2)
-                      ~pre:(Frame.frame_and_cnf fs.(i) (Cnf.cnf_lift_atomic d))
-                      ~post:(Frame.frame_lift locs (Cnf.cnf_lift_atomic d)) in
+                      ~pre:(Frame.frame_and_cnf fs.(i) d)
+                      ~post:(Frame.frame_lift locs d) in
           let res = List.fold_left ~init:true ~f:(fun res vc -> if res then DischargeVC.discharge_vc_partial vcs else res) vcs in
           if res then d::l else l)
         atomics
     in
     for j = 0 to i + 1 do
       List.iter
-        ~f:(fun inv -> fs.(j) <- Frame.frame_and_cnf fs.(j) (Cnf.cnf_lift_atomic inv))
+        ~f:(fun inv -> fs.(j) <- Frame.frame_and_cnf fs.(j) inv)
         local_invs
     done
   done
@@ -140,6 +141,7 @@ let is_valid (fs : frames) =
 
 (* [XXX] not tested *)
 let expand locs (safe:Cnf.t) (fs : frames) =
+  let open Z3Intf in
   let st = Frame.is_valid_implication_cnf fs.(Array.length fs - 1) safe in
   match st with
   | `Valid ->
@@ -147,8 +149,8 @@ let expand locs (safe:Cnf.t) (fs : frames) =
        Array.sub fs ~pos:0 ~len:(Array.length fs - 1)
      in
      let tail_part =
-       [| Frame.frame_lift locs Cnf.cnf_true;
-          Frame.frame_lift locs Cnf.cnf_true;
+       [| Frame.frame_lift locs mk_true;
+          Frame.frame_lift locs mk_true;
        |]
      in
      let newframes = Array.concat [subfs; tail_part] in

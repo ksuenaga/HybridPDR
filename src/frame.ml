@@ -6,15 +6,12 @@ let pp_pre_frame fmt (pre:pre_frame) =
   Env.fold
     ~init:()
     ~f:(fun _ (id,cnf) ->
-      fprintf fmt "(%a -> %s) " SpaceexComponent.pp_id id (Z3.Expr.to_string (Cnf.to_z3 cnf))
-    (* fprintf fmt "(%a -> %a) " SpaceexComponent.pp_id id Cnf.pp cnf *)
-    )
+      fprintf fmt "(%a -> %a) " SpaceexComponent.pp_id id Cnf.pp cnf)
     pre
   
 type frame = pre_frame [@@deriving show]
 module E = Error
            
-
 let extract_atomics (f:frame) =
   Env.fold
     ~init:[]
@@ -22,7 +19,7 @@ let extract_atomics (f:frame) =
     f
 
 let frame_and_cnf (frame:frame) d =
-  Env.map ~f:(fun c -> Cnf.cnf_and c d) frame
+  Env.map ~f:(fun c -> Z3Intf.mk_and c d) frame
 
 let frame_lift (locs:SpaceexComponent.id list) (cnf : Cnf.t) : frame =
   List.fold_left
@@ -34,7 +31,7 @@ let frame_lift_given_id
       (id:SpaceexComponent.id)
       (cnf:Cnf.t)
     : frame =
-  let default = frame_lift locs Cnf.cnf_false in
+  let default = frame_lift locs Z3Intf.mk_false in
   Env.add id cnf default
 let equal f1 f2 = Env.equal f1 f2
 
@@ -53,12 +50,12 @@ let strengthen ~(locfmls:(SpaceexComponent.id*Z3.Expr.expr) list) ~(t:frame) : f
         let _ = printf "loc: %a@." SpaceexComponent.pp_id loc in
          *)
         let p = Env.find_exn t loc in
-        let fml = Cnf.cnf_lift_atomic (Cnf.z3_to_atomic fml) in
+        (* let fml = Cnf.cnf_lift_atomic (Cnf.z3_to_atomic fml) in *)
         (*
         let _ = printf "fml: %a@." Cnf.pp fml in
         let _ = printf "p(before): %a@." Cnf.pp p in
          *)
-        let p = Cnf.cnf_and p fml in
+        let p = Z3Intf.mk_and p fml in
         (* let _ = printf "p(after): %a@." Cnf.pp p in *)
         let frame = Env.add loc p frame in
         (* let _ = printf "after frame: %a@." pp_frame frame in *)
@@ -82,8 +79,8 @@ let%test _ =
   let open SpaceexComponent in
   let pf =
     mk_pf_from_assoclist
-      [(id_of_string "1", Cnf.cnf_true);
-       (id_of_string "2", Cnf.cnf_false)]
+      [(id_of_string "1", Z3Intf.mk_true);
+       (id_of_string "2", Z3Intf.mk_false)]
   in
   let e1 = mk_not (mk_eq (mk_add (mk_real_var "y") (mk_neg (mk_real_var "x"))) (mk_real_numeral_float (-.2.0))) in
   let locfmls = 
@@ -94,7 +91,7 @@ let%test _ =
   let frame = strengthen ~locfmls:locfmls ~t:pf in
   let e1' = simplify e1 in
   let e2cnf = Env.find_exn frame (id_of_string "1") in
-  let e2' = simplify (Cnf.to_z3 e2cnf) in
+  let e2' = simplify e2cnf in
   let _ =
     printf "e1': %s@." (Z3.Expr.to_string e1');
     printf "e2cnf: %a@." Cnf.pp e2cnf;

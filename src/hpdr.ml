@@ -13,7 +13,7 @@ module E = Error
 (* Parse command-line arguments
    [XXX] Not tested
  *)
-let parse_verif_task_from_file ?(initial_condition=Cnf.cnf_true) ?(safety_region=Cnf.cnf_true) input_file =
+let parse_verif_task_from_file ?(initial_condition=Z3Intf.mk_true) ?(safety_region=Z3Intf.mk_true) input_file =
   let input_file = input_file in
   (* let input_stream = ref In_channel.stdin in *)
   (*
@@ -35,8 +35,8 @@ let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr
   let _ = printf "(******* System to be verified *******)@." in
   let _ = printf "%a@." pp model in
   let _ = printf "Initial location: %s@." (SpaceexComponent.string_of_id init_id) in
-  let _ = printf "Initial condition: %s@." (Z3.Expr.to_string (Cnf.to_z3 init)) in
-  let _ = printf "Safe region: %s@." (Z3.Expr.to_string (Cnf.to_z3 safe)) in
+  let _ = printf "Initial condition: %s@." (Z3.Expr.to_string init) in
+  let _ = printf "Safe region: %s@." (Z3.Expr.to_string safe) in
   (* Setup frames *)
   let locs = locations model in
   let t = Pdr.init locs init_id init safe in
@@ -56,7 +56,7 @@ let%test _ =
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line/line.xml")) in
   let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(listlist_to_cnf (parse_to_cnf "x == 0.5 & y == 0.0")) (* Cnf.cnf_true *) ~safe:(listlist_to_cnf (parse_to_cnf "x <= 1.0")) in
+  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
 
@@ -66,49 +66,49 @@ let%test _ =
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
   let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(listlist_to_cnf (parse_to_cnf "x == 0.5")) (* Cnf.cnf_true *) ~safe:(listlist_to_cnf (parse_to_cnf "x <= 1.0")) in
+  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
 
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball/bball.xml")) in
   let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model ~init:Cnf.cnf_true ~safe:Cnf.cnf_true in
+  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model ~init:Z3Intf.mk_true ~safe:Z3Intf.mk_true in
   let _ = printResult res in
   true
 
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball_nondet/bball_nondet.xml")) in
   let model = List.hd_exn models in
-  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
   let _ = printResult res in
   true
 
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball_timed/bball_timed.xml")) in
   let model = List.hd_exn models in
-  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
   let _ = printResult res in
   true
 
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator/filtered_oscillator.xml")) in
   let model = List.hd_exn models in
-  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
   let _ = printResult res in
   true
 
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator_16/filtered_oscillator_16.xml")) in
   let model = List.hd_exn models in
-  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
   let _ = printResult res in
   true
 
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator_32/filtered_oscillator_32.xml")) in
   let model = List.hd_exn models in
-  let res = verify model Cnf.cnf_true Cnf.cnf_true in
+  let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
   let _ = printResult res in
   true
 
@@ -135,12 +135,12 @@ let _ =
   let t = List.hd_exn ts in
   let init_cond =
     match !init_cond with
-      None -> Cnf.cnf_true
+      None -> Z3Intf.mk_true
     | Some s -> Cnf.parse s
   in
   let safety_region =
     match !safety_region with
-      None -> Cnf.cnf_true
+      None -> Z3Intf.mk_true
     | Some s -> Cnf.parse s
   in
   let init_id =
