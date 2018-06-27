@@ -19,6 +19,10 @@ type cont_triple_total =
     dynamics_total : SpaceexComponent.flow;
     inv_total : Z3.Expr.expr }
 
+type result =
+  Conflict of SpaceexComponent.id * Z3.Expr.expr * int
+| Propagated of SpaceexComponent.id * Z3.Model.model * int
+
  
 let pp_cont_triple_partial fmt crp =
   fprintf fmt
@@ -40,14 +44,14 @@ let pp_cont_triple_total fmt crp =
     SpaceexComponent.pp_flow crp.dynamics_total
     (Z3.Expr.to_string crp.inv_total)
 
-type vcgen_partial = pre:Frame.frame -> post:Frame.frame -> cont_triple_partial list
+type vcgen_partial = is_continuous:bool -> pre:Frame.frame -> post:Frame.frame -> cont_triple_partial list
 type vcgen_total = is_continuous:bool -> pre:Frame.frame -> post:Z3.Expr.expr -> cont_triple_total list
   
 let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
   let open Frame in
   let open SpaceexComponent in
   let open DischargeVC in
-  let ret ~(pre:frame) ~(post:frame) =
+  let ret ~(is_continuous : bool) ~(pre:frame) ~(post:frame) =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
@@ -56,7 +60,7 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
         let pre_source = Frame.find_exn pre t.source in
         let post_target : Cnf.t = Frame.find_exn post t.target in
         let wp : Z3.Expr.expr =
-          if Frame.is_continuous_frame post then
+          if (* Frame.is_continuous_frame post *) is_continuous then
             Cnf.to_z3 post_target
           else
             Cnf.cnf_implies t.guard (SpaceexComponent.wp_command t.command post_target)
@@ -100,11 +104,12 @@ let rec backward_simulation
           ~(flow : SpaceexComponent.flow)
           ~(inv : Z3.Expr.expr)
           ~(pre : Z3.Expr.expr)
-          ~(history : Z3.Expr.expr list) =
+          ~(history : Z3.Expr.expr list)
+          ~(idx_pre : int) : result =
   let open Z3Intf in
   let checkCE = callZ3 (mk_and post pre) in
   match checkCE with
-    `Sat m -> `Propagated(pre_loc, m)
+    `Sat m -> Propagated(pre_loc, m, idx_pre)
   | (`Unsat | `Unknown) ->
      let newpost = mk_and inv (SpaceexComponent.prev_time ~discretization_rate ~flow ~post) in
      let checkConflict = callZ3 newpost in
@@ -126,7 +131,7 @@ let rec backward_simulation
            | `InterpolantFound intp ->
               let intp = simplify intp in
               let () = printf "Obtained interpolant (at %a): %s@." SpaceexComponent.pp_id pre_loc (Z3.Expr.to_string intp) in
-              `Conflict(pre_loc,intp)
+              Conflict(pre_loc,intp,idx_pre)
            | `InterpolantNotFound ->
               Util.not_implemented "intp not found"
            | `NotUnsatisfiable ->
@@ -138,7 +143,7 @@ let rec backward_simulation
         (* Post may be still nonempty but CE is not found.  Go further. *)
         backward_simulation
           ~discretization_rate ~pre_loc ~post:newpost ~flow
-          ~inv ~pre ~history:(post::history)
+          ~inv ~pre ~history:(post::history) ~idx_pre
   
   (*
   (* Check whether post is already empty. *)
@@ -173,9 +178,10 @@ let%test _ =
       ~inv:(mk_ge (mk_real_var "y") (mk_real_numeral_float 0.0))
       ~pre:pre
       ~history:[]
+      ~idx_pre:0
   in
   match res with
-  | `Conflict(pre_loc,intp) ->
+  | Conflict(pre_loc,intp,idx) ->
      let vc1 = callZ3 (mk_and pre (mk_not intp)) in
      let vc2 = callZ3 (mk_and intp post) in
      let cond = (pre_loc = (SpaceexComponent.id_of_string "1")) in
@@ -190,7 +196,7 @@ let%test _ =
   
 
 (* [XXX] Premature rough implementation *)
-let discharge_vc_total ~(triple:cont_triple_total) =
+let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
   let open Z3Intf in
   (* let _ = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in *)
   (*  in *)
@@ -211,12 +217,20 @@ let discharge_vc_total ~(triple:cont_triple_total) =
       ~inv:triple.inv_total
       ~pre:triple.pre_total
       ~history:[]
+      ~idx_pre:idx_pre
   in
   let () =
-    match res with `Propagated _ -> printf "Propagated.@." | `Conflict _ -> printf "Conflict.@."
+    match res with Propagated _ -> printf "Propagated.@." | Conflict _ -> printf "Conflict.@."
   in
   res
 (* E.raise (E.of_string "discharge_vc_total: not implemented.") *)
+
+let pp_propagated_conflict fmt p =
+  match p with
+  | Propagated(id,m,idx_pre) ->
+     printf "loc: %a, model: %s, idx_pre:%d" SpaceexComponent.pp_id id (Z3.Model.to_string m) idx_pre
+  | Conflict(id, intp, idx_pre) ->
+     printf "loc: %a, interp: %s, idx_pre:%d" SpaceexComponent.pp_id id (Z3.Expr.to_string intp) idx_pre
 
 (* [XXX] to be implememnted. *)
 let discharge_vc_partial vc =
