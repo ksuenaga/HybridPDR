@@ -1,4 +1,4 @@
-open Base
+open Core_kernel
 
 type 'a t = 'a list [@@deriving show]
 let add x t = x::t
