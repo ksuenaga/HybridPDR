@@ -219,7 +219,7 @@ tseitin-cnf
 
   
 let expr_of_model ~(model:Z3.Model.model) : Z3.Expr.expr =
-  let open Z3Intf in
+  (* let open Z3Intf in *)
   let module M = Z3.Model in
   let module FD = Z3.FuncDecl in
   let module R = Z3.Arithmetic.Real in
