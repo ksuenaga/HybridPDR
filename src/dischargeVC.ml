@@ -27,7 +27,6 @@ let pp_ce fmt (loc,e,idx) =
 type result =
   Conflict of ce
 | Propagated of ce
-
  
 let pp_cont_triple_partial fmt crp =
   fprintf fmt
@@ -49,14 +48,29 @@ let pp_cont_triple_total fmt crp =
     SpaceexComponent.pp_flow crp.dynamics_total
     (Z3.Expr.to_string crp.inv_total)
 
-type vcgen_partial = is_continuous:bool -> pre:Frame.frame -> post:Frame.frame -> cont_triple_partial list
-type vcgen_total = is_continuous:bool -> pre:Frame.frame -> post:Frame.frame -> candidate:ce -> cont_triple_total list
+type vcgen_partial =
+  is_continuous:bool ->
+  pre:Frame.frame ->
+  (* pre_loc:SpaceexComponent.id ->  *)
+  post:Frame.frame ->
+  (* post:Cnf.t -> *)
+  cont_triple_partial list
+(* The return value (loc, vcs) means that, all of the vcs need to be
+   satisfied for the post to hold at location loc. *)
+type vcgen_total =
+  is_continuous:bool ->
+  pre:Frame.frame ->
+  post:Frame.frame ->
+  candidate:ce ->
+  cont_triple_total list
   
 let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
+  let ret ~(
+  (*
   let open Frame in
   let open SpaceexComponent in
   let open DischargeVC in
-  let ret ~(is_continuous : bool) ~(pre:frame) ~(post:frame) =
+  let ret ~(is_continuous : bool) ~(pre:frame) ~(post:Cnf.t) =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
@@ -70,11 +84,17 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
           else
             Z3Intf.mk_implies t.guard (SpaceexComponent.wp_command t.command post_target)
         in
-        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=inv}::vcs
+        {pre_loc_partial=t.source;
+         post_loc_partial=t.target;
+         pre_partial=pre_source;
+         post_partial=wp;
+         dynamics_partial=dynamics;
+         inv_partial=inv}::vcs
       )
       hs.transitions
   in
   ret
+   *)
 
 let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
   let open Frame in
@@ -119,7 +139,7 @@ let rec backward_simulation
   | `Sat _ -> Propagated(pre_loc, mk_and post pre, idx_pre)
   | (`Unsat | `Unknown) ->
      let newpost = mk_and inv (SpaceexComponent.prev_time ~discretization_rate ~flow ~post) in
-     let () = printf "newpost:%a@." pp_expr newpost in
+     (* let () = printf "newpost:%a@." pp_expr newpost in *)
      let checkConflict = callZ3 newpost in
      match checkConflict with
      | `Unsat ->
@@ -217,6 +237,7 @@ let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
     printf "(* discharge_vc_total *)@.";
     printf "Post: %s@." (Z3.Expr.to_string triple.post_total);
     printf "Pre loc: %a@." SpaceexComponent.pp_id triple.pre_loc_total;
+    printf "Post loc: %a@." SpaceexComponent.pp_id triple.post_loc_total;
     printf "Pre: %s@." (Z3.Expr.to_string triple.pre_total);
     printf "Inv: %s@." (Z3.Expr.to_string triple.inv_total);
     printf "Flow: %a@." SpaceexComponent.pp_flow triple.dynamics_total
@@ -241,6 +262,17 @@ let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
 
 
 (* [XXX] to be implememnted. *)
-let discharge_vc_partial vc =
-  false
+let discharge_vc_partial (vcs:cont_triple_partial list) =
+  Util.not_implemented "discharge_vc_partial"
+  (*
+  if SpaceexComponent.is_contractive
+       ~inv:vc.inv_partial
+       ~flow:vc.dynamics_partial
+       ~pre:vc.pre_partial
+       ~post:vc.post_partial
+  then
+    Util.not_implemented "discharge_vc_total"
+  else
+    false
     (* E.raise (E.of_string "discharge_vc_partial: not implemented.") *)
+   *)
