@@ -244,7 +244,7 @@ let expr_of_model ~(model:Z3.Model.model) : Z3.Expr.expr =
 (* E.raise (Error.of_string "frame_of_model: not implemented.") *)
 
 let%test _ =
-  let open Z3Intf in
+  (* let open Z3Intf in *)
   (*
   let l1 = id_of_string "1" in
   let l2 = id_of_string "1" in
