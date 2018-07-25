@@ -112,18 +112,28 @@ let%test _ =
   let _ = printResult res in
   true
 
+(*let%expect_test "expect_test test" =
+  printf "src_root path edited";
+  [%expect {|
+    src_root path edited
+  |}]*)
+
 let _ =
   let open SpaceexComponent in
   let input_file = ref None in
   let init_cond = ref None in
   let safety_region = ref None in
   let init_id = ref None in
+  (*let srcroot_arg = ref None in*)
+  (*let set_srcroot_dir dir = Config.srcroot := dir (*); printf "src_root path edited" Config.srcroot*) in*)
   let _ =
     Arg.parse
       ["model", String (fun s -> input_file := Some s), "Model file in SpaceEx format";
        "init", String (fun s -> init_cond := Some s), "Initial condition in SpaceEx format. (Whole space if omitted.)";
        "safe", String (fun s -> safety_region := Some s), "Safety region in SpaceEx format. (Whole space if omitted.)";
        "initid", String (fun s -> init_id := Some s), "ID of the initial location.";
+       (*"srcroot", String (fun s -> srcroot_arg := Some s), "Edit srcroot folder path";*)
+       (*"srcroot", Arg.String (set_srcroot_dir), "Edit srcroot folder path";*)
       ]
       (fun s -> E.raise (E.of_string "Anonymous argument is not allowed"))
   in
@@ -148,6 +158,11 @@ let _ =
       None -> id_of_string "1"
     | Some s -> id_of_string s
   in
+  (*let srcroot_arg =
+    match !srcroot_arg with
+      None -> printf "No new location for srcroot"  (*None*)
+    | Some s -> printf "New location for srcroot"   (*Sys.command "srcroot_newLocation_script"*)
+  in*)
   let result = verify ~model:t ~init_id:init_id ~init:init_cond ~safe:safety_region in
   let _ = printResult result in
   ()
