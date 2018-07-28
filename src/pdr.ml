@@ -51,30 +51,83 @@ let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : fra
 (* let rec induction_body (vcgen_partial:DischargeVC.vcgen_partial) (fs:frames) (n:int) = *)
     
 (* [XXX] not tested *)
-let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.vcgen_partial) (fs : frames) : unit =
+let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.vcgen_partial) (fs : frames) =
+  (* [XXX] We need this.  We also need to compute postimage (not simply computing invariant atomic formula. *)
+  (* Notes: We are stuck in the following example unless we compute (an overapproximatino of) the post image of (<= x (/ 1.0 2.0)) @ loc 1 at the beginning of location 2.
+
+frames:0 -> ("1" -> (= x (/ 1.0 2.0))) ("2" -> false) 
+1 -> ("1" -> (<= x (/ 1.0 2.0))) ("2" -> true) 
+2 -> ("1" -> (<= x (/ 1.0 2.0))) ("2" -> true) 
+
+candidates:At location "2", at frame 2, CE: (not (<= x 1.0))
+
+Counterexample at loc "2" in frame 2: (not (<= x 1.0))
+Try to propagate from the post region: ("1" -> (<= x (/ 1.0 2.0))) ("2" -> true) 
+Try to propgate to the pre region: ("1" -> (<= x (/ 1.0 2.0))) ("2" -> true) 
+(* discharge_vc_total *)
+Post: (and true (not (<= x 1.0)))
+Pre loc: "1"
+Post loc: "2"
+Pre: (<= x (/ 1.0 2.0))
+Inv: (>= y 0.0)
+Flow: [(y, x); (x, ( * y (- 1.0)))]
+e1:(<= x (/ 1.0 2.0))
+e2:(let ((a!1 (not (<= (+ x ( * (- 1.0) y)) 1.0))))
+  (and (>= y 0.0) a!1))
+Obtained interpolant (at "1"): (<= x (/ 1.0 2.0))
+Result: Conflict at loc: "1", interp: (<= x (/ 1.0 2.0)), idx_pre:1
+Conflict: Interpolant obtained
+Interpolant: loc "1": (<= x (/ 1.0 2.0))
+
+   *)
+  
   (* i = Array.length - 1 is the remainder frame.  We don't do
      induction from this i.  Therefore, to Array.length fs - 2. *)
   for i = 0 to Array.length fs - 2 do
-    let atomics = Frame.extract_atomics fs.(i) in
-    let local_invs =
+    let pre_frame = fs.(i) in
+    (* Returns [(l1,e1);...;(ln,en)] where (li,ei) means ei holds at postcond li. *)
+    let rec filter_locally_invariant_atomics
+              ~(pre_frame:Frame.frame)
+              ~(atomics:(SpaceexComponent.id * Cnf.t) list)
+            : (SpaceexComponent.id * Cnf.t) list =
       List.fold_left
         ~init:[]
-        ~f:(fun l d ->
+        ~f:(fun acc (pre_loc,atomic) ->
+          Util.not_implemented "filter_locally_invariant_atomics")
+        atomics
+    in
+    let atomics : (SpaceexComponent.id * Cnf.t) list = Frame.extract_atomics fs.(i) in
+    let local_invs 
+      = filter_locally_invariant_atomics ~pre_frame ~atomics
+    in
+    (*
+      List.fold_left
+        ~init:[]
+        ~f:(fun l (pre_loc,d) ->
           (* let lifter1 = Frame.mk_lifter hd1 in *)
           let vcs = vcgen_partial
                       (* If we are propagating from fs.(n-2) to
                          fs.(n-1) (i.e., remeinder frame) , then this
                          is a purely continous move. *)
                       ~is_continuous:(i = Array.length fs - 2)
+                      ~pre_loc:SpaceexComponent.id
                       ~pre:(Frame.frame_and_cnf fs.(i) d)
                       ~post:(Frame.frame_lift locs d) in
-          let res = List.fold_left ~init:true ~f:(fun res vc -> if res then DischargeVC.discharge_vc_partial vcs else res) vcs in
+          let res =
+            List.fold_left
+              ~init:true
+              ~f:(fun res vc ->
+                if res then
+                  DischargeVC.discharge_vc_partial vcs
+                else res)
+              vcs
+          in
           if res then d::l else l)
         atomics
-    in
+     *)
     for j = 1 to i + 1 do
       List.iter
-        ~f:(fun inv -> fs.(j) <- Frame.frame_and_cnf fs.(j) inv)
+        ~f:(fun inv -> fs.(j) <- Frame.strengthen local_invs fs.(j))
         local_invs
     done
   done

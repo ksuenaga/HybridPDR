@@ -10,6 +10,7 @@ let pp  = Z3Intf.pp_expr
 let parse s = ParseFml.parse_to_cnf s
 
 let rec extract_atomics (hd:t) : atomic list = [hd]
+  (* Util.not_implemented "extract_atomics." *)
   (*
   let module Expr =  Z3.Expr in
   let module A =  Z3.AST in
