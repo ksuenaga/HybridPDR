@@ -1,7 +1,7 @@
 type id [@@deriving show]
 type typ = Int | Real | Label [@@deriving show]
 type fml = Cnf.t [@@deriving show]
-type flow
+type flow = (string,Z3.Expr.expr) Env.t
 type command
 type loc =
   { name : id;

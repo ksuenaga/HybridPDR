@@ -1,5 +1,4 @@
 open Core_kernel
-open Format
 
 type 'a t = 'a list [@@deriving show]
 let add x t = x::t

@@ -19,3 +19,6 @@ let pp_option pp_elm fmt opt =
 let not_implemented msg =
   let module E = Error in
   E.raise (E.of_string ("not implemented:" ^ msg))
+
+let pp_array pp_elm fmt a =
+  fprintf fmt "%a" (pp_list pp_elm) (Array.to_list a)
