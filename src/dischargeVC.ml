@@ -65,12 +65,10 @@ type vcgen_total =
   cont_triple_total list
   
 let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
-  let ret ~(
-  (*
   let open Frame in
   let open SpaceexComponent in
   let open DischargeVC in
-  let ret ~(is_continuous : bool) ~(pre:frame) ~(post:Cnf.t) =
+  let ret ~(is_continuous : bool) ~(pre:frame) ~(post:frame) =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
@@ -94,7 +92,6 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
       hs.transitions
   in
   ret
-   *)
 
 let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
   let open Frame in
