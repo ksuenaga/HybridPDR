@@ -79,7 +79,7 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
 let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
   let open Frame in
   let open SpaceexComponent in
-  let open DischargeVC in
+  (* let open DischargeVC in*)
   let ret ~(is_continuous:bool) ~(pre:frame) ~(post:frame) ~(candidate:ce) =
     let loc,e,_ = candidate in
     let transitions = MySet.filter ~f:(fun t -> t.target = loc) hs.transitions in
