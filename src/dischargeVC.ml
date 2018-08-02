@@ -55,7 +55,7 @@ type vcgen_total = is_continuous:bool -> pre:Frame.frame -> post:Frame.frame -> 
 let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
   let open Frame in
   let open SpaceexComponent in
-  let open DischargeVC in
+  (*let open DischargeVC in*)
   let ret ~(is_continuous : bool) ~(pre:frame) ~(post:frame) =
     MySet.fold
       ~init:[]
