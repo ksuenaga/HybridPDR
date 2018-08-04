@@ -35,20 +35,26 @@ let get_inv_dynam (locs:SpaceexComponent.id list) (orig_dynam:SpaceexComponent.f
   inv_dynam
 (* E.raise (E.of_string "get_inv_dynam: not implemented.") *)
 
+exception CannotSample of Z3.Expr.expr
+  
 (* definition of utility function: random_point *)
-let get_unsafe_fml (safe_fml:Z3.Expr.expr) : Z3.Expr.expr =
+(* let get_unsafe_fml (unsafe_region:Z3.Expr.expr) : Z3.Expr.expr = *)
   (* find the formula corresponding to an unsafe state *)
-  E.raise (E.of_string "unsafe_fml: not implemented.")
+  (* sample point(s) from unsafe_region *)
 
 let get_random_unsafe_state (unsafe_fml:Z3.Expr.expr) : Z3.Expr.expr =
-  E.raise (E.of_string "get_random_unsafe_state: not implemented.")
+  let open Z3Intf in
+  let p = callZ3 unsafe_fml in
+  match p with
+  | `Sat m -> expr_of_model m
+  | `Unsat | `Unknown -> raise (CannotSample unsafe_fml)
 
 (* definition of utility function: simul_backprop *)
 let simul_backprop (inv_dynam:SpaceexComponent.flow) (unsafe_state:Z3.Expr.expr) : result =
   (* simulate backpropagation for a given state and dynamics *)
   E.raise (E.of_string "simul_backprop: not implemented.")
 
-(*)
+(*
 (* definition of utility function: loop_simul *)
 let rec loop_simul (dynam:SpaceexComponent.flow) unsafe_states : result =
 (* simulate backpropagation for a list of states *)
@@ -58,15 +64,16 @@ let rec loop_simul (dynam:SpaceexComponent.flow) unsafe_states : result =
     let backprop_result = simul_backprop dynam x in
     if backprop_result = Succeed then backprop_result else loop_simul dynam l 
 
-  E.raise (E.of_string "simul_backprop: not implemented.")*)
-
+  E.raise (E.of_string "simul_backprop: not implemented.")
+  *)
+  
 (* definition of main function: backprop *)
-let backprop ~(locs:SpaceexComponent.id list) ~(pre:SpaceexComponent.id) ~(post:SpaceexComponent.id) ~(pre_fml:Z3.Expr.expr) ~(post_fml:Z3.Expr.expr) ~(dynamics:SpaceexComponent.flow) ~(inv:Z3.Expr.expr) : result =		        
+let backprop ~(locs:SpaceexComponent.id list) ~(pre:SpaceexComponent.id) ~(post:SpaceexComponent.id) ~(pre_fml:Z3.Expr.expr) ~(post_fml:Z3.Expr.expr) ~(dynamics:SpaceexComponent.flow) ~(inv:Z3.Expr.expr) ~(safe:Z3.Expr.expr) : result =		        
       (* ID of state n *)  (* ID of state n+1 *)  (* formula for state n *)  (* formula for state n+1 *)  (* dynamics used to go from n to n+1 *)  (* invariant *)
   let open SpaceexComponent in
   let open Z3Intf in
   let inv_dynam = get_inv_dynam locs dynamics in
-  let unsafe_fml = get_unsafe_fml post_fml in
+  let unsafe_fml = mk_and (mk_not safe) post_fml in
   let backprop_result = simul_backprop inv_dynam (get_random_unsafe_state unsafe_fml) in
   backprop_result
     (* E.raise (E.of_string "backprop: not implemented.") *)
