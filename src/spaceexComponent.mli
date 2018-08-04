@@ -1,4 +1,4 @@
-type id [@@deriving show]
+otype id [@@deriving show]
 type typ = Int | Real | Label [@@deriving show]
 type fml = Cnf.t [@@deriving show]
 type flow = (string,Z3.Expr.expr) Env.t

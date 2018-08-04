@@ -4,6 +4,7 @@ type result =
   | Unsuccessful
 
 val backprop :
+  locs:SpaceexComponent.id list ->
   pre:SpaceexComponent.id ->
   post:SpaceexComponent.id ->
   pre_fml:Z3.Expr.expr ->
