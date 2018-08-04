@@ -48,13 +48,16 @@ let pp_cont_triple_total fmt crp =
     SpaceexComponent.pp_flow crp.dynamics_total
     (Z3.Expr.to_string crp.inv_total)
 
+(* [XXX] Add comment on the intuition. *)
 type vcgen_partial =
   is_continuous:bool ->
-  pre:Frame.frame ->
-  (* pre_loc:SpaceexComponent.id ->  *)
-  post:Frame.frame ->
+  (* pre:Frame.frame -> *)
+  pre_loc:SpaceexComponent.id ->
+  pre_fml:Z3.Expr.expr ->
+  atomic:Z3.Expr.expr ->
+  (* post:Frame.frame -> *)
   (* post:Cnf.t -> *)
-  cont_triple_partial list
+  (cont_triple_partial * SpaceexComponent.id * Z3.Expr.expr) list
 (* The return value (loc, vcs) means that, all of the vcs need to be
    satisfied for the post to hold at location loc. *)
 type vcgen_total =
@@ -68,26 +71,30 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
   let open Frame in
   let open SpaceexComponent in
   let open DischargeVC in
-  let ret ~(is_continuous : bool) ~(pre:frame) ~(post:frame) =
+  let ret ~(is_continuous : bool) ~(pre_loc : SpaceexComponent.id) ~(pre_fml : Z3.Expr.expr) ~(atomic : Z3.Expr.expr) =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
         let srcloc = Env.find_exn hs.locations t.source in
-        let dynamics,inv = srcloc.flow,srcloc.inv in
-        let pre_source = Frame.find_exn pre t.source in
-        let post_target : Cnf.t = Frame.find_exn post t.target in
-        let wp : Z3.Expr.expr =
-          if (* Frame.is_continuous_frame post *) is_continuous then
-            post_target
-          else
-            Z3Intf.mk_implies t.guard (SpaceexComponent.wp_command t.command post_target)
-        in
-        {pre_loc_partial=t.source;
-         post_loc_partial=t.target;
-         pre_partial=pre_source;
-         post_partial=wp;
-         dynamics_partial=dynamics;
-         inv_partial=inv}::vcs
+        if srcloc.name = pre_loc then
+          let dynamics,inv = srcloc.flow,srcloc.inv in
+          (* let pre_source = Frame.find_exn pre t.source in *)
+          (* let post_target : Cnf.t = Frame.find_exn post t.target in *)
+          let wp : Z3.Expr.expr =
+            if (* Frame.is_continuous_frame post *) is_continuous then
+              (* post_target *)
+              atomic
+            else
+              Z3Intf.mk_implies t.guard (SpaceexComponent.wp_command t.command atomic)
+          in
+          ({pre_loc_partial=t.source;
+            post_loc_partial=t.target;
+            pre_partial=Z3Intf.mk_and pre_fml atomic;
+            post_partial=wp;
+            dynamics_partial=dynamics;
+            inv_partial=inv},t.target,atomic)::vcs
+        else
+          vcs
       )
       hs.transitions
   in

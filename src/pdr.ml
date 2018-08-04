@@ -53,53 +53,39 @@ let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : fra
 (* [XXX] not tested *)
 let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.vcgen_partial) (fs : frames) =
   (* [XXX] We need this.  We also need to compute postimage (not simply computing invariant atomic formula. *)
-  (* Notes: We are stuck in the following example unless we compute (an overapproximatino of) the post image of (<= x (/ 1.0 2.0)) @ loc 1 at the beginning of location 2.
-
-frames:0 -> ("1" -> (= x (/ 1.0 2.0))) ("2" -> false) 
-1 -> ("1" -> (<= x (/ 1.0 2.0))) ("2" -> true) 
-2 -> ("1" -> (<= x (/ 1.0 2.0))) ("2" -> true) 
-
-candidates:At location "2", at frame 2, CE: (not (<= x 1.0))
-
-Counterexample at loc "2" in frame 2: (not (<= x 1.0))
-Try to propagate from the post region: ("1" -> (<= x (/ 1.0 2.0))) ("2" -> true) 
-Try to propgate to the pre region: ("1" -> (<= x (/ 1.0 2.0))) ("2" -> true) 
-(* discharge_vc_total *)
-Post: (and true (not (<= x 1.0)))
-Pre loc: "1"
-Post loc: "2"
-Pre: (<= x (/ 1.0 2.0))
-Inv: (>= y 0.0)
-Flow: [(y, x); (x, ( * y (- 1.0)))]
-e1:(<= x (/ 1.0 2.0))
-e2:(let ((a!1 (not (<= (+ x ( * (- 1.0) y)) 1.0))))
-  (and (>= y 0.0) a!1))
-Obtained interpolant (at "1"): (<= x (/ 1.0 2.0))
-Result: Conflict at loc: "1", interp: (<= x (/ 1.0 2.0)), idx_pre:1
-Conflict: Interpolant obtained
-Interpolant: loc "1": (<= x (/ 1.0 2.0))
-
-   *)
-  
   (* i = Array.length - 1 is the remainder frame.  We don't do
      induction from this i.  Therefore, to Array.length fs - 2. *)
+  let open Frame in
   for i = 0 to Array.length fs - 2 do
     let pre_frame = fs.(i) in
-    (* Returns [(l1,e1);...;(ln,en)] where (li,ei) means ei holds at postcond li. *)
-    let rec filter_locally_invariant_atomics
+    (* Returns [(l1,e1);...;(ln,en)] where (li,ei) means ei holds at location li. *)
+    let rec locally_invariant_atomics
               ~(pre_frame:Frame.frame)
-              ~(atomics:(SpaceexComponent.id * Cnf.t) list)
-            : (SpaceexComponent.id * Cnf.t) list =
+              ~(atomics:(SpaceexComponent.id * Z3.Expr.expr) list)
+            : (SpaceexComponent.id * Z3.Expr.expr) list =
       List.fold_left
         ~init:[]
         ~f:(fun acc (pre_loc,atomic) ->
-          Util.not_implemented "filter_locally_invariant_atomics")
+          let pre_fml = Frame.find_exn pre_frame pre_loc in
+          let () = printf "pre_fml: %a@." 
+          let locvcs = vcgen_partial ~is_continuous:false ~pre_loc:pre_loc ~pre_fml:pre_fml ~atomic:atomic in
+          let filtered =
+            List.fold_left
+              ~init:[]
+              ~f:(fun acc (vc,l,atomic) ->
+                let res = DischargeVC.discharge_vc_partial [vc] in
+                if res then (l,atomic)::acc else acc)
+              locvcs
+          in
+        (* Util.not_implemented "locally_invariant_atomics" *)
+          filtered
+        )
         atomics
     in
     let atomics : (SpaceexComponent.id * Cnf.t) list = Frame.extract_atomics fs.(i) in
-    let local_invs 
-      = filter_locally_invariant_atomics ~pre_frame ~atomics
-    in
+    let () = printf "atomics:@[%a@]@." (Util.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" SpaceexComponent.pp_id l Z3Intf.pp_expr e)) atomics in
+    let local_invs = locally_invariant_atomics ~pre_frame ~atomics in
+    let () = printf "local_invs:@[%a@]@." (Util.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" SpaceexComponent.pp_id l Z3Intf.pp_expr e)) local_invs in
     (*
       List.fold_left
         ~init:[]

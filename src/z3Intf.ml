@@ -388,3 +388,9 @@ let%test _ =
 let pp_model fmt m =
   (* fprintf fmt "%s" (Z3.Model.to_string m) *)
   fprintf fmt "%s" (Z3.Expr.to_string (expr_of_model m))
+
+let is_valid t =
+  let res = callZ3 (mk_not t) in
+  match res with
+  | `Sat _ | `Unknown -> false
+  | `Unsat -> true
