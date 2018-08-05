@@ -9,28 +9,6 @@ type atomic = t
 let pp  = Z3Intf.pp_expr
 let parse s = ParseFml.parse_to_cnf s
 
-let rec extract_atomics (hd:t) : atomic list = [hd]
-  (* Util.not_implemented "extract_atomics." *)
-  (*
-  let module Expr =  Z3.Expr in
-  let module A =  Z3.AST in
-  let open Sexp in
-  let open Format in
-  let sexp = Sexp.of_string (Expr.to_string hd) in
-  let _ = printf "sexp: %a@." Sexp.pp sexp in
-  let rec sexp_to_atomics s =
-    match s with
-      Atom "true" -> []
-    | Atom "false" -> []
-    | List ((Atom s)::tl) ->
-       begin
-         E.raise (E.of_string "extract_atomics: not implemented.")         
-       end
-    | Atom _ -> E.raise (E.of_string "extract_atomics: atom should not appear here.")
-    | List _ -> E.raise (E.of_string "extract_atomics: list malformed.")
-  in
-  sexp_to_atomics sexp
-   *)
   
 (* If (and hd1 (not hd2)) is unsatisfiable, then (imply hd1 hd2) is valid. *)
 (* [XXX] not tested *)

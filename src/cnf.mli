@@ -3,7 +3,7 @@
 type t = Z3.Expr.expr
 val pp : Format.formatter -> t -> unit
 val parse : string -> t
-val extract_atomics : t -> t list
+(* val extract_atomics : t -> t list *)
 val is_valid_implication : 'a -> t -> t -> [> `NotValid of 'a * Z3.Model.model | `NotValidNoModel | `Valid ]
                                              
   (*

@@ -75,8 +75,11 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
+        let open SpaceexComponent in
         let srcloc = Env.find_exn hs.locations t.source in
-        if srcloc.name = pre_loc then
+        let () = printf "t.source: %a@." pp_id t.source in
+        let () = printf "srcloc.id: %a@." pp_id srcloc.id in
+        if srcloc.id = pre_loc then
           let dynamics,inv = srcloc.flow,srcloc.inv in
           (* let pre_source = Frame.find_exn pre t.source in *)
           (* let post_target : Cnf.t = Frame.find_exn post t.target in *)
@@ -267,7 +270,8 @@ let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
 
 (* [XXX] to be implememnted. *)
 let discharge_vc_partial (vcs:cont_triple_partial list) =
-  Util.not_implemented "discharge_vc_partial"
+  false
+  (* Util.not_implemented "discharge_vc_partial" *)
   (*
   if SpaceexComponent.is_contractive
        ~inv:vc.inv_partial

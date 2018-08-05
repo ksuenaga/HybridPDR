@@ -30,7 +30,8 @@ let pp_command fmt cmd =
   fprintf fmt "%a" (Env.pp pp_id (fun fmt e -> fprintf fmt "%s" (Z3.Expr.to_string e))) cmd
 
 type loc =
-  { name : id;
+  { id : id;
+    name : id;
     inv : fml;
     flow : flow }
 [@@deriving show]
@@ -109,7 +110,7 @@ and param (xml : Xml.xml) (t : t) : t =
 and location (xml : Xml.xml) (t : t) : t =
   let id = Xml.attrib xml "id" in
   let name = Xml.attrib xml "name" in
-  let loc = { name; inv = Z3Intf.mk_true; flow = empty_flow } in
+  let loc = { id; name; inv = Z3Intf.mk_true; flow = empty_flow } in
   let loc =
     List.fold_left ~init:loc
       ~f:(fun (t : loc) x ->

@@ -1,6 +1,7 @@
 open Core_kernel
 module E = Error
 module D = DischargeVC
+module U = Util
 
 open Format
 
@@ -59,6 +60,9 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.v
   for i = 0 to Array.length fs - 2 do
     let pre_frame = fs.(i) in
     (* Returns [(l1,e1);...;(ln,en)] where (li,ei) means ei holds at location li. *)
+    let open Z3Intf in
+    let open SpaceexComponent in
+    let open DischargeVC in
     let rec locally_invariant_atomics
               ~(pre_frame:Frame.frame)
               ~(atomics:(SpaceexComponent.id * Z3.Expr.expr) list)
@@ -67,8 +71,9 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.v
         ~init:[]
         ~f:(fun acc (pre_loc,atomic) ->
           let pre_fml = Frame.find_exn pre_frame pre_loc in
-          let () = printf "pre_fml: %a@." 
+          let () = printf "pre_fml: %a@." pp_expr pre_fml in
           let locvcs = vcgen_partial ~is_continuous:false ~pre_loc:pre_loc ~pre_fml:pre_fml ~atomic:atomic in
+          let () = printf "locvcs: %a@." (U.pp_list (U.pp_triple pp_cont_triple_partial pp_id pp_expr)) locvcs in
           let filtered =
             List.fold_left
               ~init:[]

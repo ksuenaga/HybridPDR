@@ -394,3 +394,9 @@ let is_valid t =
   match res with
   | `Sat _ | `Unknown -> false
   | `Unsat -> true
+
+(* Predicate symbols and their arities for atomic predicates. *)
+let atomic_pred_constructors =
+  [("=", 2)]
+           
+    
