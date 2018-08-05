@@ -23,7 +23,7 @@ type result =
   Conflict of ce
 | Propagated of ce
 
-val discharge_vc_partial : cont_triple_partial list -> bool
+val discharge_vc_partial : cont_triple_partial -> bool
 val discharge_vc_total : triple:cont_triple_total -> idx_pre:int -> result
 
 val to_vcgen_partial : SpaceexComponent.t -> vcgen_partial

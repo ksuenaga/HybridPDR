@@ -6,6 +6,7 @@ module E = Error
 type cont_triple_partial =
   { pre_loc_partial : SpaceexComponent.id;
     post_loc_partial : SpaceexComponent.id;
+    flow_partial : SpaceexComponent.flow;
     pre_partial : Z3.Expr.expr;
     post_partial : Z3.Expr.expr;
     dynamics_partial : SpaceexComponent.flow;
@@ -92,6 +93,7 @@ let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
           in
           ({pre_loc_partial=t.source;
             post_loc_partial=t.target;
+            flow_partial=srcloc.flow;
             pre_partial=Z3Intf.mk_and pre_fml atomic;
             post_partial=wp;
             dynamics_partial=dynamics;
@@ -251,7 +253,7 @@ let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
   in
   let res =
     backward_simulation
-      ~discretization_rate:1.0
+      ~discretization_rate:0.01
       ~pre_loc:triple.pre_loc_total
       ~post:triple.post_total
       ~flow:triple.dynamics_total
@@ -269,18 +271,31 @@ let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
 
 
 (* [XXX] to be implememnted. *)
-let discharge_vc_partial (vcs:cont_triple_partial list) =
-  false
+let discharge_vc_partial (vc:cont_triple_partial) =
   (* Util.not_implemented "discharge_vc_partial" *)
+  let open SpaceexComponent in
+  let open Z3Intf in
+
+  (* Check that vc.pre_partial is locally invariant. *)
+  let prevfml =
+    prev_time
+      ~discretization_rate:0.01
+      ~flow:vc.flow_partial
+      ~post:vc.pre_partial
+  in
+  let res = Z3Intf.is_valid (mk_implies (mk_and vc.pre_partial vc.inv_partial) prevfml) in
+  if res then
+    Z3Intf.is_valid (mk_implies vc.pre_partial vc.post_partial)
+  else
+    false
   (*
   if SpaceexComponent.is_contractive
        ~inv:vc.inv_partial
        ~flow:vc.dynamics_partial
-       ~pre:vc.pre_partial
-       ~post:vc.post_partial
+       ~fml:vc.pre_partial
+       (* ~post:vc.post_partial *)
   then
     Util.not_implemented "discharge_vc_total"
   else
     false
-    (* E.raise (E.of_string "discharge_vc_partial: not implemented.") *)
    *)

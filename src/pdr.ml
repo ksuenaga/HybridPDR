@@ -78,7 +78,7 @@ let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.v
             List.fold_left
               ~init:[]
               ~f:(fun acc (vc,l,atomic) ->
-                let res = DischargeVC.discharge_vc_partial [vc] in
+                let res = DischargeVC.discharge_vc_partial vc in
                 if res then (l,atomic)::acc else acc)
               locvcs
           in
