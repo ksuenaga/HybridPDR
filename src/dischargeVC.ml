@@ -116,18 +116,21 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
+        let open Z3Intf in
         let srcloc = Env.find_exn hs.locations t.source in
-        let dynamics,inv = srcloc.flow,srcloc.inv in
+        let tgtloc = Env.find_exn hs.locations t.target in
+        let dynamics,inv_pre = srcloc.flow,srcloc.inv in
+        let inv_post = tgtloc.inv in
         let pre_source = Frame.find_exn pre t.source in
-        (* let post_target : Cnf.t = Env.find_exn post t.target in *)
-        let post_target = Z3Intf.mk_and (Frame.find_exn post t.target) e in
+        (* let post_target = Env.find_exn post t.target in *)
+        let post_target = mk_and inv_post (mk_and (Frame.find_exn post t.target) e) in
         let wp : Z3.Expr.expr =
           if is_continuous then
             post_target
           else
-            Z3Intf.mk_and t.guard (SpaceexComponent.wp_command_z3 t.command post_target)
+            mk_and t.guard (SpaceexComponent.wp_command_z3 t.command post_target)
         in
-        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv}::vcs
+        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv_pre}::vcs
       )
       transitions
       (* E.raise (E.of_string "to_vcgen: not implemented") *)
@@ -158,8 +161,8 @@ let rec backward_simulation
         (* Assumption available here: post && pre is unsat. inv && prev(post) is unsat. *)
         (* Debug here *)
         (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
-        let e1 = simplify (mk_and inv pre) in
-        let e2 = simplify (mk_and inv (List.fold_left ~init:mk_false ~f:mk_or (newpost::history))) in
+        let e1 = simplify pre in
+        let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in
         (* let e2 = post in *)
         let () =
           printf "e1:%s@." (Z3.Expr.to_string (simplify e1));

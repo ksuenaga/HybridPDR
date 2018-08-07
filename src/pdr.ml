@@ -322,14 +322,12 @@ let rec exploreCE
               if idx < Array.length t - 1 then
                 t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx)
             in
-           (*
             let () =
-              printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames;
+              (* printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames; *)
               printf "Strengthened with interpolant: %a@." Frame.pp_locfmls l;
               printf "At location: %a@." SpaceexComponent.pp_id loc;
-              printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes;
+              (* printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes; *)
             in
-            *)
             (* exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframes *)
            exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:t
        end
