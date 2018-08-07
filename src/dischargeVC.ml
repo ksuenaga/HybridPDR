@@ -40,7 +40,7 @@ let pp_cont_triple_partial fmt crp =
     (Z3.Expr.to_string crp.inv_partial)
 let pp_cont_triple_total fmt crp =
   fprintf fmt
-    "{ pre_loc=%a;@\n post_loc=%a;@\n pre = %s;@\n post = %s;@\n dynamics = %a;@\n inv = %s }"
+    "{ pre_loc=%a;@\n post_loc=%a;@\n pre = %s;@\n post = %s;@\n dynamics = %a;@\n inv_total = %s }"
     SpaceexComponent.pp_id crp.pre_loc_total
     SpaceexComponent.pp_id crp.post_loc_total
     (Z3.Expr.to_string crp.pre_total)
@@ -48,6 +48,7 @@ let pp_cont_triple_total fmt crp =
     (* SpaceexComponent.pp_id crp.pre_loc *)
     SpaceexComponent.pp_flow crp.dynamics_total
     (Z3.Expr.to_string crp.inv_total)
+
 
 (* [XXX] Add comment on the intuition. *)
 type vcgen_partial =
@@ -143,38 +144,42 @@ let rec backward_simulation
           ~(history : Z3.Expr.expr list)
           ~(idx_pre : int) : result =
   let open Z3Intf in
-  let checkCE = callZ3 (mk_and post pre) in
+  let () = printf "backward_simulation@." in
+  let potentialCE = simplify (mk_and inv (mk_and post pre)) in
+  let checkCE = callZ3 potentialCE in
   match checkCE with
-  | `Sat _ -> Propagated(pre_loc, mk_and post pre, idx_pre)
+  | `Sat _ -> Propagated(pre_loc, potentialCE, idx_pre)
   | (`Unsat | `Unknown) ->
-     let newpost = mk_and inv (SpaceexComponent.prev_time ~discretization_rate ~flow ~post) in
-     (* let () = printf "newpost:%a@." pp_expr newpost in *)
-     let checkConflict = callZ3 newpost in
+     let newpost = SpaceexComponent.prev_time ~discretization_rate ~flow ~post in
+     let () = printf "newpost:%a@." pp_expr newpost in
+     let checkConflict = callZ3 (simplify (mk_and newpost inv)) in
      match checkConflict with
      | `Unsat ->
-       (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
-       let e1 = simplify pre in
-       (* let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in *)
-       let e2 = post in
-       let () =
-         printf "e1:%s@." (Z3.Expr.to_string (simplify e1));
-         printf "e2:%s@." (Z3.Expr.to_string (simplify e2))
-       in
-       let intp = interpolant e1 e2 in
-       let res =
-         begin
-           match intp with
-           | `InterpolantFound intp ->
-              let intp = simplify intp in
-              let () = printf "Obtained interpolant (at %a): %s@." SpaceexComponent.pp_id pre_loc (Z3.Expr.to_string intp) in
-              Conflict(pre_loc,intp,idx_pre)
-           | `InterpolantNotFound ->
-              Util.not_implemented "intp not found"
-           | `NotUnsatisfiable ->
-              assert(false)
-         end
-       in
-       res
+        (* Assumption available here: post && pre is unsat. inv && prev(post) is unsat. *)
+        (* Debug here *)
+        (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
+        let e1 = simplify (mk_and inv pre) in
+        let e2 = simplify (mk_and inv (List.fold_left ~init:mk_false ~f:mk_or (newpost::history))) in
+        (* let e2 = post in *)
+        let () =
+          printf "e1:%s@." (Z3.Expr.to_string (simplify e1));
+          printf "e2:%s@." (Z3.Expr.to_string (simplify e2))
+        in
+        let intp = interpolant e1 e2 in
+        let res =
+          begin
+            match intp with
+            | `InterpolantFound intp ->
+               let intp = simplify intp in
+               let () = printf "Obtained interpolant (at %a): %s@." SpaceexComponent.pp_id pre_loc (Z3.Expr.to_string intp) in
+               Conflict(pre_loc,intp,idx_pre)
+            | `InterpolantNotFound ->
+               Util.not_implemented "intp not found"
+            | `NotUnsatisfiable ->
+               assert(false)
+          end
+        in
+        res
      | (`Unknown | `Sat _) ->
         (* Post may be still nonempty but CE is not found.  Go further. *)
         backward_simulation
@@ -240,8 +245,7 @@ let pp_propagated_conflict fmt p =
 (* [XXX] Premature rough implementation *)
 let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
   let open Z3Intf in
-  (* let _ = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in *)
-  (*  in *)
+  let () = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in
   let () =
     printf "(* discharge_vc_total *)@.";
     printf "Post: %s@." (Z3.Expr.to_string triple.post_total);

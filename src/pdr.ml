@@ -315,13 +315,13 @@ let rec exploreCE
             end
          | `Conflict l ->
            (* All the l are `Conflict *)
-           let () =
-             for i = 1 to idx do
-               t.(i) <- Frame.strengthen ~locfmls:l ~t:t.(i)
-             done;
-             if idx < Array.length t - 1 then
-               t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx)
-           in
+            let () =
+              for i = 1 to idx do
+                t.(i) <- Frame.strengthen ~locfmls:l ~t:t.(i)
+              done;
+              if idx < Array.length t - 1 then
+                t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx)
+            in
            (*
             let () =
               printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames;
