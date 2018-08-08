@@ -149,6 +149,7 @@ let rec backward_simulation
   let open Z3Intf in
   let () = printf "backward_simulation@." in
   let potentialCE = simplify (mk_and inv (mk_and post pre)) in
+  (* let potentialCE = simplify (mk_and post pre) in *)
   let checkCE = callZ3 potentialCE in
   match checkCE with
   | `Sat _ -> Propagated(pre_loc, potentialCE, idx_pre)
@@ -163,6 +164,8 @@ let rec backward_simulation
         (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
         let e1 = simplify pre in
         let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in
+        (* let e1 = simplify (mk_and inv e1) in *)
+        (* let e2 = simplify (mk_and inv e2) in *)
         (* let e2 = post in *)
         let () =
           printf "e1:%s@." (Z3.Expr.to_string (simplify e1));
