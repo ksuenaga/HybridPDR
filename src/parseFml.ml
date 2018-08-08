@@ -57,6 +57,13 @@ let parse_integer = integer |>> (fun i -> Float (float_of_int i))
 let rec basic =
   spaces >> (parse_ident <|> parse_float <|> parse_integer) << spaces
 
+let parse_basic s =
+  let r = MParser.parse_string basic s () in
+  match r with
+    Success r -> r
+  | Failed(s,_) ->
+     E.raise (E.of_string s)
+
 (* [XXX] Support of parenthesis is buggy. *)
 let rec expr s =
   ((expression operators (basic <|> parens expr)) << eof) s
@@ -300,3 +307,53 @@ let parse_flow s =
       | Failed (msg, e) ->
          failwith msg)
     ss
+
+let rec sexp_to_atomics s =
+  let open Sexp in
+  let open Z3Intf in
+  match s with
+    Atom "true" -> []
+  | Atom "false" -> []
+  | List [Atom "="; s1; s2] ->
+     [mk_eq (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
+  | List [Atom "<="; s1; s2] ->
+     [mk_le (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
+  | List [Atom ">="; s1; s2] ->
+     [mk_ge (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
+  | List [Atom "and"; s1; s2] ->
+     (sexp_to_atomics s1) @ (sexp_to_atomics s2)
+  | Atom _ ->
+     E.raise (E.of_string "sexp_to_atomics: atom should not appear here.")
+  | List _ ->
+     printf "s:%a@." Sexp.pp s;
+     E.raise (E.of_string "sexp_to_atomics: not implemented.")
+and sexp_to_arithexpr s : Z3.Expr.expr =
+  let open Sexp in
+  let open ParseFml in
+  let open Z3Intf in
+  match s with
+  | Atom s ->
+     let res = parse_basic s in
+     begin
+       match res with
+         Ident x -> mk_real_var x
+       | Float f -> mk_real_numeral_float f
+       | _ ->
+          printf "atom:%s@." s;
+          E.raise (E.of_string "sexp_to_arithexpr: Cannot appear here.")
+     end
+  | List [Atom "/"; s1; s2] ->
+     mk_div (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List _ ->
+     printf "sexp:%a@." pp s;
+     Util.not_implemented "sexp_to_arithexpr"
+    
+let rec extract_atomics (hd:Z3.Expr.expr) : Z3.Expr.expr list =
+  (* Util.not_implemented "extract_atomics." *)
+  let module Expr =  Z3.Expr in
+  let module A =  Z3.AST in
+  let open Format in
+  let sexp = Sexp.of_string (Expr.to_string hd) in
+  sexp_to_atomics sexp
+
+       

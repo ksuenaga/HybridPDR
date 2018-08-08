@@ -22,3 +22,13 @@ let not_implemented msg =
 
 let pp_array pp_elm fmt a =
   fprintf fmt "%a" (pp_list pp_elm) (Array.to_list a)
+
+let pp_pair pp1 pp2 fmt p =
+  match p with
+  | (x,y) ->
+     fprintf fmt "(%a,%a)" pp1 x pp2 y
+
+let pp_triple pp1 pp2 pp3 fmt p =
+  match p with
+  | (x,y,z) ->
+     fprintf fmt "(%a,%a,%a)" pp1 x pp2 y pp3 z

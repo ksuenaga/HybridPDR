@@ -1,6 +1,7 @@
 open Core_kernel
 module E = Error
 module D = DischargeVC
+module U = Util
 
 open Format
 
@@ -51,30 +52,73 @@ let init (locs:SpaceexComponent.id list) (initloc:SpaceexComponent.id) i s : fra
 (* let rec induction_body (vcgen_partial:DischargeVC.vcgen_partial) (fs:frames) (n:int) = *)
     
 (* [XXX] not tested *)
-let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.vcgen_partial) (fs : frames) : unit =
+let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.vcgen_partial) (fs : frames) =
+  (* [XXX] We need this.  We also need to compute postimage (not simply computing invariant atomic formula. *)
   (* i = Array.length - 1 is the remainder frame.  We don't do
      induction from this i.  Therefore, to Array.length fs - 2. *)
+  let open Frame in
   for i = 0 to Array.length fs - 2 do
-    let atomics = Frame.extract_atomics fs.(i) in
-    let local_invs =
+    let pre_frame = fs.(i) in
+    (* Returns [(l1,e1);...;(ln,en)] where (li,ei) means ei holds at location li. *)
+    let open Z3Intf in
+    let open SpaceexComponent in
+    let open DischargeVC in
+    let rec locally_invariant_atomics
+              ~(pre_frame:Frame.frame)
+              ~(atomics:(SpaceexComponent.id * Z3.Expr.expr) list)
+            : (SpaceexComponent.id * Z3.Expr.expr) list =
       List.fold_left
         ~init:[]
-        ~f:(fun l d ->
+        ~f:(fun acc (pre_loc,atomic) ->
+          let pre_fml = Frame.find_exn pre_frame pre_loc in
+          let () = printf "pre_fml: %a@." pp_expr pre_fml in
+          let locvcs = vcgen_partial ~is_continuous:false ~pre_loc:pre_loc ~pre_fml:pre_fml ~atomic:atomic in
+          let () = printf "locvcs: %a@." (U.pp_list (U.pp_triple pp_cont_triple_partial pp_id pp_expr)) locvcs in
+          let filtered =
+            List.fold_left
+              ~init:[]
+              ~f:(fun acc (vc,l,atomic) ->
+                let res = DischargeVC.discharge_vc_partial vc in
+                if res then (l,atomic)::acc else acc)
+              locvcs
+          in
+        (* Util.not_implemented "locally_invariant_atomics" *)
+          filtered
+        )
+        atomics
+    in
+    let atomics : (SpaceexComponent.id * Cnf.t) list = Frame.extract_atomics fs.(i) in
+    let () = printf "atomics:@[%a@]@." (Util.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" SpaceexComponent.pp_id l Z3Intf.pp_expr e)) atomics in
+    let local_invs = locally_invariant_atomics ~pre_frame ~atomics in
+    let () = printf "local_invs:@[%a@]@." (Util.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" SpaceexComponent.pp_id l Z3Intf.pp_expr e)) local_invs in
+    (*
+      List.fold_left
+        ~init:[]
+        ~f:(fun l (pre_loc,d) ->
           (* let lifter1 = Frame.mk_lifter hd1 in *)
           let vcs = vcgen_partial
                       (* If we are propagating from fs.(n-2) to
                          fs.(n-1) (i.e., remeinder frame) , then this
                          is a purely continous move. *)
                       ~is_continuous:(i = Array.length fs - 2)
+                      ~pre_loc:SpaceexComponent.id
                       ~pre:(Frame.frame_and_cnf fs.(i) d)
                       ~post:(Frame.frame_lift locs d) in
-          let res = List.fold_left ~init:true ~f:(fun res vc -> if res then DischargeVC.discharge_vc_partial vcs else res) vcs in
+          let res =
+            List.fold_left
+              ~init:true
+              ~f:(fun res vc ->
+                if res then
+                  DischargeVC.discharge_vc_partial vcs
+                else res)
+              vcs
+          in
           if res then d::l else l)
         atomics
-    in
+     *)
     for j = 1 to i + 1 do
       List.iter
-        ~f:(fun inv -> fs.(j) <- Frame.frame_and_cnf fs.(j) inv)
+        ~f:(fun inv -> fs.(j) <- Frame.strengthen local_invs fs.(j))
         local_invs
     done
   done
@@ -271,21 +315,19 @@ let rec exploreCE
             end
          | `Conflict l ->
            (* All the l are `Conflict *)
-           let () =
-             for i = 1 to idx do
-               t.(i) <- Frame.strengthen ~locfmls:l ~t:t.(i)
-             done;
-             if idx < Array.length t - 1 then
-               t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx)
-           in
-           (*
             let () =
-              printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames;
+              for i = 1 to idx do
+                t.(i) <- Frame.strengthen ~locfmls:l ~t:t.(i)
+              done;
+              if idx < Array.length t - 1 then
+                t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx)
+            in
+            let () =
+              (* printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames; *)
               printf "Strengthened with interpolant: %a@." Frame.pp_locfmls l;
               printf "At location: %a@." SpaceexComponent.pp_id loc;
-              printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes;
+              (* printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes; *)
             in
-            *)
             (* exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframes *)
            exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:t
        end

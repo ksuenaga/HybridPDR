@@ -6,6 +6,7 @@ module E = Error
 type cont_triple_partial =
   { pre_loc_partial : SpaceexComponent.id;
     post_loc_partial : SpaceexComponent.id;
+    flow_partial : SpaceexComponent.flow;
     pre_partial : Z3.Expr.expr;
     post_partial : Z3.Expr.expr;
     dynamics_partial : SpaceexComponent.flow;
@@ -27,7 +28,6 @@ let pp_ce fmt (loc,e,idx) =
 type result =
   Conflict of ce
 | Propagated of ce
-
  
 let pp_cont_triple_partial fmt crp =
   fprintf fmt
@@ -40,7 +40,7 @@ let pp_cont_triple_partial fmt crp =
     (Z3.Expr.to_string crp.inv_partial)
 let pp_cont_triple_total fmt crp =
   fprintf fmt
-    "{ pre_loc=%a;@\n post_loc=%a;@\n pre = %s;@\n post = %s;@\n dynamics = %a;@\n inv = %s }"
+    "{ pre_loc=%a;@\n post_loc=%a;@\n pre = %s;@\n post = %s;@\n dynamics = %a;@\n inv_total = %s }"
     SpaceexComponent.pp_id crp.pre_loc_total
     SpaceexComponent.pp_id crp.post_loc_total
     (Z3.Expr.to_string crp.pre_total)
@@ -49,28 +49,58 @@ let pp_cont_triple_total fmt crp =
     SpaceexComponent.pp_flow crp.dynamics_total
     (Z3.Expr.to_string crp.inv_total)
 
-type vcgen_partial = is_continuous:bool -> pre:Frame.frame -> post:Frame.frame -> cont_triple_partial list
-type vcgen_total = is_continuous:bool -> pre:Frame.frame -> post:Frame.frame -> candidate:ce -> cont_triple_total list
+
+(* [XXX] Add comment on the intuition. *)
+type vcgen_partial =
+  is_continuous:bool ->
+  (* pre:Frame.frame -> *)
+  pre_loc:SpaceexComponent.id ->
+  pre_fml:Z3.Expr.expr ->
+  atomic:Z3.Expr.expr ->
+  (* post:Frame.frame -> *)
+  (* post:Cnf.t -> *)
+  (cont_triple_partial * SpaceexComponent.id * Z3.Expr.expr) list
+(* The return value (loc, vcs) means that, all of the vcs need to be
+   satisfied for the post to hold at location loc. *)
+type vcgen_total =
+  is_continuous:bool ->
+  pre:Frame.frame ->
+  post:Frame.frame ->
+  candidate:ce ->
+  cont_triple_total list
   
 let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
   let open Frame in
   let open SpaceexComponent in
-  (*let open DischargeVC in*)
-  let ret ~(is_continuous : bool) ~(pre:frame) ~(post:frame) =
+  let open DischargeVC in
+  let ret ~(is_continuous : bool) ~(pre_loc : SpaceexComponent.id) ~(pre_fml : Z3.Expr.expr) ~(atomic : Z3.Expr.expr) =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
+        let open SpaceexComponent in
         let srcloc = Env.find_exn hs.locations t.source in
-        let dynamics,inv = srcloc.flow,srcloc.inv in
-        let pre_source = Frame.find_exn pre t.source in
-        let post_target : Cnf.t = Frame.find_exn post t.target in
-        let wp : Z3.Expr.expr =
-          if (* Frame.is_continuous_frame post *) is_continuous then
-            post_target
-          else
-            Z3Intf.mk_implies t.guard (SpaceexComponent.wp_command t.command post_target)
-        in
-        {pre_loc_partial=t.source; post_loc_partial=t.target; pre_partial=pre_source; post_partial=wp; dynamics_partial=dynamics; inv_partial=inv}::vcs
+        let () = printf "t.source: %a@." pp_id t.source in
+        let () = printf "srcloc.id: %a@." pp_id srcloc.id in
+        if srcloc.id = pre_loc then
+          let dynamics,inv = srcloc.flow,srcloc.inv in
+          (* let pre_source = Frame.find_exn pre t.source in *)
+          (* let post_target : Cnf.t = Frame.find_exn post t.target in *)
+          let wp : Z3.Expr.expr =
+            if (* Frame.is_continuous_frame post *) is_continuous then
+              (* post_target *)
+              atomic
+            else
+              Z3Intf.mk_implies t.guard (SpaceexComponent.wp_command t.command atomic)
+          in
+          ({pre_loc_partial=t.source;
+            post_loc_partial=t.target;
+            flow_partial=srcloc.flow;
+            pre_partial=Z3Intf.mk_and pre_fml atomic;
+            post_partial=wp;
+            dynamics_partial=dynamics;
+            inv_partial=inv},t.target,atomic)::vcs
+        else
+          vcs
       )
       hs.transitions
   in
@@ -86,18 +116,21 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
     MySet.fold
       ~init:[]
       ~f:(fun vcs t ->
+        let open Z3Intf in
         let srcloc = Env.find_exn hs.locations t.source in
-        let dynamics,inv = srcloc.flow,srcloc.inv in
+        let tgtloc = Env.find_exn hs.locations t.target in
+        let dynamics,inv_pre = srcloc.flow,srcloc.inv in
+        let inv_post = tgtloc.inv in
         let pre_source = Frame.find_exn pre t.source in
-        (* let post_target : Cnf.t = Env.find_exn post t.target in *)
-        let post_target = Z3Intf.mk_and (Frame.find_exn post t.target) e in
+        (* let post_target = Env.find_exn post t.target in *)
+        let post_target = mk_and inv_post (mk_and (Frame.find_exn post t.target) e) in
         let wp : Z3.Expr.expr =
           if is_continuous then
             post_target
           else
-            Z3Intf.mk_and t.guard (SpaceexComponent.wp_command_z3 t.command post_target)
+            mk_and t.guard (SpaceexComponent.wp_command_z3 t.command post_target)
         in
-        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv}::vcs
+        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv_pre}::vcs
       )
       transitions
       (* E.raise (E.of_string "to_vcgen: not implemented") *)
@@ -114,38 +147,45 @@ let rec backward_simulation
           ~(history : Z3.Expr.expr list)
           ~(idx_pre : int) : result =
   let open Z3Intf in
-  let checkCE = callZ3 (mk_and post pre) in
+  let () = printf "backward_simulation@." in
+  let potentialCE = simplify (mk_and inv (mk_and post pre)) in
+  (* let potentialCE = simplify (mk_and post pre) in *)
+  let checkCE = callZ3 potentialCE in
   match checkCE with
-  | `Sat _ -> Propagated(pre_loc, mk_and post pre, idx_pre)
+  | `Sat _ -> Propagated(pre_loc, potentialCE, idx_pre)
   | (`Unsat | `Unknown) ->
-     let newpost = mk_and inv (SpaceexComponent.prev_time ~discretization_rate ~flow ~post) in
+     let newpost = SpaceexComponent.prev_time ~discretization_rate ~flow ~post in
      let () = printf "newpost:%a@." pp_expr newpost in
-     let checkConflict = callZ3 newpost in
+     let checkConflict = callZ3 (simplify (mk_and newpost inv)) in
      match checkConflict with
      | `Unsat ->
-       (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
-       let e1 = simplify pre in
-       (* let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in *)
-       let e2 = post in
-       let () =
-         printf "e1:%s@." (Z3.Expr.to_string (simplify e1));
-         printf "e2:%s@." (Z3.Expr.to_string (simplify e2))
-       in
-       let intp = interpolant e1 e2 in
-       let res =
-         begin
-           match intp with
-           | `InterpolantFound intp ->
-              let intp = simplify intp in
-              let () = printf "Obtained interpolant (at %a): %s@." SpaceexComponent.pp_id pre_loc (Z3.Expr.to_string intp) in
-              Conflict(pre_loc,intp,idx_pre)
-           | `InterpolantNotFound ->
-              Util.not_implemented "intp not found"
-           | `NotUnsatisfiable ->
-              assert(false)
-         end
-       in
-       res
+        (* Assumption available here: post && pre is unsat. inv && prev(post) is unsat. *)
+        (* Debug here *)
+        (* Post is empty.  We found a conflict.  Compute an interpoalnt and return it. *)
+        let e1 = simplify pre in
+        let e2 = simplify (List.fold_left ~init:mk_false ~f:mk_or (newpost::history)) in
+        (* let e1 = simplify (mk_and inv e1) in *)
+        (* let e2 = simplify (mk_and inv e2) in *)
+        (* let e2 = post in *)
+        let () =
+          printf "e1:%s@." (Z3.Expr.to_string (simplify e1));
+          printf "e2:%s@." (Z3.Expr.to_string (simplify e2))
+        in
+        let intp = interpolant e1 e2 in
+        let res =
+          begin
+            match intp with
+            | `InterpolantFound intp ->
+               let intp = simplify intp in
+               let () = printf "Obtained interpolant (at %a): %s@." SpaceexComponent.pp_id pre_loc (Z3.Expr.to_string intp) in
+               Conflict(pre_loc,intp,idx_pre)
+            | `InterpolantNotFound ->
+               Util.not_implemented "intp not found"
+            | `NotUnsatisfiable ->
+               assert(false)
+          end
+        in
+        res
      | (`Unknown | `Sat _) ->
         (* Post may be still nonempty but CE is not found.  Go further. *)
         backward_simulation
@@ -211,19 +251,19 @@ let pp_propagated_conflict fmt p =
 (* [XXX] Premature rough implementation *)
 let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
   let open Z3Intf in
-  (* let _ = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in *)
-  (*  in *)
+  let () = printf "discharge_vc_total: %a@." pp_cont_triple_total triple in
   let () =
     printf "(* discharge_vc_total *)@.";
     printf "Post: %s@." (Z3.Expr.to_string triple.post_total);
     printf "Pre loc: %a@." SpaceexComponent.pp_id triple.pre_loc_total;
+    printf "Post loc: %a@." SpaceexComponent.pp_id triple.post_loc_total;
     printf "Pre: %s@." (Z3.Expr.to_string triple.pre_total);
     printf "Inv: %s@." (Z3.Expr.to_string triple.inv_total);
     printf "Flow: %a@." SpaceexComponent.pp_flow triple.dynamics_total
   in
   let res =
     backward_simulation
-      ~discretization_rate:1.0
+      ~discretization_rate:0.01
       ~pre_loc:triple.pre_loc_total
       ~post:triple.post_total
       ~flow:triple.dynamics_total
@@ -241,6 +281,31 @@ let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
 
 
 (* [XXX] to be implememnted. *)
-let discharge_vc_partial vc =
-  false
-    (* E.raise (E.of_string "discharge_vc_partial: not implemented.") *)
+let discharge_vc_partial (vc:cont_triple_partial) =
+  (* Util.not_implemented "discharge_vc_partial" *)
+  let open SpaceexComponent in
+  let open Z3Intf in
+
+  (* Check that vc.pre_partial is locally invariant. *)
+  let prevfml =
+    prev_time
+      ~discretization_rate:0.01
+      ~flow:vc.flow_partial
+      ~post:vc.pre_partial
+  in
+  let res = Z3Intf.is_valid (mk_implies (mk_and vc.pre_partial vc.inv_partial) prevfml) in
+  if res then
+    Z3Intf.is_valid (mk_implies vc.pre_partial vc.post_partial)
+  else
+    false
+  (*
+  if SpaceexComponent.is_contractive
+       ~inv:vc.inv_partial
+       ~flow:vc.dynamics_partial
+       ~fml:vc.pre_partial
+       (* ~post:vc.post_partial *)
+  then
+    Util.not_implemented "discharge_vc_total"
+  else
+    false
+   *)

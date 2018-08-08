@@ -4,7 +4,8 @@ type fml = Cnf.t [@@deriving show]
 type flow = (string,Z3.Expr.expr) Env.t
 type command
 type loc =
-  { name : id;
+  { id : id;
+    name : id;
     inv : fml;
     flow : flow }
 [@@deriving show]

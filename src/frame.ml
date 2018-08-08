@@ -15,7 +15,8 @@ module E = Error
 let extract_atomics (f:frame) =
   Env.fold
     ~init:[]
-    ~f:(fun l (_,c) -> (Cnf.extract_atomics c) @ l)
+    ~f:(fun acc (loc,c) ->
+      (List.map ~f:(fun c -> (loc,c)) (ParseFml.extract_atomics c)) @ acc)
     f
 
 let frame_and_cnf (frame:frame) d =

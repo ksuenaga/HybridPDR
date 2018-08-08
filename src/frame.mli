@@ -8,7 +8,7 @@ val hybrid_frame_lift : SpaceexComponent.id list -> Cnf.t -> frame
 val hybrid_frame_lift_given_id : SpaceexComponent.id list -> SpaceexComponent.id -> Cnf.t -> frame
    *)
 val frame_lift : SpaceexComponent.id list -> Cnf.t -> frame
-val extract_atomics : frame -> Cnf.t list
+val extract_atomics : frame -> (SpaceexComponent.id * Cnf.t) list
 val frame_and_cnf : frame -> Cnf.t -> frame
 val frame_lift_given_id : SpaceexComponent.id list -> SpaceexComponent.id -> Cnf.t -> frame
 

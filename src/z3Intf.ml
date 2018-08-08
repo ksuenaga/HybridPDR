@@ -25,11 +25,11 @@ let set_context param = ctx := Z3.mk_context param
                       
 let callZ3 z3expr =
   let open Format in
-  (* let _ = printf "callZ3: %s@." (Z3.Expr.to_string z3expr) in *)
+  let _ = printf "callZ3: %s@." (Z3.Expr.to_string z3expr) in
   Z3.Solver.push !solver;
   Z3.Solver.add !solver [z3expr];
   let st = Z3.Solver.check !solver [] in
-  (* let _ = printf "reply:%s@." (Z3.Solver.string_of_status st) in *)
+  let _ = printf "reply:%s@." (Z3.Solver.string_of_status st) in
   let res =
     match st with
     | Z3.Solver.UNSATISFIABLE ->
@@ -388,3 +388,15 @@ let%test _ =
 let pp_model fmt m =
   (* fprintf fmt "%s" (Z3.Model.to_string m) *)
   fprintf fmt "%s" (Z3.Expr.to_string (expr_of_model m))
+
+let is_valid t =
+  let res = callZ3 (mk_not t) in
+  match res with
+  | `Sat _ | `Unknown -> false
+  | `Unsat -> true
+
+(* Predicate symbols and their arities for atomic predicates. *)
+let atomic_pred_constructors =
+  [("=", 2)]
+           
+    
