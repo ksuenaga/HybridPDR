@@ -112,33 +112,51 @@ let to_vcgen_total (hs : SpaceexComponent.t) : vcgen_total =
   (* let open DischargeVC in*)
   let ret ~(is_continuous:bool) ~(pre:frame) ~(post:frame) ~(candidate:ce) =
     let loc,e,_ = candidate in
-    let transitions = MySet.filter ~f:(fun t -> t.target = loc) hs.transitions in
-    MySet.fold
-      ~init:[]
-      ~f:(fun vcs t ->
-        let open Z3Intf in
-        let srcloc = Env.find_exn hs.locations t.source in
-        let tgtloc = Env.find_exn hs.locations t.target in
-        let dynamics,inv_pre = srcloc.flow,srcloc.inv in
-        let inv_post = tgtloc.inv in
-        let pre_source = Frame.find_exn pre t.source in
-        (* let post_target = Env.find_exn post t.target in *)
-        let post_target = mk_and inv_post (mk_and (Frame.find_exn post t.target) e) in
-        let wp : Z3.Expr.expr =
-          if is_continuous then
-            post_target
-          else
+    if is_continuous then
+      let open Z3Intf in
+      let srcloc = Env.find_exn hs.locations loc in
+      let dynamics,inv = srcloc.flow,srcloc.inv in
+      let pre = Frame.find_exn pre loc in
+      let post = mk_and inv (mk_and (Frame.find_exn post loc) e) in
+      [{pre_loc_total=loc;
+        post_loc_total=loc;
+        pre_total=pre;
+        post_total=post;
+        dynamics_total=dynamics;
+        inv_total=inv}]
+    else
+      let transitions = MySet.filter ~f:(fun t -> t.target = loc) hs.transitions in
+      MySet.fold
+        ~init:[]
+        ~f:(fun vcs t ->
+          let open Z3Intf in
+          let srcloc = Env.find_exn hs.locations t.source in
+          (* let tgtloc = Env.find_exn hs.locations t.target in *)
+          (* Because the information on the jump is already reflected by the wp computation, tgtloc=srcloc *)
+          let tgtloc = srcloc in
+          let dynamics,inv_pre = srcloc.flow,srcloc.inv in
+          (* let inv_post = tgtloc.inv in *)
+          let pre_source : Z3.Expr.expr = Frame.find_exn pre t.source in
+          (* let post_target = Env.find_exn post t.target in *)
+          (* let post_target = mk_and inv_post (mk_and (Frame.find_exn post t.target) e) in *)
+          let post_target = e in
+          let wp : Z3.Expr.expr =
             mk_and t.guard (SpaceexComponent.wp_command_z3 t.command post_target)
-        in
-        {pre_loc_total=t.source; post_loc_total=t.target; pre_total=pre_source; post_total=wp; dynamics_total=dynamics; inv_total=inv_pre}::vcs
-      )
-      transitions
-      (* E.raise (E.of_string "to_vcgen: not implemented") *)
+          in
+          {pre_loc_total=srcloc.id;
+           post_loc_total=tgtloc.id;
+           pre_total=pre_source;
+           post_total=wp;
+           dynamics_total=dynamics;
+           inv_total=inv_pre}::vcs
+        )
+        transitions
+        (* E.raise (E.of_string "to_vcgen: not implemented") *)
   in
   ret
 
 let rec backward_simulation
-          ?(discretization_rate = 0.01)
+          ~(discretization_rate : float)
           ~(pre_loc : SpaceexComponent.id)
           ~(post : Z3.Expr.expr)
           ~(flow : SpaceexComponent.flow)
@@ -218,7 +236,7 @@ let%test _ =
                (mk_eq (mk_real_var "x") (mk_real_numeral_float 2.0))) in
   let res =
     backward_simulation
-      ~discretization_rate:0.01
+      ~discretization_rate:1.0
       ~pre_loc:(SpaceexComponent.id_of_string "1")
       ~post:post
       ~flow:(SpaceexComponent.parse_flow "y'==x & x'==-y")
@@ -263,7 +281,7 @@ let discharge_vc_total ~(triple:cont_triple_total) ~(idx_pre:int) =
   in
   let res =
     backward_simulation
-      ~discretization_rate:0.01
+      ~discretization_rate:!Config.default_discretization_rate
       ~pre_loc:triple.pre_loc_total
       ~post:triple.post_total
       ~flow:triple.dynamics_total
@@ -289,7 +307,7 @@ let discharge_vc_partial (vc:cont_triple_partial) =
   (* Check that vc.pre_partial is locally invariant. *)
   let prevfml =
     prev_time
-      ~discretization_rate:0.01
+      ~discretization_rate:!Config.default_discretization_rate
       ~flow:vc.flow_partial
       ~post:vc.pre_partial
   in

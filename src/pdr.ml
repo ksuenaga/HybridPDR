@@ -255,14 +255,16 @@ let rec explore_single_candidate_one_step
          ~init:[]
          ~f:(fun acc res ->
            match res with
-             Conflict(loc,intp,_) -> (loc,intp)::acc
+             Conflict(loc,intp,idx) -> (loc,intp,idx)::acc
            | _ -> failwith "explore_single_candidate_one_step: cannot happen.")
          res
      in
+     (*
      let () =
        printf "Conflict: Interpolant obtained@.";
        printf "Interpolant: %a@." Frame.pp_locfmls r
      in
+      *)
      propagated, `Conflict r
 (* | _ -> E.raise (E.of_string "explore_single_candidate_one_step: Cannot proceed.") *)
 
@@ -313,23 +315,27 @@ let rec exploreCE
               | `CEFound _ -> res
               *)
             end
-         | `Conflict l ->
-           (* All the l are `Conflict *)
+         | `Conflict (hd::_) ->
+            (* All the l are `Conflict *)
+            let locid,ceExpr,idx = hd in
             let () =
-              for i = 1 to idx do
-                t.(i) <- Frame.strengthen ~locfmls:l ~t:t.(i)
-              done;
-              if idx < Array.length t - 1 then
-                t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx)
+              for i = 1 to idx+1 do
+                t.(i) <- Frame.strengthen ~locfmls:[locid,ceExpr] ~t:t.(i)
+              done
+              (* if idx < Array.length t - 1 then
+               *   t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx) *)
             in
+            (*
             let () =
               (* printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames; *)
               printf "Strengthened with interpolant: %a@." Frame.pp_locfmls l;
               printf "At location: %a@." SpaceexComponent.pp_id loc;
               (* printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes; *)
             in
+             *)
             (* exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframes *)
-           exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:t
+            exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:t
+         | _ -> U.not_implemented "exploreCE"
        end
 (* E.raise (E.of_string "exploreCE: not implemented") *)
 (*
