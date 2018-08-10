@@ -72,7 +72,7 @@ type vcgen_total =
 let to_vcgen_partial (hs : SpaceexComponent.t) : vcgen_partial =
   let open Frame in
   let open SpaceexComponent in
-  let open DischargeVC in
+  (*let open DischargeVC in*)
   let ret ~(is_continuous : bool) ~(pre_loc : SpaceexComponent.id) ~(pre_fml : Z3.Expr.expr) ~(atomic : Z3.Expr.expr) =
     MySet.fold
       ~init:[]

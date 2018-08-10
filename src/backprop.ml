@@ -1,29 +1,43 @@
 
 (* Louis is in charge of this file! *)
 
-(*****************************************************************************
-	This module is used for backpropagation.
-	It determines whether or not a state n can be reached from a state n+1	 
-	using the reversed dynamics that led the state n to the state n+1.
-	SUCCESS : n+1 	reached 		n 	using 	reversed dynamics
-	FAILURE : n+1 	did NOT reach 	n 	using 	reversed dynamics
-*****************************************************************************)
+(*
+  This module is used for backpropagation.
+
+  It determines whether or not a state n (supposedly safe) can be reached from a state n+1 (unsafe)	 
+  To do so, we generate random unsafe final states:     get_random_unsafe_state
+  Then, we simulate its backpropagation:                simul_backprop
+  We can also check if the invariant is respected:      discretize
+
+  We finally return the result:
+  SUCCESS : n+1 (unsafe)     reached            n       ->      n is actually not safe       
+  FAILURE : n+1 (unsafe)     did NOT reach 	n       ->      n can be safe
+ *)
 
 open Core_kernel
 module E = Error
 open Format
 
-(* expected result for the function backprop *)
+(* expected result for the main function backprop *)
 type result =
-  | Succeed of SpaceexComponent.id * Z3.Expr.expr   	(* ID AND formula of the reached state *)
+  | Succeed of SpaceexComponent.id * Z3.Expr.expr   	(* ID AND state of the reached unsafe state *)
   | Unsuccessful				      	(* might as well send more information *)
 
-(* definition of utility function: get_inv_dynam *)
+(* return type for the methods discretize and simul_backprop *)
+type resultSimul =
+  | Possible of Z3.Expr.expr
+  | Unpossible
+
+(* 
+   get_inv_dynam 
+   determine the inverted dynamics from the original dynamics orig_dynam
+   EDIT: not used for now, might be usefull later
+ *)
+(*
 let get_inv_dynam (locs:SpaceexComponent.id list) (orig_dynam:SpaceexComponent.flow) : SpaceexComponent.flow = 
-  (* determine the inverted dynamics from the original dynamics orig_dynam *)
   let open Env in
   let open Z3Intf in
-  let flow_exp_list = List.map ~f:(fun x -> Env.find_exn orig_dynam (SpaceexComponent.string_of_id x)) locs in  (* x or x' ?  *)
+  let flow_exp_list = List.map ~f:(fun x -> Env.find_exn orig_dynam (SpaceexComponent.string_of_id x)) locs in
   let flow_exp_list = List.map ~f:(fun x -> Z3Intf.mk_neg x) flow_exp_list in
   let inv_dynam =
     List.fold2_exn
@@ -33,15 +47,15 @@ let get_inv_dynam (locs:SpaceexComponent.id list) (orig_dynam:SpaceexComponent.f
       ~f:(fun env k z3 -> Env.add (SpaceexComponent.string_of_id k) z3 env)
   in
   inv_dynam
-(* E.raise (E.of_string "get_inv_dynam: not implemented.") *)
+ *)
 
+(* exception defined in case of issue with the unsafe_fml *)
 exception CannotSample of Z3.Expr.expr
-  
-(* definition of utility function: random_point *)
-(* let get_unsafe_fml (unsafe_region:Z3.Expr.expr) : Z3.Expr.expr = *)
-  (* find the formula corresponding to an unsafe state *)
-  (* sample point(s) from unsafe_region *)
 
+(* 
+   get_random_unsafe_state
+   generates an unsafe state according to the unsafe formula
+ *)
 let get_random_unsafe_state (unsafe_fml:Z3.Expr.expr) : Z3.Expr.expr =
   let open Z3Intf in
   let p = callZ3 unsafe_fml in
@@ -49,33 +63,70 @@ let get_random_unsafe_state (unsafe_fml:Z3.Expr.expr) : Z3.Expr.expr =
   | `Sat m -> expr_of_model m
   | `Unsat | `Unknown -> raise (CannotSample unsafe_fml)
 
-(* definition of utility function: simul_backprop *)
-let simul_backprop (inv_dynam:SpaceexComponent.flow) (unsafe_state:Z3.Expr.expr) : result =
-  (* simulate backpropagation for a given state and dynamics *)
-  E.raise (E.of_string "simul_backprop: not implemented.")
-
-(*
-(* definition of utility function: loop_simul *)
-let rec loop_simul (dynam:SpaceexComponent.flow) unsafe_states : result =
-(* simulate backpropagation for a list of states *)
-  match unsafe_states with
-  | [] -> Unsuccessful
-  | x::l -> 
-    let backprop_result = simul_backprop dynam x in
-    if backprop_result = Succeed then backprop_result else loop_simul dynam l 
-
-  E.raise (E.of_string "simul_backprop: not implemented.")
-  *)
+(* 
+   discretize
+   checks whether or not the invariant is respected all allong the backpropagation process
+ *)
+let rec discretize (dynamics:SpaceexComponent.flow) (unsafe_state:Z3.Expr.expr) (inv:Z3.Expr.expr) (discretization_it:int) (discretization_rate:float) : resultSimul =
+  let open Z3Intf in
+  let discret = ref (SpaceexComponent.prev_time discretization_rate dynamics unsafe_state) in
+  let checkConflict = callZ3 (mk_and inv !discret) in
+   match checkConflict with
+   | `Sat m -> if (discretization_it > 0) then
+                    discretize dynamics !discret inv (discretization_it - 1) discretization_rate
+                  else
+                    Possible(!discret)
+   | `Unsat | `Unknown -> Unpossible   
+                       
+(* 
+   simul_backprop 
+   tries to back propagate a final state from an unsafe formula to an initial state from a safe formula
+ *)
+let rec simul_backprop (dynamics:SpaceexComponent.flow) (unsafe_fml:Z3.Expr.expr) (pre_fml:Z3.Expr.expr) (inv:Z3.Expr.expr) (tryTimes:int) (discretization_rate:float) : resultSimul =
+  let open Z3Intf in
+  let unsafe_state = get_random_unsafe_state unsafe_fml in
+  let simul = discretize dynamics unsafe_state inv (1/(int_of_float discretization_rate)) discretization_rate in
+  match simul with
+  | Possible backpropagated ->
+                begin 
+                  let compare = callZ3 (mk_and pre_fml backpropagated) in
+                  match compare with
+                  | `Sat m -> Possible(expr_of_model m)
+                  | `Unsat | `Unknown -> if (tryTimes > 0)
+                              then simul_backprop dynamics (mk_and (mk_not unsafe_state) unsafe_fml) pre_fml inv (tryTimes-1) discretization_rate
+                              else Unpossible
+                end
+  | Unpossible -> if (tryTimes > 0)
+                  then simul_backprop dynamics (mk_and (mk_not unsafe_state) unsafe_fml) pre_fml inv (tryTimes-1) discretization_rate
+                  else Unpossible               
   
-(* definition of main function: backprop *)
-let backprop ~(locs:SpaceexComponent.id list) ~(pre:SpaceexComponent.id) ~(post:SpaceexComponent.id) ~(pre_fml:Z3.Expr.expr) ~(post_fml:Z3.Expr.expr) ~(dynamics:SpaceexComponent.flow) ~(inv:Z3.Expr.expr) ~(safe:Z3.Expr.expr) : result =		        
-      (* ID of state n *)  (* ID of state n+1 *)  (* formula for state n *)  (* formula for state n+1 *)  (* dynamics used to go from n to n+1 *)  (* invariant *)
+(* 
+   definition of main function: backprop 
+ *)
+let backprop ~(pre:SpaceexComponent.id) ~(pre_fml:Z3.Expr.expr) ~(post_fml:Z3.Expr.expr) ~(dynamics:SpaceexComponent.flow) ~(inv:Z3.Expr.expr) ~(safe:Z3.Expr.expr) ~(tryTimes:int) ~(discretization_rate:float) : result =		        
+  let open SpaceexComponent in
+  let open Z3Intf in
+  let unsafe_fml = mk_and (mk_not safe) post_fml in
+  let backprop_result = simul_backprop dynamics unsafe_fml pre_fml inv tryTimes discretization_rate  in
+  match backprop_result with
+  | Possible p -> Succeed(pre,p)
+  | Unpossible -> Unsuccessful
+
+
+(* 
+   definition of main function: backprop 
+   EDIT: this version is using the get_inv_dynam method and is therefore NOT VALID currently 
+ *)
+                    (*
+let backprop ~(locs:SpaceexComponent.id list) ~(pre:SpaceexComponent.id) ~(post:SpaceexComponent.id) ~(pre_fml:Z3.Expr.expr) ~(post_fml:Z3.Expr.expr) ~(dynamics:SpaceexComponent.flow) ~(inv:Z3.Expr.expr) ~(safe:Z3.Expr.expr) ~(tryTimes:int) (discretization_rate:float) : result =		        
   let open SpaceexComponent in
   let open Z3Intf in
   let inv_dynam = get_inv_dynam locs dynamics in
   let unsafe_fml = mk_and (mk_not safe) post_fml in
-  let backprop_result = simul_backprop inv_dynam (get_random_unsafe_state unsafe_fml) in
-  backprop_result
-    (* E.raise (E.of_string "backprop: not implemented.") *)
+  let backprop_result = simul_backprop inv_dynam unsafe_fml pre_fml inv tryTimes discretization_rate  in
+  match backprop_result with
+  | Possible p -> Succeed(pre,p)
+  | Unpossible -> Unsuccessfu
+                     *)
     
 
