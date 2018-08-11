@@ -38,11 +38,12 @@ let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr
   let _ = printf "Initial condition: %s@." (Z3.Expr.to_string init) in
   let _ = printf "Safe region: %s@." (Z3.Expr.to_string safe) in
   (* Setup frames *)
-  let locs = locations model in
-  let t = Pdr.init locs init_id init safe in
+  (* let locs = locations model in *)
+  (* let t = Pdr.init model init_id init safe in *)
   (* let _ = printf "verify: %a@." Pdr.pp_frames t in *)
-  let result = Pdr.verify ~hs:model ~locs:locs ~vcgen_partial:(DischargeVC.to_vcgen_partial model) ~vcgen_total:(DischargeVC.to_vcgen_total model) ~safe:safe ~candidates:[] ~frames:t ~iteration_num:0 in
+  (* let result = Pdr.verify ~hs:model ~locs:locs ~vcgen_partial:(DischargeVC.to_vcgen_partial model) ~vcgen_total:(DischargeVC.to_vcgen_total model) ~safe:safe ~candidates:[] ~frames:t ~iteration_num:0 in *)
   (* let result = printf "result:%a@." Pdr.pp_result result in *)
+  let result = Pdr.verify ~hs:model ~initloc:init_id ~safe:safe ~init:init in
   result
 
 (* Output the result *)

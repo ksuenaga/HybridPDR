@@ -1,54 +1,68 @@
 open Core_kernel
 open Format
+module S = SpaceexComponent
 
-type pre_frame = (SpaceexComponent.id,Cnf.t) Env.t [@@deriving show]
-let pp_pre_frame fmt (pre:pre_frame) =
-  Env.fold
-    ~init:()
-    ~f:(fun _ (id,cnf) ->
-      fprintf fmt "(%a -> %a) " SpaceexComponent.pp_id id Cnf.pp cnf)
-    pre
-  
-type frame = pre_frame [@@deriving show]
-module E = Error
+type 'a frame = (S.id,'a) Env.t
+
+let pp_frame pf fmt frame =
+  fprintf fmt "%a" (Env.pp S.pp_id pf) frame
            
+module E = Error
+
+let lift (locs:S.id list) (v : 'a) : 'a frame =
+  List.fold_left
+    ~init:Env.empty
+    ~f:(fun e (l:S.id) -> Env.add l v e)
+    locs
+
+let find (frame:'a frame) (loc:S.id) : 'a = Env.find_exn frame loc
+  
+let apply_on_id (f : 'a -> 'a) (id:S.id) (frame:'a frame) : 'a frame =
+  let e = find frame id in
+  Env.add id (f e) frame
+
+let apply (f : 'a -> 'b) (frame:'a frame) : 'b frame =
+  Env.map f frame
+
+let apply2 (f : 'a -> 'b -> 'c) (frame1:'a frame) (frame2:'b frame) : 'c frame =
+  Env.map2 f frame1 frame2
+
+let fold ~(init : 'b) ~(f : 'b -> 'a -> 'b) (frame:'a frame) : 'b =
+  let open Z3Intf in
+  Env.fold ~init:init ~f:(fun e1 (_,e2) -> f e1 e2) frame
+    
+(*         
 let extract_atomics (f:frame) =
   Env.fold
     ~init:[]
     ~f:(fun acc (loc,c) ->
       (List.map ~f:(fun c -> (loc,c)) (ParseFml.extract_atomics c)) @ acc)
     f
-
-let frame_and_cnf (frame:frame) d =
-  Env.map ~f:(fun c -> Z3Intf.simplify (Z3Intf.mk_and c d)) frame
-
-let frame_lift (locs:SpaceexComponent.id list) (cnf : Cnf.t) : frame =
-  List.fold_left
-    ~init:Env.empty
-    ~f:(fun e (l:SpaceexComponent.id) -> Env.add l cnf e)
-    locs
+  
 let frame_lift_given_id
-      (locs:SpaceexComponent.id list)
-      (id:SpaceexComponent.id)
+      (locs:S.id list)
+      (id:S.id)
       (cnf:Cnf.t)
     : frame =
   let default = frame_lift locs Z3Intf.mk_false in
   Env.add id cnf default
+  
 let equal f1 f2 = Env.equal f1 f2
 
 let pp_locfml fmt (id,e) =
-  fprintf fmt "loc %a: %s" SpaceexComponent.pp_id id (Z3.Expr.to_string e)
+  fprintf fmt "loc %a: %s" S.pp_id id (Z3.Expr.to_string e)
+  
 let pp_locfmls fmt l =
   fprintf fmt "%a" (Util.pp_list pp_locfml) l
                 
-let strengthen ~(locfmls:(SpaceexComponent.id*Z3.Expr.expr) list) ~(t:frame) : frame =
+let strengthen ~(locfmls:(S.id*Z3.Expr.expr) list) ~(t:frame) : frame =
   let ret =
     List.fold_left
       ~init:t
       ~f:(fun frame (loc,fml) ->
         (*
         let _ = printf "before frame: %a@." pp_frame frame in
-        let _ = printf "loc: %a@." SpaceexComponent.pp_id loc in
+        let _ = printf "loc: %a@." S.pp_id loc in
          *)
         let p = Env.find_exn t loc in
         (* let fml = Cnf.cnf_lift_atomic (Cnf.z3_to_atomic fml) in *)
@@ -67,19 +81,35 @@ let strengthen ~(locfmls:(SpaceexComponent.id*Z3.Expr.expr) list) ~(t:frame) : f
   (* let _ = printf "Returned frame: %a@." pp_frame ret in *)
   ret
 
-let mk_pf_from_assoclist l : pre_frame =
+let from_assoclist l : frame =
   List.fold_left
     ~init:Env.empty
     ~f:(fun env (l,cnf) ->
       Env.add l cnf env
     )
     l
+                                          
+let is_valid_implication_frame (e1:frame) (e2:frame) =
+  Env.fold2
+    e1 e2
+    ~init:`Valid
+    ~f:(fun res (loc1,c1) (loc2,c2) ->
+      assert(loc1=loc2);
+      match res with
+      | `Valid | `NotValidNoModel ->
+         Cnf.is_valid_implication loc1 c1 c2
+      | `NotValid (loc,m) -> `NotValid (loc,m))
+
+let is_valid_implication_cnf (e:frame) (c:Cnf.t) =
+  let locs = Env.domain e in
+  is_valid_implication_frame e (frame_lift locs c)
+
   
 let%test _ =
   let open Z3Intf in
-  let open SpaceexComponent in
+  let open S in
   let pf =
-    mk_pf_from_assoclist
+    from_assoclist
       [(id_of_string "1", Z3Intf.mk_true);
        (id_of_string "2", Z3Intf.mk_false)]
   in
@@ -100,20 +130,4 @@ let%test _ =
   in
   Z3Intf.expr_equal e1' e2'
 
-let find_exn frame loc = Env.find_exn frame loc
-                                          
-let is_valid_implication_frame (e1:frame) (e2:frame) =
-  Env.fold2
-    e1 e2
-    ~init:`Valid
-    ~f:(fun res (loc1,c1) (loc2,c2) ->
-      assert(loc1=loc2);
-      match res with
-      | `Valid | `NotValidNoModel ->
-         Cnf.is_valid_implication loc1 c1 c2
-      | `NotValid (loc,m) -> `NotValid (loc,m))
-
-let is_valid_implication_cnf (e:frame) (c:Cnf.t) =
-  let locs = Env.domain e in
-  is_valid_implication_frame e (frame_lift locs c)
-
+ *)

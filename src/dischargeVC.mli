@@ -1,9 +1,14 @@
+
+module S = SpaceexComponent
+
+type ce = S.id * Z3.Expr.expr * int
+val pp_ce : Format.formatter -> ce -> unit
+                                        
+(*
 type cont_triple_partial
 type cont_triple_total
 
 type index = int (* Index for the frames. *) [@@deriving show]
-type ce = SpaceexComponent.id * Z3.Expr.expr * index
-val pp_ce : Format.formatter -> ce -> unit
 
 type vcgen_partial = is_continuous:bool ->
                      pre_loc:SpaceexComponent.id ->
@@ -32,3 +37,4 @@ val to_vcgen_total : SpaceexComponent.t -> vcgen_total
 val pp_propagated_conflict : Format.formatter -> result -> unit
 
 val pp_cont_triple_partial : Format.formatter -> cont_triple_partial -> unit
+ *)

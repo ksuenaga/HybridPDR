@@ -1,7 +1,14 @@
 open Core_kernel
 open Format
 
+module S = SpaceexComponent
 module E = Error
+
+type ce = S.id * Z3.Expr.expr * int
+let pp_ce fmt (loc,e,idx) =
+  fprintf fmt "At location %a, at frame %d, CE: %a" SpaceexComponent.pp_id loc idx Z3Intf.pp_expr e
+
+(*
 
 type cont_triple_partial =
   { pre_loc_partial : SpaceexComponent.id;
@@ -21,9 +28,6 @@ type cont_triple_total =
     inv_total : Z3.Expr.expr }
 
 type index = int (* Index for the frames. *) [@@deriving show]
-type ce = SpaceexComponent.id * Z3.Expr.expr * index
-let pp_ce fmt (loc,e,idx) =
-  fprintf fmt "At location %a, at frame %d, CE: %a" SpaceexComponent.pp_id loc idx Z3Intf.pp_expr e
   
 type result =
   Conflict of ce
@@ -326,4 +330,5 @@ let discharge_vc_partial (vc:cont_triple_partial) =
     Util.not_implemented "discharge_vc_total"
   else
     false
+   *)
    *)

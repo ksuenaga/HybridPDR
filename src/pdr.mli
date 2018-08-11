@@ -1,18 +1,22 @@
-(*
-type vcgen_partial (* [@@deriving show] *)
-type vcgen_total (* [@@deriving show] *)
- *)
+open Format
+
+module S = SpaceexComponent
+
 type frames
 type result =
   | Ok of frames
   | Ng of DischargeVC.ce
+val pp_result : formatter -> result -> unit
 
-        (*
+(* init l initfml safefml returns the initial frames.  l is the id of the initial state. *)
+(* val init : hs:S.t -> initloc:S.id -> init:Z3.Expr.expr -> safe:Z3.Expr.expr -> frames *)
+
+val verify : hs:S.t -> initloc:S.id -> init:Z3.Expr.expr -> safe:Z3.Expr.expr -> result
+                                                            (*
+type vcgen_partial (* [@@deriving show] *)
+type vcgen_total (* [@@deriving show] *)
 val to_vcgen_partial : SpaceexComponent.t -> vcgen_partial
 val to_vcgen_total : SpaceexComponent.t -> vcgen_total
-         *)
-(* init l initfml safefml returns the initial frames.  l is the id of the initial state. *)
-val init : SpaceexComponent.id list -> SpaceexComponent.id -> Cnf.t -> Cnf.t -> frames
 
 val verify : locs:SpaceexComponent.id list ->
              hs:SpaceexComponent.t ->
@@ -25,4 +29,5 @@ val verify : locs:SpaceexComponent.id list ->
              result
   
 val pp_result : Format.formatter -> result -> unit
-                                                
+         *)
+

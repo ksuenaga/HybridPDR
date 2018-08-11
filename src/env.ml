@@ -18,6 +18,8 @@ let find_exn l k = List.Assoc.find_exn l ~equal:(=) k
                  
 let fold ~init ~f env = List.fold_left ~init:init ~f:f env
 let map ~f env = List.map ~f:(fun (x,v) -> (x,f v)) env
+let map2 ~(f:'value1->'value2->'value3) (env1:('key,'value1) t) (env2:('key,'value2) t) : ('key,'value3) t =
+  List.map2_exn ~f:(fun (x1,v1) (x2,v2) -> assert(x1=x2); (x1,f v1 v2)) env1 env2
 
 let sort_by_key env = List.sort ~compare:(fun (k1,_) (k2,_) -> compare k1 k2) env
                
