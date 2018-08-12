@@ -263,10 +263,10 @@ let%test_module _ =
      let circleTTrans = circleTComp.transitions
      let%test _ =
        let trans12 = MySet.find_exn circleTTrans ~f:(fun t -> t.source = "1" && t.target = "2") in
-       trans12.label = "hop" && trans12.guard = Cnf.parse "y<=0" && trans12.command = empty_command
+       trans12.label = "hop" && trans12.guard = Cnf.parse "y<0" && trans12.command = empty_command
      let%test _ =
        let trans21 = MySet.find_exn circleTTrans ~f:(fun t -> t.source = "2" && t.target = "1") in
-       trans21.label = "hop" && trans21.guard = Cnf.parse "y>=0" && trans21.command = empty_command
+       trans21.label = "hop" && trans21.guard = Cnf.parse "y>0" && trans21.command = empty_command
    end)
 
 (* let substitute syms exprs e =
@@ -302,8 +302,10 @@ let wp_command_z3 (cmd:command) (e:Z3.Expr.expr) =
 
 let prev_time ~(discretization_rate:float) ~(flow:flow) ~(post:Z3.Expr.expr) : Z3.Expr.expr =
   let open Z3Intf in
-  (* let _ = eprintf "flow(forward):%a@." pp_flow flow in *)
-  (* let _ = eprintf "post:%s@." (Z3.Expr.to_string post) in *)
+  (*
+  let _ = eprintf "flow(forward):%a@." pp_flow flow in
+  let _ = eprintf "post:%s@." (Z3.Expr.to_string post) in
+   *)
   let xs,es =
     Env.fold
       ~init:([],[])
@@ -326,4 +328,3 @@ let prev_time ~(discretization_rate:float) ~(flow:flow) ~(post:Z3.Expr.expr) : Z
 let parse_flow s : flow =
   let flow = List.fold_left ~f:(fun flow (k,v) -> Env.add k v flow) ~init:empty_flow (ParseFml.parse_flow s) in
   flow
-                         

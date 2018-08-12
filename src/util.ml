@@ -5,11 +5,14 @@ let debug pref s =
   printf "Debug(%s):@[%s@]@\n@." pref s
 
 (* lightweight pp_print_list *)
-let rec pp_list pp_elm fmt l =
+let rec pp_list pp_elm ?(sep=format_of_string "@.") () fmt l =
   match l with
     [] -> ()
-  | [hd] -> fprintf fmt "%a@." pp_elm hd
-  | hd::tl -> fprintf fmt "%a@.%a@." pp_elm hd (pp_list pp_elm) tl
+  | [hd] -> fprintf fmt "%a" pp_elm hd
+  | hd::tl ->
+     fprintf fmt "%a" pp_elm hd;
+     fprintf fmt sep;
+     fprintf fmt "%a" (pp_list pp_elm ~sep ()) tl
 
 let pp_option pp_elm fmt opt =
   match opt with
@@ -21,7 +24,7 @@ let not_implemented msg =
   E.raise (E.of_string ("not implemented:" ^ msg))
 
 let pp_array pp_elm fmt a =
-  fprintf fmt "%a" (pp_list pp_elm) (Array.to_list a)
+  fprintf fmt "%a" (pp_list pp_elm ()) (Array.to_list a)
 
 let pp_pair pp1 pp2 fmt p =
   match p with

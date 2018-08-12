@@ -27,9 +27,13 @@ let apply (f : 'a -> 'b) (frame:'a frame) : 'b frame =
 let apply2 (f : 'a -> 'b -> 'c) (frame1:'a frame) (frame2:'b frame) : 'c frame =
   Env.map2 f frame1 frame2
 
-let fold ~(init : 'b) ~(f : 'b -> 'a -> 'b) (frame:'a frame) : 'b =
+let fold ~(init : 'b) ~(f : 'b -> S.id * 'a -> 'b) (frame:'a frame) : 'b =
   let open Z3Intf in
-  Env.fold ~init:init ~f:(fun e1 (_,e2) -> f e1 e2) frame
+  Env.fold ~init:init ~f:(fun e1 (k,e2) -> f e1 (k,e2)) frame
+
+let fold2 ~(init : 'b) ~(f : 'b -> S.id * 'a -> S.id * 'a -> 'b) (frame1:'a frame) (frame2:'a frame) : 'b =
+  let open Z3Intf in
+  Env.fold2 ~init:init ~f:(fun b (k1,e1) (k2,e2) -> assert(k1=k2); f b (k1,e1) (k2,e2)) frame1 frame2
     
 (*         
 let extract_atomics (f:frame) =

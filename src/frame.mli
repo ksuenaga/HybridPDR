@@ -10,7 +10,8 @@ val pp_frame : (formatter -> 'a -> unit) -> formatter -> 'a frame -> unit
 val apply : ('a -> 'b) -> 'a frame -> 'b frame
 val apply2 : ('a -> 'b -> 'c) -> 'a frame -> 'b frame -> 'c frame
 val apply_on_id : ('a -> 'a) -> S.id -> 'a frame -> 'a frame
-val fold : init:'b -> f:('b -> 'a -> 'b) -> 'a frame -> 'b
+val fold : init:'b -> f:('b -> S.id * 'a -> 'b) -> 'a frame -> 'b
+val fold2 : init:'b -> f:('b -> S.id * 'a -> S.id * 'a -> 'b) -> 'a frame -> 'a frame -> 'b
                                                                        
 (*
 val extract_atomics : frame -> (SpaceexComponent.id * Cnf.t) list
