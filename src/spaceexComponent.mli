@@ -30,6 +30,8 @@ type t =
 
 val parse_from_channel : Core.In_channel.t -> t list
 
+val command_is_empty : command -> bool
+  
 val wp_command : command -> Cnf.t -> Cnf.t
 val wp_command_z3 : command -> Z3.Expr.expr -> Z3.Expr.expr
 
@@ -42,3 +44,7 @@ val pp_flow : Format.formatter -> flow -> unit
 val prev_time : discretization_rate:float -> flow:flow -> post:Z3.Expr.expr -> Z3.Expr.expr
 
 val parse_flow : string -> flow
+
+val invert_flow : flow -> flow
+
+val find_trans : src:id -> tgt:id -> t -> trans

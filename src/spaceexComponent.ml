@@ -21,6 +21,8 @@ let string_of_id s = s
 (* Assignments *)
 type command = (id,Z3.Expr.expr) Env.t
 let empty_command = Env.empty
+let command_is_empty c =
+  Env.equal c empty_command
 
 let pp_command fmt cmd =
   fprintf fmt "%a" (Env.pp pp_id (fun fmt e -> fprintf fmt "%s" (Z3.Expr.to_string e))) cmd
@@ -72,6 +74,11 @@ let add_command command_s trans =
   let (x,e) = ParseFml.parse_assignment command_s in
   Env.{ trans with command = add x e trans.command }
 
+let find_trans ~src ~tgt t =
+  MySet.find_exn
+    ~f:(fun trans -> trans.source = src && trans.target = tgt)
+    t.transitions
+  
 (**************** Aux ****************)
 
 (* Parsing according to the grammar (RelaxNG def.): Appendix A in http://spaceex.imag.fr/sites/default/files/spaceex_modeling_language_0.pdf *)
@@ -328,3 +335,9 @@ let prev_time ~(discretization_rate:float) ~(flow:flow) ~(post:Z3.Expr.expr) : Z
 let parse_flow s : flow =
   let flow = List.fold_left ~f:(fun flow (k,v) -> Env.add k v flow) ~init:empty_flow (ParseFml.parse_flow s) in
   flow
+
+let invert_flow (f : flow) : flow =
+  let open Z3Intf in
+  Env.map
+    ~f:(fun (_,e) -> mk_neg e)
+    f

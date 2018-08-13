@@ -52,7 +52,7 @@ let rec elim_dyn_iter ~acc flow inv (t:Z3.Expr.expr) =
     | `Unknown ->
        E.raise (E.of_string "elim_dyn_iter: got stuck")
        *)
-let rec elim_dyn t =
+let rec dl_elim_dyn t =
   (* let () = printf "elim_dyn: %a@." pp t in *)
   let open Z3Intf in
   match t with
@@ -61,21 +61,21 @@ let rec elim_dyn t =
      List.fold_left
        ~init:mk_true
        ~f:(fun z t ->
-         mk_and z (elim_dyn t))
+         mk_and z (dl_elim_dyn t))
        ts |> simplify
   | Or ts ->
      List.fold_left
        ~init:mk_false
        ~f:(fun z t ->
-         mk_or z (elim_dyn t))
+         mk_or z (dl_elim_dyn t))
        ts |> simplify
   | Dyn(flow,inv,t') ->
      let () = printf "Eliminating: %a@." pp t in
-     let t' = elim_dyn t' in
+     let t' = dl_elim_dyn t' in
      let res = simplify (elim_dyn_iter ~acc:t' flow inv t') in
      let () = printf "Elimed: %a@." pp_expr res in
      res
            
 let dl_discharge t = 
   let open Z3Intf in
-  elim_dyn t |> callZ3
+  dl_elim_dyn t |> callZ3

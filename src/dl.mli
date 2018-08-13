@@ -12,3 +12,4 @@ val mk_dl_and : t -> t -> t
 val mk_dl_or : t -> t -> t
 
 val dl_discharge : t -> [> `Sat of Z3.Model.model | `Unknown | `Unsat ]
+val dl_elim_dyn : t -> Z3.Expr.expr

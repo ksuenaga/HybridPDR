@@ -76,7 +76,7 @@ let wp ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
         (* [XXX] Really? mk_and or mk_implies? *)
         let guard = t.guard in
         let cmd = t.command in
-        let post_z3_pre = mk_implies guard (wp_command_z3 cmd post_z3) in
+        let post_z3_pre = mk_and guard (wp_command_z3 cmd post_z3) in
         (* [XXX] Really? mk_dl_and or mk_dl_or? *)
         apply_on_id (fun e -> mk_dl_or e (mk_dl_dyn srcloc.flow srcloc.inv (mk_dl_prim post_z3_pre))) srcid l)
       hs.transitions
@@ -110,8 +110,54 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
 let propagate_clauses ~(frames:frames) : frames =
   U.not_implemented "extend_frontier"
 
-let resolve_conflict hs preframe wpframe loc idx : frames =
-  U.not_implemented "resolve_conflict"
+let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
+  let open Z3Intf in
+  let () = printf "(** resolve_conflict **)@." in
+  let () = printf "Frame %d at location %a@." idx S.pp_id loc in
+  let () = printf "preframe: %a@." (F.pp_frame pp_expr) preframe in
+  let () = printf "eframe : %a@." (F.pp_frame pp_expr) eframe in
+  let locs = S.locations hs in
+  let not_ce = mk_not (Frame.find eframe loc) in
+  (* frame1 is the frame obtained by 
+     sp cmd (guard && [inverted_flow | inv]preframe) *)
+  let open Frame in
+  (* Returned frame of interpolants *)
+  let itp_frame = ref (lift locs mk_true) in
+  let () =
+    printf "Constructing frame1@.";
+    Frame.fold
+      ~init:()
+      ~f:(fun _ (loc',pre_z3expr) ->
+        let () = printf "loc' : %a, pre_z3expr: %a@." S.pp_id loc' pp_expr pre_z3expr in
+        try
+          let trans = S.find_trans ~src:loc' ~tgt:loc hs in
+          let () = printf "trans : %a@." S.pp_trans trans in
+          let preloc = Env.find_exn hs.locations loc' in
+          let preflow_inverted = S.invert_flow preloc.flow in
+          let preinv = preloc.inv in
+          let guard = trans.guard in
+          let () = printf "guard : %a@." pp_expr guard in
+          (* [XXX] Currently supports only the case where command is skip. *)
+          assert(S.command_is_empty trans.command);
+          let ret = Dl.mk_dl_and (Dl.mk_dl_prim guard) (Dl.mk_dl_dyn preflow_inverted preinv (Dl.mk_dl_prim pre_z3expr)) in
+          let ret = Dl.dl_elim_dyn ret in
+          let () = printf "ret: %a@." pp_expr ret in
+          let itp = interpolant ret not_ce in
+          match itp with
+          | `InterpolantFound(itp_z3) ->
+             let () = printf "itp: %a@." pp_expr itp_z3 in
+             itp_frame := apply_on_id (fun e -> mk_and e itp_z3) loc !itp_frame
+          | _ ->
+             U.not_implemented "resolve_conflict: interpolant"
+        with
+        | Not_found -> ()
+      )
+      preframe
+  in
+  let () = printf "itp_frame: %a@." (Frame.pp_frame Z3Intf.pp_expr) !itp_frame in
+  frames.(idx) <- apply2 mk_and frames.(idx) !itp_frame;
+  frames
+(* U.not_implemented "resolve_conflict" *)
   
 exception Counterexample of ce
 
@@ -153,7 +199,9 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
        let () = printf "propagated: %a@." (U.pp_list pp_ce ()) propagated in       
        match propagated with
        | [] ->
-          let newframes = resolve_conflict hs preframe wpframe loc idx in
+          let preframe = F.apply Dl.dl_elim_dyn preframe in
+          let newframes = resolve_conflict frames hs preframe eframe loc idx in
+          let () = printf "newframes: %a@." pp_frames newframes in
           remove_cti hs tl newframes
        | _ -> remove_cti hs (propagated @ cexs) frames
  

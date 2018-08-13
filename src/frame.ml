@@ -22,8 +22,11 @@ let apply_on_id (f : 'a -> 'a) (id:S.id) (frame:'a frame) : 'a frame =
   Env.add id (f e) frame
 
 let apply (f : 'a -> 'b) (frame:'a frame) : 'b frame =
-  Env.map f frame
+  Env.map (fun (_,v) -> f v) frame
 
+let apply_loc (f : S.id * 'a -> 'b) (frame:'a frame) : 'b frame =
+  Env.map (fun (loc,v) -> f (loc,v)) frame
+  
 let apply2 (f : 'a -> 'b -> 'c) (frame1:'a frame) (frame2:'b frame) : 'c frame =
   Env.map2 f frame1 frame2
 
