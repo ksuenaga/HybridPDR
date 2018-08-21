@@ -55,21 +55,22 @@ let wp ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
     cmd;
     { frame(t.post) }
    *)
-  if is_continuous then
-    List.fold_left
-      ~init:(lift locs (mk_dl_prim mk_true))
-      ~f:(fun acc locid ->
-        let loc = Env.find_exn hs.locations locid in
-        let post = Frame.find frame locid in
-        let wpcond = mk_dl_dyn loc.flow loc.inv (mk_dl_prim post) in
-        apply_on_id (mk_dl_and wpcond) locid acc)
-      locs
-  else
-    MySet.fold
-      ~init:(lift locs (mk_dl_prim mk_false))
-      ~f:(fun l t ->
-        let srcid = t.source in
-        let srcloc = Env.find_exn hs.locations srcid in
+  let ret =
+    if is_continuous then
+      List.fold_left
+        ~init:(lift locs (mk_dl_prim mk_true))
+        ~f:(fun acc locid ->
+          let loc = Env.find_exn hs.locations locid in
+          let post = Frame.find frame locid in
+          let wpcond = mk_dl_dyn loc.flow loc.inv (mk_dl_prim post) in
+          apply_on_id (mk_dl_and wpcond) locid acc)
+        locs
+    else
+      MySet.fold
+        ~init:(lift locs (mk_dl_prim mk_false))
+        ~f:(fun l t ->
+          let srcid = t.source in
+          let srcloc = Env.find_exn hs.locations srcid in
         let tgtid = t.target in
         (* let tgtloc = Env.find_exn hs.locations tgtid in *)
         let post_z3 = find frame tgtid in
@@ -79,8 +80,10 @@ let wp ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
         let post_z3_pre = mk_and guard (wp_command_z3 cmd post_z3) in
         (* [XXX] Really? mk_dl_and or mk_dl_or? *)
         apply_on_id (fun e -> mk_dl_or e (mk_dl_dyn srcloc.flow srcloc.inv (mk_dl_prim post_z3_pre))) srcid l)
-      hs.transitions
-                             
+        hs.transitions
+  in
+  ret
+  
 let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.Expr.expr) : frames =
   let open Z3Intf in
   let open Frame in
@@ -234,7 +237,7 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
     let () = printf "Strengthen: %d@." i in
     frames.(i) <- apply2 mk_and frames.(i) interpolants
   done;
-  frames
+  Array.map ~f:(apply simplify) frames
   (* Returned frame of interpolants *)
   (*
   let itp_frame = ref (lift locs mk_true) in
@@ -377,6 +380,7 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
   let () = printf "(* Iteration of verification: %d *)@." iteration_num in
   let () = printf "frames:%a@." pp_frames frames in
   try
+    let frames = Array.map ~f:(apply simplify) frames in
     let frames = extend_frontier ~frames ~safe ~hs in
     let frames = propagate_clauses ~hs ~frames in
     let k = Array.length frames in

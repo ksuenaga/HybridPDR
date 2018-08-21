@@ -41,7 +41,8 @@ let rec elim_dyn_iter ~acc flow inv (t:Z3.Expr.expr) =
   let open Z3Intf in
   let module S = SpaceexComponent in
   let tprev = mk_and inv (S.prev_time ~discretization_rate:1.0 ~flow:flow ~post:t) in
-  if is_valid (mk_implies tprev acc) then acc
+  if is_valid (mk_implies tprev acc) then
+    simplify acc
   else
     (* let res = callZ3 tprev in *)
     elim_dyn_iter ~acc:(mk_or acc tprev) flow inv tprev
