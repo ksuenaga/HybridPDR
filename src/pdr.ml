@@ -86,14 +86,22 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
   let open Frame in
   let open Dl in
   let locs = S.locations hs in
+  (* init@initloc *)
   let init_frame = lift locs mk_false |> apply_on_id (mk_or init) initloc in
+  (* safe@0 \/ ... \/ safe@locmax *)
   let safe_frame = lift locs safe in
   (* 0-step reachability *)
   let () = printf "(* Checking the safety of 0th frame *)@." in
-  let st0 = callZ3 (fold ~init:mk_true ~f:(fun z1 (_,z2) -> mk_and z1 z2)((apply2 mk_and) init_frame ((apply mk_not) safe_frame))) in
+  let st0 = callZ3 (fold ~init:mk_true ~f:(fun z1 (_,z2) -> mk_and z1 z2) ((apply2 mk_and) init_frame ((apply mk_not) safe_frame))) in
   (* 1-step reachability *)
   let () = printf "(* Checking the safety of 1st frame *)@." in
-  let st1 = dl_discharge (fold ~f:(fun d1 (_,d2) -> mk_dl_and d1 d2) ~init:(mk_dl_prim mk_true) ((apply2 mk_dl_and) (apply mk_dl_prim init_frame) (wp ~is_continuous:false hs ((apply mk_not) safe_frame)))) in
+  let st1 =
+    dl_discharge
+      (fold
+         ~f:(fun d1 (_,d2) -> mk_dl_and d1 d2)
+         ~init:(mk_dl_prim mk_true)
+         ((apply2 mk_dl_and) (apply mk_dl_prim init_frame) (wp ~is_continuous:false hs ((apply mk_not) safe_frame))))
+  in
   match st0,st1 with
   | `Unsat,`Unsat -> 
      [| init_frame;
@@ -107,8 +115,67 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
   | `Unknown, _ | _, `Unknown ->
      E.raise (E.of_string "init: unknown: Cannot proceed.")
 
-let propagate_clauses ~(frames:frames) : frames =
-  U.not_implemented "extend_frontier"
+let propagate_clauses ~(hs:S.t) ~(frames:frames) : frames =
+  (*
+  (* [XXX] We need this.  We also need to compute postimage (not simply computing invariant atomic formula. *)
+  (* i = Array.length - 1 is the remainder frame.  We don't do
+     induction from this i.  Therefore, to Array.length fs - 2. *)
+  let open Frame in
+  for i = 0 to Array.length frames - 2 do
+    let pre_frame = frames.(i) in
+    (* Returns [(l1,e1);...;(ln,en)] where (li,ei) means ei holds at location li. *)
+    let open Z3Intf in
+    let open SpaceexComponent in
+    let rec locally_invariant_atomics
+              ~(pre_frame:Z3.Expr.expr frame)
+              ~(atomics:(SpaceexComponent.id * Z3.Expr.expr) list)
+            : (SpaceexComponent.id * Z3.Expr.expr) list =
+      List.fold_left
+        ~init:[]
+        ~f:(fun acc (pre_loc,atomic) ->
+          let open Frame in
+          let pre_fml = find pre_frame pre_loc in
+          let () = printf "pre_fml: %a@." pp_expr pre_fml in
+          let vc = (Dl.mk_dl_prim atomic)
+          (*
+          let locvcs = vcgen_partial ~is_continuous:false ~pre_loc:pre_loc ~pre_fml:pre_fml ~atomic:atomic in
+          let () = printf "locvcs: %a@." (U.pp_list (U.pp_triple pp_cont_triple_partial pp_id pp_expr)) locvcs in
+          let filtered =
+            List.fold_left
+              ~init:[]
+              ~f:(fun acc (vc,l,atomic) ->
+                let res = DischargeVC.discharge_vc_partial vc in
+                if res then (l,atomic)::acc else acc)
+              locvcs
+          in
+           *)
+          filtered
+        )
+        atomics
+    in
+    let atomics : (SpaceexComponent.id * Z3.Expr.expr) list =
+      fold
+        ~init:[]
+        ~f:(fun acc (l,e) ->
+          let atomics = ParseFml.extract_atomics e in
+          let ret = List.map ~f:(fun e -> (l,e)) atomics in
+          ret @ acc)
+        frames.(i)
+    in
+    let () = printf "atomics:@[%a@]@." (U.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" S.pp_id l pp_expr e) ()) atomics in
+    let local_invs = locally_invariant_atomics ~pre_frame ~atomics in
+    let () = printf "local_invs:@[%a@]@." (Util.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" SpaceexComponent.pp_id l Z3Intf.pp_expr e) ()) local_invs in
+    for j = 1 to i + 1 do
+      List.iter
+        ~f:(fun inv -> frames.(j) <- Frame.apply (mk_and inv) frames.(j))
+        local_invs
+    done
+  done;
+  frames
+   *)
+  let () = printf "Propagate clause: not implemented." in
+  frames
+
 
 let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
   let open Z3Intf in
@@ -117,11 +184,59 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
   let () = printf "preframe: %a@." (F.pp_frame pp_expr) preframe in
   let () = printf "eframe : %a@." (F.pp_frame pp_expr) eframe in
   let locs = S.locations hs in
-  let not_ce = mk_not (Frame.find eframe loc) in
+  (* let not_ce = mk_not (Frame.find eframe loc) in *)
   (* frame1 is the frame obtained by 
      sp cmd (guard && [inverted_flow | inv]preframe) *)
   let open Frame in
+  (* invcont_preframe is [inverted_flow | inv]preframe *)
+  let invcont_preframe =
+    apply_loc
+      (fun (loc,z3expr_preframe) ->
+        let preloc = Env.find_exn hs.locations loc in
+        let preflow_inverted = S.invert_flow preloc.flow in
+        let preinv = preloc.inv in
+        let ret = Dl.mk_dl_dyn preflow_inverted preinv (Dl.mk_dl_prim z3expr_preframe) in
+        ret)
+      preframe
+  in
+  let () = printf "invcont_preframe: %a@." (pp_frame Dl.pp) invcont_preframe in
+  let invdisc_preframe =
+    MySet.fold
+      ~init:(lift locs (Dl.mk_dl_prim mk_false))
+      ~f:(fun resframe t ->
+        let open S in
+        let srcid,tgtid,guard = t.source,t.target,t.guard in
+        let invcont_preframe_expr = Frame.find invcont_preframe srcid in
+        let res = Dl.mk_dl_and (Dl.mk_dl_prim guard) invcont_preframe_expr in
+        (* [XXX] Currently supports only the case where command is skip. *)
+        assert(S.command_is_empty t.command);
+        resframe |> apply_on_id (Dl.mk_dl_or res) tgtid)
+      hs.transitions
+  in
+  let () = printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe in
+  let inv_preframe_elimed = apply Dl.dl_elim_dyn invdisc_preframe in
+  let inv_preframe_elimed = apply2 mk_or inv_preframe_elimed frames.(0) in
+  let () = printf "inv_preframe_elimed: %a@." (pp_frame pp_expr) inv_preframe_elimed in
+  let () = printf "eframe : %a@." (F.pp_frame pp_expr) eframe in
+  let interpolants = apply2 interpolant inv_preframe_elimed eframe in
+  let interpolants =
+    apply
+      (fun st ->
+        match st with
+        | `InterpolantFound e -> e
+        | _ ->
+           U.not_implemented "Not implemented: interpolant"
+      )
+      interpolants
+  in
+  let () = printf "Interpolant: %a@." (pp_frame pp_expr) interpolants in
+  for i = 1 to idx do
+    let () = printf "Strengthen: %d@." i in
+    frames.(i) <- apply2 mk_and frames.(i) interpolants
+  done;
+  frames
   (* Returned frame of interpolants *)
+  (*
   let itp_frame = ref (lift locs mk_true) in
   let () =
     printf "Constructing frame1@.";
@@ -157,7 +272,7 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
   let () = printf "itp_frame: %a@." (Frame.pp_frame Z3Intf.pp_expr) !itp_frame in
   frames.(idx) <- apply2 mk_and frames.(idx) !itp_frame;
   frames
-(* U.not_implemented "resolve_conflict" *)
+   *)
   
 exception Counterexample of ce
 
@@ -178,14 +293,14 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
        let is_continuous = idx = (Array.length frames - 1) in
        let () = printf "is_continous: %b@." is_continuous in
        let locs = S.locations hs in
-       let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or (mk_not e)) loc in
+       let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
        let () = printf "eframe: %a@." (pp_frame pp_expr) eframe in
        let wpframe : Dl.t frame = wp ~is_continuous hs eframe in
        let () = printf "wpframe: %a@." (pp_frame Dl.pp) wpframe in       
        let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
        let () = printf "preframe: %a@." (pp_frame Dl.pp) preframe in       
        let vc = apply2 Dl.mk_dl_and preframe wpframe in
-       let () = printf "vc: %a@." (pp_frame Dl.pp) vc in       
+       let () = printf "vc: %a@." (pp_frame Dl.pp) vc in 
        let propagated =
          fold
            ~init:[]
@@ -240,6 +355,8 @@ let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : f
   
 let extend_frontier ~(frames:frames) ~(hs:S.t) ~(safe:Z3.Expr.expr) : frames =
   let open Frame in
+  let () = printf "(* Extending frontier *)@." in
+  let () = printf "Old frames: %a@." pp_frames frames in
   let len = Array.length frames in
   let subfs : frames =
     Array.sub frames ~pos:0 ~len:(len-1)
@@ -251,6 +368,7 @@ let extend_frontier ~(frames:frames) ~(hs:S.t) ~(safe:Z3.Expr.expr) : frames =
     |]
   in
   let newframes = Array.concat [subfs; tail_part] in
+  let () = printf "new frames: %a@." pp_frames newframes in
   extend_frontier_iter ~frames:newframes ~safe ~hs
     
 let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frames:frames) ~(iteration_num:int) =
@@ -259,8 +377,8 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
   let () = printf "(* Iteration of verification: %d *)@." iteration_num in
   let () = printf "frames:%a@." pp_frames frames in
   try
-    let frames = extend_frontier ~frames ~hs ~safe in
-    let frames = propagate_clauses frames in
+    let frames = extend_frontier ~frames ~safe ~hs in
+    let frames = propagate_clauses ~hs ~frames in
     let k = Array.length frames in
     let res = fold2 ~init:true ~f:(fun b (_,e) (_,e') -> b && (is_valid (mk_implies e e'))) frames.(k-2) frames.(k-3) in
     if res then Ok(frames)
