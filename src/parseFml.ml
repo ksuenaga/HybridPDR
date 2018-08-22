@@ -320,8 +320,8 @@ let rec sexp_to_atomics s =
      [mk_le (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
   | List [Atom ">="; s1; s2] ->
      [mk_ge (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
-  | List [Atom "and"; s1; s2] ->
-     (sexp_to_atomics s1) @ (sexp_to_atomics s2)
+  | List ((Atom "and")::ss) ->
+     List.fold_left ~init:[] ~f:(fun acc s -> (sexp_to_atomics s) @ acc) ss
   | Atom _ ->
      E.raise (E.of_string "sexp_to_atomics: atom should not appear here.")
   | List _ ->

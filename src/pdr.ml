@@ -119,66 +119,58 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
      E.raise (E.of_string "init: unknown: Cannot proceed.")
 
 let propagate_clauses ~(hs:S.t) ~(frames:frames) : frames =
-  (*
-  (* [XXX] We need this.  We also need to compute postimage (not simply computing invariant atomic formula. *)
+  let open Frame in
+  let open SpaceexComponent in
+  let open Z3Intf in
+  let () = printf "(* Propagate clauses *)@." in
+  let locs = locations hs in
   (* i = Array.length - 1 is the remainder frame.  We don't do
      induction from this i.  Therefore, to Array.length fs - 2. *)
-  let open Frame in
   for i = 0 to Array.length frames - 2 do
-    let pre_frame = frames.(i) in
-    (* Returns [(l1,e1);...;(ln,en)] where (li,ei) means ei holds at location li. *)
-    let open Z3Intf in
-    let open SpaceexComponent in
-    let rec locally_invariant_atomics
-              ~(pre_frame:Z3.Expr.expr frame)
-              ~(atomics:(SpaceexComponent.id * Z3.Expr.expr) list)
-            : (SpaceexComponent.id * Z3.Expr.expr) list =
-      List.fold_left
-        ~init:[]
-        ~f:(fun acc (pre_loc,atomic) ->
-          let open Frame in
-          let pre_fml = find pre_frame pre_loc in
-          let () = printf "pre_fml: %a@." pp_expr pre_fml in
-          let vc = (Dl.mk_dl_prim atomic)
-          (*
-          let locvcs = vcgen_partial ~is_continuous:false ~pre_loc:pre_loc ~pre_fml:pre_fml ~atomic:atomic in
-          let () = printf "locvcs: %a@." (U.pp_list (U.pp_triple pp_cont_triple_partial pp_id pp_expr)) locvcs in
-          let filtered =
-            List.fold_left
-              ~init:[]
-              ~f:(fun acc (vc,l,atomic) ->
-                let res = DischargeVC.discharge_vc_partial vc in
-                if res then (l,atomic)::acc else acc)
-              locvcs
-          in
-           *)
-          filtered
-        )
-        atomics
-    in
-    let atomics : (SpaceexComponent.id * Z3.Expr.expr) list =
+    let () = printf "Frame %d@." i in
+    (* Atomic formulas in this frame. *)
+    let atomics : Z3.Expr.expr list =
       fold
         ~init:[]
         ~f:(fun acc (l,e) ->
           let atomics = ParseFml.extract_atomics e in
-          let ret = List.map ~f:(fun e -> (l,e)) atomics in
-          ret @ acc)
+          List.dedup_and_sort ~compare:compare (atomics @ acc))
         frames.(i)
     in
-    let () = printf "atomics:@[%a@]@." (U.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" S.pp_id l pp_expr e) ()) atomics in
-    let local_invs = locally_invariant_atomics ~pre_frame ~atomics in
-    let () = printf "local_invs:@[%a@]@." (Util.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" SpaceexComponent.pp_id l Z3Intf.pp_expr e) ()) local_invs in
-    for j = 1 to i + 1 do
-      List.iter
-        ~f:(fun inv -> frames.(j) <- Frame.apply (mk_and inv) frames.(j))
-        local_invs
-    done
+    let () = printf "atomics: %a@." (U.pp_list pp_expr ()) atomics in
+    (* Filter out the formulas that do not hold at the initial frame (i.e., frames.(0)). *)
+    let atomics =
+      List.filter
+        atomics
+        ~f:(fun fml ->
+          let postframe : Z3.Expr.expr frame = lift locs fml in
+          let res = apply is_valid (apply2 mk_implies frames.(0) postframe) in
+          Frame.fold
+            ~f:(fun acc (_,b) -> acc && b)
+            ~init:true
+            res
+        )
+    in
+    let () = printf "filtered atomics: %a@." (U.pp_list pp_expr ()) atomics in
+    (* Filter out the formulas that are not invariants with respect to frames.(i). *)
+    let atomics =
+      List.filter
+        atomics
+        ~f:(fun a ->
+          let preframe = apply (mk_and a) frames.(i) in
+          let postframe = lift locs a in
+          let wp = wp ~is_continuous:false hs postframe in
+          let wp_elimed = apply Dl.dl_elim_dyn wp in
+          let vc = apply2 mk_implies preframe wp_elimed in
+          let res = apply is_valid vc in
+          let res = fold ~init:true ~f:(fun b1 (_,b2) -> b1&&b2) res in
+          res)
+    in
+    let invfml = List.fold_left ~init:mk_true ~f:mk_and atomics in
+    (* Strengthen frames.(i) with atomics. *)
+    frames.(i) <- apply (mk_and invfml) frames.(i) |> apply simplify
   done;
   frames
-   *)
-  let () = printf "Propagate clause: not implemented." in
-  frames
-
 
 let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
   let open Z3Intf in

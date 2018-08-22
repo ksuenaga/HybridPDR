@@ -60,6 +60,17 @@ let%test _ =
   let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.0 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
+  
+(*
+let%test _ =
+  let open Z3Intf in
+  let open Cnf in
+  let open ParseFml in
+  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line/line.xml")) in
+  let model = List.hd_exn models in
+  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
+  let _ = printResult res in
+  true
 
 let%test _ =
   let open Z3Intf in
@@ -71,15 +82,6 @@ let%test _ =
   let _ = printResult res in
   true
   
-let%test _ =
-  let open Z3Intf in
-  let open Cnf in
-  let open ParseFml in
-  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line/line.xml")) in
-  let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
-  let _ = printResult res in
-  true
 
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball/bball.xml")) in
@@ -122,7 +124,8 @@ let%test _ =
   let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
   let _ = printResult res in
   true
-
+ *)
+  
 (*let%expect_test "expect_test test" =
   printf "src_root path edited";
   [%expect {|

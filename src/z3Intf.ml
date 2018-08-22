@@ -6,12 +6,15 @@ module E = Error
 let ctx = ref (Z3.mk_context [])
 let param = ref (Z3.Params.mk_params !ctx)
 let solver =
+  let () = printf "Simplify Help:%s@." (Z3.Expr.get_simplify_help !ctx) in
   Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "proof") true;
-  Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "produce-interpolants") true;  
+  Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "produce-interpolants") true;
+  Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "ctx-simplify") true;
+  Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "elim_and") true;  
   let solver = Z3.Solver.mk_simple_solver !ctx in
   (*
   let _ = printf "Help:%s@." (Z3.Solver.get_help solver) in
-  let _ = printf "Simplify Help:%s@." (Z3.Expr.get_simplify_help !ctx) in
+
    *)
   (* Z3.enable_trace "hpdr"; *)
   ref solver
