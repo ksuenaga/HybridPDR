@@ -270,6 +270,7 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
    *)
   
 exception Counterexample of ce
+exception SafetyVerified of frames
 
 let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
   let open Frame in
@@ -376,12 +377,14 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
     let frames = extend_frontier ~frames ~safe ~hs in
     let frames = propagate_clauses ~hs ~frames in
     let k = Array.length frames in
-    let res = fold2 ~init:true ~f:(fun b (_,e) (_,e') -> b && (is_valid (mk_implies e e'))) frames.(k-2) frames.(k-3) in
-    if res then Ok(frames)
-    else
-      verify_iter hs safe candidates frames (iteration_num+1)
+    for i = 1 to k-2 do
+      if fold2 ~init:true ~f:(fun b (_,e) (_,e') -> b && (is_valid (mk_implies e e'))) frames.(i) frames.(i-1) then
+        raise (SafetyVerified(frames))
+    done;
+    verify_iter ~hs ~safe ~candidates ~frames ~iteration_num:(iteration_num+1)
   with
   | Counterexample ce -> Ng ce
+  | SafetyVerified frames -> Ok frames
                       
 let verify ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.Expr.expr) =
   let init_frames = setup_init_frames ~hs ~initloc ~init ~safe in
