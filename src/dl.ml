@@ -11,6 +11,27 @@ type t =
   | And of t list
   | Or of t list
 
+let rec simplify t =
+  let module Z = Z3Intf in
+  match t with
+  | Prim t' -> Prim (Z.simplify t')
+  | Dyn(f, inv, Prim z3) ->
+     let inv, z3 = Z.simplify inv, Z.simplify z3 in
+     let invres, z3res = Z.callZ3 inv, Z.callZ3 z3 in
+     begin
+       match z3res with
+       | `Unsat -> Prim (Z.mk_false)
+       | _ ->
+          begin
+            match invres with
+            | `Unsat -> Prim z3
+            | _ -> Dyn(f, inv, Prim z3)
+          end
+     end
+  | Dyn(f, inv, t') -> Dyn(f, Z.simplify inv, simplify t')
+  | And ts -> And (List.map ~f:simplify ts)
+  | Or ts -> Or (List.map ~f:simplify ts)
+        
 let rec pp fmt t =
   let open Z3Intf in
   match t with
@@ -80,3 +101,22 @@ let rec dl_elim_dyn t =
 let dl_discharge t = 
   let open Z3Intf in
   dl_elim_dyn t |> callZ3
+
+let is_valid_implication t1 t2 =
+  let module Z = Z3Intf in
+  let t1, t2 = simplify t1, simplify t2 in
+  printf "t1:%a@." pp t1;
+  printf "t2:%a@." pp t2;
+  Util.not_implemented "Dl.is_valid_implication"
+                     
+let interpolant t1 t2 =
+  let module Z = Z3Intf in
+  printf "t1:%a@." pp t1;
+  printf "t2:%a@." pp t2;
+  let t1, t2 = simplify t1, simplify t2 in
+  printf "t1simpl:%a@." pp t1;
+  printf "t2simpl:%a@." pp t2;
+  match t1,t2 with
+  | Prim t1', Prim t2' -> Z.interpolant t1' t2'
+  | _, _ ->
+     Util.not_implemented "Dl.interpolant"  

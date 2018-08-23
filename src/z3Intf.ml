@@ -70,6 +70,8 @@ let simplify e =
   let module P = Z3.Params in
   let param = P.mk_params !ctx in
   let () = P.add_bool param (symbol "eq2ineq") true in
+  let () = P.add_bool param (symbol "ctx-simplify") true in
+  let () = P.add_bool param (symbol "elilm_and") true in
   Expr.simplify e (Some(param))
 
 let expr_equal e1 e2 = Z3.Expr.equal e1 e2

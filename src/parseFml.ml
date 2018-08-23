@@ -320,13 +320,29 @@ let rec sexp_to_atomics s =
      [mk_le (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
   | List [Atom ">="; s1; s2] ->
      [mk_ge (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
-  | List ((Atom "and")::ss) ->
+  | List ((Atom ("and"|"or"))::ss) ->
      List.fold_left ~init:[] ~f:(fun acc s -> (sexp_to_atomics s) @ acc) ss
-  | Atom _ ->
-     E.raise (E.of_string "sexp_to_atomics: atom should not appear here.")
+  | List [Atom ("not"); s]->
+     sexp_to_atomics s
+  | List ((Atom "let")::List(bindings)::s) ->
+     let res = List.fold_left ~init:[] ~f:(fun acc b -> (binding_to_atomics b) @ acc) bindings in
+     List.fold_left ~init:res ~f:(fun acc s -> (sexp_to_atomics s) @ acc) s
+  | Atom id ->
+     printf "s:%a@." Sexp.pp s; []
+  (* E.raise (E.of_string "sexp_to_atomics: atom should not appear here.") *)
   | List _ ->
      printf "s:%a@." Sexp.pp s;
      E.raise (E.of_string "sexp_to_atomics: not implemented.")
+and binding_to_atomics b =
+  let open Sexp in
+  let open Z3Intf in
+  match b with
+  | List[Atom id; s] ->
+     printf "id:%s@." id;
+     sexp_to_atomics s
+  | _ ->
+     printf "s:%a@." Sexp.pp b;
+     E.raise (E.of_string "binding_to_atomics: not implemented.")
 and sexp_to_arithexpr s : Z3.Expr.expr =
   let open Sexp in
   let open ParseFml in
@@ -344,6 +360,12 @@ and sexp_to_arithexpr s : Z3.Expr.expr =
      end
   | List [Atom "/"; s1; s2] ->
      mk_div (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom "+"; s1; s2] ->
+     mk_add (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom "*"; s1; s2] ->
+     mk_mul (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom "-"; s] ->
+     mk_neg (sexp_to_arithexpr s)
   | List _ ->
      printf "sexp:%a@." pp s;
      Util.not_implemented "sexp_to_arithexpr"
