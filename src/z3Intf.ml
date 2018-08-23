@@ -400,8 +400,12 @@ let is_valid t =
   | `Sat _ | `Unknown -> false
   | `Unsat -> true
 
+let is_unsat t =
+  let res = callZ3 t in
+  match res with
+  | `Sat _ | `Unknown -> false
+  | `Unsat -> true
+            
 (* Predicate symbols and their arities for atomic predicates. *)
 let atomic_pred_constructors =
   [("=", 2)]
-           
-    
