@@ -102,12 +102,29 @@ let dl_discharge t =
   let open Z3Intf in
   dl_elim_dyn t |> callZ3
 
-let is_valid_implication t1 t2 =
+let rec is_valid_implication t1 t2 =
   let module Z = Z3Intf in
+  let z3res_to_res r =
+    match r with
+    | `Sat m -> `NotValid m
+    | `Unsat -> `Valid
+    | `Unknown -> `Unknown
+  in
   let t1, t2 = simplify t1, simplify t2 in
   printf "t1:%a@." pp t1;
   printf "t2:%a@." pp t2;
-  Util.not_implemented "Dl.is_valid_implication"
+  match t1,t2 with
+  | Prim e1, Prim e2 ->
+     Z.callZ3 (Z.mk_implies e1 e2) |> z3res_to_res
+  | Prim e1, Dyn(f,inv,post) ->
+  (* Check whether "e1 implies post is valid"; if so, the entire formula is valid *)
+     let r = is_valid_implication t1 post in
+     begin
+       match r with
+       | `Valid -> `Valid
+       | _ -> Util.not_implemented "Dl.is_valid_implication: primdyn"
+     end
+  | _,_ -> Util.not_implemented "Dl.is_valid_implication"
                      
 let interpolant t1 t2 =
   let module Z = Z3Intf in
