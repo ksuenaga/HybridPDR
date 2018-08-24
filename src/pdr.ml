@@ -29,7 +29,8 @@ let pp_result fmt r =
   let open Z3Intf in
   match r with
   | Ok (i, fs) ->
-     fprintf fmt "Ok at frame %d:%a" i (Util.pp_array (Frame.pp_frame pp_expr)) fs
+     fprintf fmt "Ok at frame %d:%a" i (Util.pp_array (Frame.pp_frame pp_expr)) fs;
+     fprintf fmt "Computed invariant is:%a@." (Frame.pp_frame pp_expr) fs.(i)
   | Ng ce ->
      fprintf fmt "Ng:%a" pp_ce ce
 
@@ -194,8 +195,10 @@ let propagate_clauses ~(hs:S.t) ~(frames:frames) : frames =
           res)
     in
     let invfml = List.fold_left ~init:mk_true ~f:mk_and atomics in
+    let () = printf "%ainvfml:%a%a@." U.pp_start_style U.Green pp_expr invfml U.pp_end_style () in
+    let () = printf "%apre:%a%a@." U.pp_start_style U.Green (Frame.pp_frame pp_expr) frames.(i) U.pp_end_style () in
     (* Strengthen frames.(i) with atomics. *)
-    frames.(i) <- apply (mk_and invfml) frames.(i) |> apply simplify
+    frames.(i) <- apply (mk_and invfml) (frames.(i) |> apply simplify)
   done;
   frames
 
