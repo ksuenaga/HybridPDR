@@ -4,7 +4,7 @@ module S = SpaceexComponent
 
 type frames
 type result =
-  | Ok of frames
+  | Ok of int * frames
   | Ng of DischargeVC.ce
 val pp_result : formatter -> result -> unit
 

@@ -23,13 +23,13 @@ let pp_frames fmt fs =
     done
 
 type result =
-  | Ok of frames
+  | Ok of int * frames
   | Ng of ce (* Counterexamlpe at the initial state. *)
 let pp_result fmt r =
   let open Z3Intf in
   match r with
-  | Ok fs ->
-     fprintf fmt "Ok:%a" (Util.pp_array (Frame.pp_frame pp_expr)) fs
+  | Ok (i, fs) ->
+     fprintf fmt "Ok at frame %d:%a" i (Util.pp_array (Frame.pp_frame pp_expr)) fs
   | Ng ce ->
      fprintf fmt "Ng:%a" pp_ce ce
 
@@ -71,15 +71,15 @@ let wp ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
         ~f:(fun l t ->
           let srcid = t.source in
           let srcloc = Env.find_exn hs.locations srcid in
-        let tgtid = t.target in
-        (* let tgtloc = Env.find_exn hs.locations tgtid in *)
-        let post_z3 = find frame tgtid in
-        (* [XXX] Really? mk_and or mk_implies? *)
-        let guard = t.guard in
-        let cmd = t.command in
-        let post_z3_pre = mk_and guard (wp_command_z3 cmd post_z3) in
-        (* [XXX] Really? mk_dl_and or mk_dl_or? *)
-        apply_on_id (fun e -> mk_dl_or e (mk_dl_dyn srcloc.flow srcloc.inv (mk_dl_prim post_z3_pre))) srcid l)
+          let tgtid = t.target in
+          (* let tgtloc = Env.find_exn hs.locations tgtid in *)
+          let post_z3 = find frame tgtid in
+          (* [XXX] Really? mk_and or mk_implies? *)
+          let guard = t.guard in
+          let cmd = t.command in
+          let post_z3_pre = mk_and guard (wp_command_z3 cmd post_z3) in
+          (* [XXX] Really? mk_dl_and or mk_dl_or? *)
+          apply_on_id (fun e -> mk_dl_or e (mk_dl_dyn srcloc.flow srcloc.inv (mk_dl_prim post_z3_pre))) srcid l)
         hs.transitions
   in
   ret
@@ -93,45 +93,43 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
   let init_frame = lift locs mk_false |> apply_on_id (mk_or init) initloc in
   (* safe@0 \/ ... \/ safe@locmax *)
   let safe_frame = lift locs safe in
+  let unsafe_frame = lift locs (mk_not safe) in
   (* 0-step reachability *)
+  let check_resframe res =
+    Frame.fold
+      ~init:`Unsat
+      ~f:(fun b (loc,r) ->
+        match b, r with
+        | `Sat (l,m), _ -> `Sat (l,m)
+        | _, `Sat m -> `Sat (loc,m)
+        | `Unsat, `Unsat -> `Unsat
+        | _, `Unknown -> U.not_implemented "setup_init_frames: st0: unknown")
+      res
+  in
   let () = printf "(* Checking the safety of 0th frame *)@." in
   let res0 =
     apply2
-      Dl.is_valid_implication
+      Dl.is_satisfiable_conjunction
       (apply Dl.mk_dl_prim init_frame)
-      (apply Dl.mk_dl_prim safe_frame)
+      (apply Dl.mk_dl_prim unsafe_frame)
   in
-  let st0 =
-    Frame.fold
-      ~init:true
-      ~f:(fun b (_,r) ->
-        match b, r with
-        | true, `Valid -> true
-        | _, _ -> false)
-      res0
-  in
+  let st0 = check_resframe res0 in
   (* 1-step reachability *)
   let () = printf "(* Checking the safety of 1st frame *)@." in
-  let wp_frame = wp ~is_continuous:false hs safe_frame in
-  let res1 = apply2 Dl.is_valid_implication (apply Dl.mk_dl_prim init_frame) wp_frame in
-  let st1 =
-    Frame.fold
-      ~init:true
-      ~f:(fun b (_,r) ->
-        match b,r with
-        | true, `Valid -> true
-        | _ -> false)
-      res1
-  in
+  let wp_frame = wp ~is_continuous:false hs unsafe_frame in
+  let res1 = apply2 Dl.is_satisfiable_conjunction (apply Dl.mk_dl_prim init_frame) wp_frame in
+  let st1 = check_resframe res1 in
   match st0,st1 with
-  | true,true -> 
+  | `Unsat,`Unsat -> 
      [| init_frame;
         safe_frame;
         safe_frame
      |]
-  | false, _ ->
+  | `Sat(l,m), _ ->
+     printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
      E.raise (E.of_string "0th frame is unsafe.")
-  | _, false ->
+  | _, `Sat(l,m) ->
+     printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
      E.raise (E.of_string "1st frame is unsafe.")
     (*
   | `Unknown, _ | _, `Unknown ->
@@ -221,7 +219,7 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
         let preinv = preloc.inv in
         let ret = Dl.mk_dl_dyn preflow_inverted preinv (Dl.mk_dl_prim z3expr_preframe) in
         ret)
-      preframe
+      preframe |> apply Dl.simplify
   in
   let () = printf "invcont_preframe: %a@." (pp_frame Dl.pp) invcont_preframe in
   let invdisc_preframe =
@@ -235,7 +233,7 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
         (* [XXX] Currently supports only the case where command is skip. *)
         assert(S.command_is_empty t.command);
         resframe |> apply_on_id (Dl.mk_dl_or res) tgtid)
-      hs.transitions
+      hs.transitions |> apply Dl.simplify
   in
   let () = printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe in
   let inv_preframe_elimed = (* apply Dl.dl_elim_dyn invdisc_preframe *) invdisc_preframe in
@@ -244,13 +242,12 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
   let () = printf "eframe : %a@." (F.pp_frame pp_expr) eframe in
   let interpolants = apply2 Dl.interpolant inv_preframe_elimed (apply Dl.mk_dl_prim eframe) in
   let interpolants =
-    apply
-      (fun st ->
+    apply_loc
+      (fun (loc,st) ->
         match st with
-        | `InterpolantFound e -> e
+        | `InterpolantFound e -> simplify e
         | _ ->
-           U.not_implemented "Not implemented: interpolant"
-      )
+           F.find eframe loc |> mk_not)
       interpolants
   in
   let () = printf "Interpolant: %a@." (pp_frame pp_expr) interpolants in
@@ -299,7 +296,7 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
    *)
   
 exception Counterexample of ce
-exception SafetyVerified of frames
+exception SafetyVerified of int * frames
 
 let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
   let open Frame in
@@ -320,19 +317,19 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
        let locs = S.locations hs in
        let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
        let () = printf "eframe: %a@." (pp_frame pp_expr) eframe in
-       let wpframe : Dl.t frame = wp ~is_continuous hs (apply mk_not eframe) in
+       let wpframe : Dl.t frame = wp ~is_continuous hs eframe in
        let () = printf "wpframe: %a@." (pp_frame Dl.pp) wpframe in       
        let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
        let () = printf "preframe: %a@." (pp_frame Dl.pp) preframe in
-       let res = apply2 Dl.is_valid_implication preframe wpframe in
+       let res = apply2 Dl.is_satisfiable_conjunction preframe wpframe in
        let propagated =
          Frame.fold
            res
            ~init:[]
            ~f:(fun l (loc,r) ->
              match r with
-             | `Valid -> l
-             | `NotValid m -> (loc,expr_of_model m,idx-1)::l
+             | `Unsat -> l
+             | `Sat m -> (loc,expr_of_model m,idx-1)::l
              | `Unknown ->
                 U.not_implemented "propagated: unknown")
        in
@@ -352,11 +349,11 @@ let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : f
   let locs = S.locations hs in
   let len = Array.length frames in
   let () = printf "(* Checking the safety of the frontier *)@." in
-  let wpframe : Dl.t frame = wp ~is_continuous:true hs (lift locs (mk_not safe)) in
-  let () = printf "wp: %a@." (pp_frame Dl.pp) wpframe in
   let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(len-1) in
   let () = printf "pre: %a@." (pp_frame Dl.pp) preframe in
-  let res = apply2 Dl.is_valid_implication preframe wpframe in
+  let wpframe : Dl.t frame = wp ~is_continuous:true hs (lift locs (mk_not safe)) in
+  let () = printf "wp: %a@." (pp_frame Dl.pp) wpframe in
+  let res = apply2 Dl.is_satisfiable_conjunction preframe wpframe in
   (*
   let vc = apply2 Dl.mk_dl_and preframe wpframe in
   let () = printf "res: %a@." (pp_frame Dl.pp) vc in
@@ -370,15 +367,15 @@ let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : f
         let res = Dl.dl_discharge z in
          *)
         match r with
-        | `Valid | `Unknown ->
+        | `Unsat | `Unknown ->
            acc
-        | `NotValid m ->
-           let () = printf "Cex: %a@." pp_model m in
+        | `Sat m ->
+           (* let () = printf "Cex: %a@." pp_model m in *)
            (loc,expr_of_model m,len-2)::acc
       )
       res
   in
-  let () = printf "cexs: %a@." (U.pp_list pp_ce ()) cexs in
+  (* let () = printf "cexs: %a@." (U.pp_list pp_ce ()) cexs in *)
   match cexs with
   | [] -> frames
   | _ -> remove_cti hs cexs frames
@@ -405,6 +402,7 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
   let open Frame in
   let open Z3Intf in
   let () = printf "(* Iteration of verification: %d *)@." iteration_num in
+  let frames = Array.map ~f:(apply simplify) frames in
   let () = printf "frames:%a@." pp_frames frames in
   try
     let frames = Array.map ~f:(apply simplify) frames in
@@ -413,12 +411,12 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
     let k = Array.length frames in
     for i = 1 to k-2 do
       if fold2 ~init:true ~f:(fun b (_,e) (_,e') -> b && (is_valid (mk_implies e e'))) frames.(i) frames.(i-1) then
-        raise (SafetyVerified(frames))
+        raise (SafetyVerified(i-1,frames))
     done;
     verify_iter ~hs ~safe ~candidates ~frames ~iteration_num:(iteration_num+1)
   with
   | Counterexample ce -> Ng ce
-  | SafetyVerified frames -> Ok frames
+  | SafetyVerified(i,frames) -> Ok (i,frames)
                       
 let verify ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.Expr.expr) =
   let init_frames = setup_init_frames ~hs ~initloc ~init ~safe in

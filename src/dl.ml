@@ -66,11 +66,18 @@ let mk_dl_dyn f e t = Dyn(f,e,t)
          
 let mk_dl_and e1 e2 =
   let open Z3Intf in
-  match e1,e2 with
-  | And l1, And l2 -> And (l1 @ l2)
-  | And l, e | e, And l -> And (e::l)
-  | Prim z1, Prim z2 -> Prim (mk_and z1 z2)
-  | e1,e2 -> And [e1;e2]
+  if dl_is_unsat e1 || dl_is_unsat e2 then
+    Prim mk_false
+  else if dl_is_valid e1 then
+    e2
+  else if dl_is_valid e2 then
+    e1
+  else
+    match e1,e2 with
+    | And l1, And l2 -> And (l1 @ l2)
+    | And l, e | e, And l -> And (e::l)
+    | Prim z1, Prim z2 -> Prim (mk_and z1 z2)
+    | e1,e2 -> And [e1;e2]
 
           
 let mk_dl_or e1 e2 =
@@ -140,33 +147,108 @@ let rec is_valid_implication t1 t2 =
     | `Unsat -> `Valid
     | `Unknown -> `Unknown
   in
+  let pp_res fmt = function
+    | `NotValid m -> fprintf fmt "NotValid with %a" Z.pp_model m
+    | `Valid -> fprintf fmt "Valid"
+    | `Unknown -> fprintf fmt "Unknown"
+  in
+  let () =
+    printf "t1:%a@." pp t1;
+    printf "t2:%a@." pp t2
+  in
   let t1, t2 = simplify t1, simplify t2 in
+  let () =
+    printf "%aCHECKING THE VALIDITY OF:%a@." U.pp_start_style U.Green U.pp_end_style ();
+    printf "%a@." pp t1;
+    printf "%aIMPLIES%a@." U.pp_start_style U.Green U.pp_end_style ();
+    printf "%a@." pp t2
+  in
+  (*
   printf "t1simpl:%a@." pp t1;
   printf "t2simpl:%a@." pp t2;
-  match t1,t2 with
-  | Prim e1, Prim e2 ->
-     Z.callZ3 (Z.mk_implies e1 e2) |> z3res_to_res
-  | Prim e1, Dyn(f,inv,post) ->
-  (* Check whether "e1 implies post is valid"; if so, the entire formula is valid *)
-     let r = is_valid_implication t1 post in
-     begin
-       match r with
-       | `Valid -> `Valid
-       | _ ->
-            printf "t1simpl:%a@." pp t1;
-            printf "t2simpl:%a@." pp t2;
-            Util.not_implemented "Dl.is_valid_implication: primdyn"
-     end
-  | _,_ -> Util.not_implemented "Dl.is_valid_implication"
-                     
+   *)
+  let ret =
+    match t1,t2 with
+    | Prim e, _ when Z.is_unsat e -> `Valid
+    | Prim e1, Prim e2 ->
+       Z.callZ3 (Z.mk_and e1 (Z.mk_not e2)) |> z3res_to_res
+    | Prim e1, Dyn(f,inv,post) ->
+       (* Check whether "e1 implies post is valid"; if not, the entire formula is not valid *)
+       let r = is_valid_implication t1 post in
+       begin
+         match r with
+         | `NotValid m -> `NotValid m
+         | _ ->
+            printf "primdyn: eliminating@.";
+            (* Util.not_implemented "Dl.is_valid_implication: primdyn" *)
+            Z.mk_and e1 (Z.mk_not (dl_elim_dyn t2)) |> Z.callZ3 |> z3res_to_res
+       end
+    | _,_ -> Util.not_implemented "Dl.is_valid_implication"
+  in
+  printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
+  ret
+
+let rec is_satisfiable_conjunction t1 t2 =
+  let module Z = Z3Intf in
+  let z3res_to_res r =
+    match r with
+    | `Sat m -> `Sat m
+    | `Unsat -> `Unsat
+    | `Unknown -> `Unknown
+  in
+  let pp_res fmt = function
+    | `Sat m -> fprintf fmt "Sat with %a" Z.pp_model m
+    | `Unsat -> fprintf fmt "Unsat"
+    | `Unknown -> fprintf fmt "Unknown"
+  in
+  let () =
+    printf "t1:%a@." pp t1;
+    printf "t2:%a@." pp t2
+  in
+  let t1, t2 = simplify t1, simplify t2 in
+  let () =
+    printf "%aCHECKING WHETHER THE FOLLOWING IS UNSAT:%a@." U.pp_start_style U.Green U.pp_end_style ();
+    printf "%a@." pp t1;
+    printf "%aAND%a@." U.pp_start_style U.Green U.pp_end_style ();
+    printf "%a@." pp t2
+  in
+  let ret =
+    match t1,t2 with
+    | Prim e, _ when Z.is_unsat e -> `Unsat
+    | _, Prim e when Z.is_unsat e -> `Unsat
+    | Prim e1, Prim e2 ->
+       Z.callZ3 (Z.mk_and e1 e2) |> z3res_to_res
+    | Prim e, Dyn(f,inv,post) | Dyn(f,inv,post), Prim e ->
+       (* Check whether "e and post is sat"; if it is, the entire formula is sat *)
+       let r = is_satisfiable_conjunction (Prim e) post in
+       begin
+         match r with
+         | `Sat m -> `Sat m
+         | _ ->
+            printf "primdyn: eliminating@.";
+            (* Util.not_implemented "Dl.is_valid_implication: primdyn" *)
+            Z.mk_and e (dl_elim_dyn (Dyn(f,inv,post))) |> Z.callZ3 |> z3res_to_res
+       end
+    | _,_ -> Util.not_implemented "Dl.is_valid_implication"
+  in
+  printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
+  ret
+
+  
 let interpolant t1 t2 =
   let module Z = Z3Intf in
+  (*
   printf "t1:%a@." pp t1;
   printf "t2:%a@." pp t2;
+   *)
   let t1, t2 = simplify t1, simplify t2 in
+  (*
   printf "t1simpl:%a@." pp t1;
   printf "t2simpl:%a@." pp t2;
+   *)
   match t1,t2 with
   | Prim t1', Prim t2' -> Z.interpolant t1' t2'
   | _, _ ->
-     Util.not_implemented "Dl.interpolant"  
+     printf "interpolant: eliminating@.";
+     let t1,t2 = dl_elim_dyn t1, dl_elim_dyn t2 in
+     Z.interpolant t1 t2

@@ -16,5 +16,7 @@ val mk_dl_or : t -> t -> t
                           (* val dl_elim_dyn : t -> Z3.Expr.expr *)
 
 val is_valid_implication : t -> t -> [> `Valid | `NotValid of Z3.Model.model | `Unknown ]
+val is_satisfiable_conjunction : t -> t -> [> `Unsat | `Sat of Z3.Model.model | `Unknown ]
 val interpolant : t -> t -> [> `InterpolantFound of Z3.Expr.expr | `InterpolantNotFound | `NotUnsatisfiable ]
 
+val simplify : t -> t

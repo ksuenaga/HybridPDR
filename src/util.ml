@@ -35,3 +35,12 @@ let pp_triple pp1 pp2 pp3 fmt p =
   match p with
   | (x,y,z) ->
      fprintf fmt "(%a,%a,%a)" pp1 x pp2 y pp3 z
+
+type style =
+  Green
+let style_to_int = function
+    Green -> 32
+let pp_start_style fmt style =
+  fprintf fmt "\027[%dm" (style_to_int style)
+let pp_end_style fmt () =
+  fprintf fmt "\027[0m"
