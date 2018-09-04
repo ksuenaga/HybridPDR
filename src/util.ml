@@ -23,8 +23,20 @@ let not_implemented msg =
   let module E = Error in
   E.raise (E.of_string ("not implemented:" ^ msg))
 
+let error msg =
+  let module E = Error in
+  E.raise (E.of_string ("error:" ^ msg))
+
 let pp_array pp_elm fmt a =
   fprintf fmt "%a" (pp_list pp_elm ()) (Array.to_list a)
+
+let pp_bigarray_fortran_array1 pp_elm fmt (a:('a,'b, Bigarray.fortran_layout) Bigarray.Array1.t) =
+  let len = Bigarray.Array1.dim a in
+  fprintf fmt "[|";
+  for i = 1 to len do
+    fprintf fmt "%a;" pp_elm a.{i}
+  done;
+  fprintf fmt "|]"
 
 let pp_pair pp1 pp2 fmt p =
   match p with

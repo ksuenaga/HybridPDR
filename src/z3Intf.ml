@@ -6,7 +6,7 @@ module E = Error
 let ctx = ref (Z3.mk_context [])
 let param = ref (Z3.Params.mk_params !ctx)
 let solver =
-  let () = printf "Simplify Help:%s@." (Z3.Expr.get_simplify_help !ctx) in
+  (* let () = printf "Simplify Help:%s@." (Z3.Expr.get_simplify_help !ctx) in *)
   Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "proof") true;
   Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "produce-interpolants") true;
   Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "ctx-simplify") true;
@@ -137,7 +137,19 @@ let mk_and e1 e2 = Z3.Boolean.mk_and !ctx [e1; e2]
 let mk_or e1 e2 = Z3.Boolean.mk_or !ctx [e1; e2]
 let mk_implies e1 e2 = Z3.Boolean.mk_implies !ctx e1 e2
 let mk_not e = Z3.Boolean.mk_not !ctx e
-  
+
+let mk_and_l es =
+  match es with
+    [] -> mk_true
+  | [hd] -> hd
+  | hd::tl -> List.fold_left ~init:hd ~f:mk_and tl
+
+let mk_or_l es =
+  match es with
+    [] -> mk_false
+  | [hd] -> hd
+  | hd::tl -> List.fold_left ~init:hd ~f:mk_or tl
+            
 let%test_module _ =
   (module struct
      module Expr = Z3.Expr
@@ -222,7 +234,21 @@ tseitin-cnf
  *      let _ = equal (make_expr (of_string "(int 3)")) (mk_numeral_i !ctx 3)
  *    end) *)
 
-  
+let assoc_of_model m =
+  let module M = Z3.Model in
+  let module FD = Z3.FuncDecl in
+  let module R = Z3.Arithmetic.Real in
+  let module U = Util in
+  let fds = M.get_const_decls m in
+  let interps = List.map fds ~f:(M.get_const_interp m) |> List.map ~f:(function Some m -> m | None -> U.error "Z3intf.get_value") in
+  let ids = List.map fds ~f:FD.get_name |> List.map ~f:Z3.Symbol.to_string in
+  let assoc = List.zip_exn ids interps in
+  assoc
+
+let get_float e =
+  let module R = Z3.Arithmetic.Real in
+  R.get_ratio e |> Ratio.float_of_ratio
+
 let expr_of_model ~(model:Z3.Model.model) : Z3.Expr.expr =
   (* let open Z3Intf in *)
   let module M = Z3.Model in
@@ -235,7 +261,7 @@ let expr_of_model ~(model:Z3.Model.model) : Z3.Expr.expr =
   (* let _ = printf "interps:%a" (Util.pp_list (Util.pp_option pp_expr)) interps in *)
   let ids = List.map ~f:FD.get_name fds in
   (* let _ = printf "ids:%a" (Util.pp_list pp_symbol) ids in *)
-  let exprs = List.map ~f:(fun interp -> match interp with None -> E.raise (E.of_string "expr_of_model: cannot happen") | Some e -> e) interps in
+  let exprs = List.map interps ~f:(fun interp -> match interp with None -> E.raise (E.of_string "expr_of_model: cannot happen") | Some e -> e) in
   (* let _ = printf "exprs:%a" (Util.pp_list pp_expr) exprs in *)
   let mapped = List.map2_exn ~f:(fun id exp -> mk_eq (R.mk_const !ctx id) exp) ids exprs in
   let ret =
@@ -248,6 +274,24 @@ let expr_of_model ~(model:Z3.Model.model) : Z3.Expr.expr =
   (* frame_lift_given_id ~locs ~loc (simplify ret); *)
 (* E.raise (Error.of_string "frame_of_model: not implemented.") *)
 
+let model_of_assoc (l:(string * float) list) : Z3.Model.model =
+  let module R = Z3.Arithmetic.Real in
+  let e =
+    List.fold_left l
+      ~init:mk_true
+      ~f:(fun e (k,f) ->
+          mk_and e (mk_eq (mk_real_var k) (mk_real_numeral_float f)))
+  in
+  match callZ3 e with
+  | `Sat m -> m
+  | _ -> Util.not_implemented "model_of_assoc: not sat"
+
+let eval (m:Z3.Model.model) (e:Z3.Expr.expr) =
+  let res = Z3.Model.eval m e false in
+  match res with
+  | Some e -> e
+  | _ -> Util.not_implemented "eval: none"
+
 let%test _ =
   (* let open Z3Intf in *)
   (*
@@ -256,12 +300,12 @@ let%test _ =
   let locs = [l1;l2] in
   let cnf1 = Cnf.parse "x==0.0" in
    *)
-  let e1 = mk_eq (mk_real_var "x") (mk_real_numeral_s "0.0") in
+  let e1 = mk_eq (mk_real_var "x") (mk_real_numeral_s "0.0") |> simplify in
   (* let _ = printf "e1:%s@." (Z3.Expr.to_string e1) in *)
   let res = callZ3 e1 in
   match res with
   | `Sat model ->
-     let e2 = expr_of_model model in
+     let e2 = expr_of_model model |> simplify in
      (* let _ = printf "e2:%s@." (Z3.Expr.to_string e2) in *)
      Z3.Expr.equal e1 e2
   | _ -> false
@@ -391,8 +435,8 @@ let%test _ =
   res = `Unsat
 
 let pp_model fmt m =
-  (* fprintf fmt "%s" (Z3.Model.to_string m) *)
-  fprintf fmt "%s" (Z3.Expr.to_string (expr_of_model m))
+  fprintf fmt "%s" (Z3.Model.to_string m)
+  (* fprintf fmt "%s" (Z3.Expr.to_string (expr_of_model m)) *)
 
 let is_valid t =
   let res = callZ3 (mk_not t) in
@@ -409,3 +453,4 @@ let is_unsat t =
 (* Predicate symbols and their arities for atomic predicates. *)
 let atomic_pred_constructors =
   [("=", 2)]
+

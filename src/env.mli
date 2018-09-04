@@ -9,3 +9,4 @@ val fold : init:'a -> f:('a -> ('key * 'value) -> 'a) -> ('key,'value) t -> 'a
 val fold2 : init:'a -> f:('a -> ('key * 'value1) -> ('key * 'value2) -> 'a) -> ('key,'value1) t -> ('key,'value2) t -> 'a
 val domain : ('key,'value) t -> 'key list
 val equal : ('key,'value) t -> ('key,'value) t -> bool
+val from_list : ('key * 'value) list -> ('key,'value) t
