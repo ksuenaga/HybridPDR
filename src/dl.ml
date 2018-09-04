@@ -422,13 +422,13 @@ let%test _ =
   let t1 = Prim(mk_and (mk_le x (fl 1.0)) (mk_ge x (mk_div (fl 1.0) (fl 2.0)))) in
   (* [[(y, x); (x, ( * y (- 1.0)))] & (>= y 0.0)]prim((and (<= y 0.0) (>= y 0.0) (<= x (- (/ 5.0 4.0))) (>= x (- (/ 5.0 4.0))))) *)
   let flow = ["y", z3v "x"; "x", (mk_mul y (fl (-1.0)))] |> Env.from_list in
-  let inv = mk_le y (fl 0.0) in
+  let inv = mk_ge y (fl 0.0) in
   let post =
     (mk_and_l
        [mk_le y (fl 0.0);
         mk_ge y (fl 0.0);
-        mk_le x (mk_div (fl 5.0) (fl 4.0));
-        mk_ge x (mk_div (fl 5.0) (fl 4.0))])
+        mk_le x (mk_div (fl (-.5.0)) (fl 4.0));
+        mk_ge x (mk_div (fl (-.5.0)) (fl 4.0))])
   in
   let t2 = Dyn(flow,inv,Prim post) in
   let res = is_satisfiable_conjunction t1 t2 in
@@ -436,7 +436,8 @@ let%test _ =
   | `Sat _ -> true
   | _ -> false
 ;;
-  
+
+
 let interpolant t1 t2 =
   let module Z = Z3Intf in
   (*
