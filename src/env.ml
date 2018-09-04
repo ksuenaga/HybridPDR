@@ -49,3 +49,10 @@ let%test _ =
 let%test _ =
   let env = add "2" 5 (add "1" 3 (add "2" 4 empty)) in
   find_exn env "1" = 3
+
+let from_list l =
+  List.fold_left
+    l
+    ~init:empty
+    ~f:(fun env (k,v) ->
+      add k v env)

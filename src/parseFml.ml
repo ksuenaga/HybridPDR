@@ -378,4 +378,3 @@ let rec extract_atomics (hd:Z3.Expr.expr) : Z3.Expr.expr list =
   let sexp = Sexp.of_string (Expr.to_string hd) in
   sexp_to_atomics sexp
 
-       
