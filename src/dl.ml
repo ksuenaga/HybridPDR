@@ -98,7 +98,7 @@ let mk_dl_or e1 e2 =
 let rec elim_dyn_iter ~acc flow inv (t:Z3.Expr.expr) =
   let open Z3Intf in
   let module S = SpaceexComponent in
-  let tprev = mk_and inv (S.prev_time ~discretization_rate:1.0 ~flow:flow ~post:t) in
+  let tprev = mk_and inv (S.prev_time ~discretization_rate:0.05 ~flow:flow ~post:t) in
   if is_valid (mk_implies tprev acc) then
     simplify acc
   else
@@ -112,7 +112,14 @@ let rec elim_dyn_iter ~acc flow inv (t:Z3.Expr.expr) =
        E.raise (E.of_string "elim_dyn_iter: got stuck")
        *)
 let rec dl_elim_dyn t =
-  (* let () = printf "elim_dyn: %a@." pp t in *)
+  (* U.not_implemented "dl_elim_dyn" *)
+  (*
+  let () = printf "elim_dyn: %a@." pp t in
+  let open Z3Intf in
+  match t with
+  | Prim z -> z |> simplify
+  | _ ->   U.not_implemented "dl_elim_dyn"
+*)
   let open Z3Intf in
   match t with
   | Prim z -> z |> simplify
@@ -134,11 +141,15 @@ let rec dl_elim_dyn t =
      let res = simplify (elim_dyn_iter ~acc:t' flow inv t') in
      let () = printf "Elimed: %a@." pp_expr res in
      res
-           
+
+
+
+(*
 let dl_discharge t = 
   let open Z3Intf in
   dl_elim_dyn t |> callZ3
-
+*)
+       
 let rec is_valid_implication t1 t2 =
   let module Z = Z3Intf in
   let z3res_to_res r =
@@ -173,18 +184,18 @@ let rec is_valid_implication t1 t2 =
     match t1,t2 with
     | Prim e, _ when Z.is_unsat e -> `Valid
     | Prim e1, Prim e2 ->
-       Z.callZ3 (Z.mk_and e1 (Z.mk_not e2)) |> z3res_to_res
+        Z.callZ3 (Z.mk_and e1 (Z.mk_not e2)) |> z3res_to_res
     | Prim e1, Dyn(f,inv,post) ->
-       (* Check whether "e1 implies post is valid"; if not, the entire formula is not valid *)
-       let r = is_valid_implication t1 post in
-       begin
-         match r with
-         | `NotValid m -> `NotValid m
-         | _ ->
-            printf "primdyn: eliminating@.";
-            (* Util.not_implemented "Dl.is_valid_implication: primdyn" *)
-            Z.mk_and e1 (Z.mk_not (dl_elim_dyn t2)) |> Z.callZ3 |> z3res_to_res
-       end
+        (* Check whether "e1 implies post is valid"; if not, the entire formula is not valid *)
+        let r = is_valid_implication t1 post in
+        begin
+          match r with
+          | `NotValid m -> `NotValid m
+          | _ ->
+              printf "is_valid_implication: primdyn: eliminating@.";
+              (* Util.not_implemented "Dl.is_valid_implication: primdyn" *)
+              Z.mk_and e1 (Z.mk_not (dl_elim_dyn t2)) |> Z.callZ3 |> z3res_to_res
+        end
     | _,_ -> Util.not_implemented "Dl.is_valid_implication"
   in
   printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
@@ -262,7 +273,7 @@ let%test _ =
   (* let () = printf "assoc:%a@." (Util.pp_list (Util.pp_pair String.pp Float.pp) ()) assoc in *)
   assoc = [("y", 0.5); ("x", 1.0)]
 
-let rec check_satisfiability ~pre ~flow ~inv ~post : [> `Sat of Z3.Model.model | `Unsat | `Unknown] =
+let rec check_satisfiability ~pre ~flow ~inv ~(post:Z3.Model.model) =
   let module S = SpaceexComponent in
   let module E = Env in
   let module Z = Z3Intf in
@@ -283,6 +294,7 @@ let rec check_satisfiability ~pre ~flow ~inv ~post : [> `Sat of Z3.Model.model |
           (* vars is 0-origin while y' is 1-origin.  Therefore, i+1. *)
           |> (fun f -> y'.{i+1} <- f))
   in
+  (*
   let post_array =
     Z.callZ3 post |>
     (function
@@ -291,23 +303,25 @@ let rec check_satisfiability ~pre ~flow ~inv ~post : [> `Sat of Z3.Model.model |
           model_to_array ~vars:vars ~model:m
       | _ -> Util.error "should not happen")
   in
+*)
+  let post_array = model_to_array ~vars:vars ~model:post in
   let t = 10. in
   let n = 1000 in
   let dt = t /. float (n-1) in
   let ode = Odepack.lsoda f post_array 0. 0. in
   let exception Result in
   let res = ref `Unknown in
-  (* let () = printf "vars: %a@." (Util.pp_list String.pp ~sep:";" ()) vars in *)
+  let () = printf "vars: %a@." (Util.pp_list String.pp ~sep:";" ()) vars in
   try
     for i = 0 to n - 1 do
       let vec =
         float i *. dt
         |> Odepack.sol ode
       in
-      (* let () = printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec in *)
+      let () = printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec in
       let m = array_to_model ~vars:vars ~array:vec in
       match Z.eval m pre |> Z.callZ3 with
-      | `Sat m -> res := `Sat m; raise Result
+      | `Sat m' -> res := `Sat m; raise Result
       | _ ->
           begin
             match Z.eval m inv |> Z.callZ3 with
@@ -322,12 +336,21 @@ let rec check_satisfiability ~pre ~flow ~inv ~post : [> `Sat of Z3.Model.model |
 
 let%test _ =
   let open Z3Intf in
+  let exception Unsat in
   let pre = mk_le (mk_real_var "x") (mk_real_numeral_float 1.0) in
   let flow = Env.from_list ["y", mk_real_var "x"; "x", mk_mul (mk_real_var "y") (mk_real_numeral_float (-.1.0))] in
   let inv = mk_ge (mk_real_var "y") (mk_real_numeral_float 0.0) in
-  let post = mk_not (mk_le (mk_real_var "x") (mk_real_numeral_float 1.0)) in
-  let res = check_satisfiability ~pre:pre ~flow:flow ~inv:inv ~post:post in
-  match res with `Unsat -> true | _ -> false
+  (* let post = mk_not (mk_le (mk_real_var "x") (mk_real_numeral_float 1.0)) in *)
+  try
+    let post =
+      mk_and (mk_eq (mk_real_var "x") (mk_real_numeral_float 1.25))
+        (mk_eq (mk_real_var "y") (mk_real_numeral_float 1.25))
+      |> callZ3
+    |> function `Sat m -> m | _ -> raise Unsat in
+    let res = check_satisfiability ~pre:pre ~flow:flow ~inv:inv ~post:post in
+    match res with `Unsat -> true | _ -> false
+  with
+    Unsat -> false
 
 (*
 let%test _ =
@@ -360,14 +383,14 @@ let%test _ =
   in
   true
 *)
-    
-let rec is_satisfiable_conjunction t1 t2 =
+
+let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown ] =
   let module Z = Z3Intf in
   let z3res_to_res r =
     match r with
     | `Sat m -> `Sat m
-    | `Unsat -> `Unsat
-    | `Unknown -> `Unknown
+    (*     | `Unsat -> `Unsat *)
+    | _ -> `Unknown
   in
   let pp_res fmt = function
     | `Sat m -> fprintf fmt "Sat with %a" Z.pp_model m
@@ -390,7 +413,7 @@ let rec is_satisfiable_conjunction t1 t2 =
     | Prim e, _ when Z.is_unsat e -> `Unsat
     | _, Prim e when Z.is_unsat e -> `Unsat
     | Prim e1, Prim e2 ->
-       Z.callZ3 (Z.mk_and e1 e2) |> z3res_to_res
+        Z.callZ3 (Z.mk_and e1 e2) |> z3res_to_res
     | Prim e, Dyn(f,inv,Prim e_post) | Dyn(f,inv,Prim e_post), Prim e ->
         (* Check whether "e and post is sat"; if it is, the entire formula is sat *)
         (* let r = is_satisfiable_conjunction (Prim e) post in *)
@@ -399,16 +422,20 @@ let rec is_satisfiable_conjunction t1 t2 =
           match r with
           | `Sat m -> `Sat m
           | _ ->
-              printf "primdyn: eliminating@.";
-              (* Util.not_implemented "Dl.is_valid_implication: primdyn" *)
-              check_satisfiability ~pre:e ~flow:f ~inv:inv ~post:e_post
-              (* Z.mk_and e (dl_elim_dyn (Dyn(f,inv,e_post))) |> Z.callZ3 |> z3res_to_res *)
+              let exception Unsat in
+              let exception Unknown in
+              printf "is_satisfiable_conjunction: primdyn: eliminating@.";
+              try
+                let e_post = Z.callZ3 e_post |> function `Sat m -> m | `Unsat -> raise Unsat | `Unknown -> raise Unknown in
+                check_satisfiability ~pre:e ~flow:f ~inv:inv ~post:e_post
+              with
+              | Unsat -> `Unsat
+              | Unknown -> `Unknown
         end
     | _,_ -> Util.not_implemented "Dl.is_satisfiable_conjunction"
   in
   printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
   ret
-
 
 let%test _ =
   let open Z3Intf in
@@ -419,7 +446,8 @@ let%test _ =
   let fl = mk_real_numeral_float in
   let z3v = mk_real_var in
   (* prim((and (<= x 1.0) (>= x (/ 1.0 2.0)))) *)
-  let t1 = Prim(mk_and (mk_le x (fl 1.0)) (mk_ge x (mk_div (fl 1.0) (fl 2.0)))) in
+  (* let t1 = Prim(mk_and (mk_le x (fl 1.0)) (mk_ge x (mk_div (fl 1.0) (fl 2.0)))) in *)
+  let t1 = mk_and (mk_le x (fl 1.0)) (mk_ge x (mk_div (fl 1.0) (fl 2.0))) in
   (* [[(y, x); (x, ( * y (- 1.0)))] & (>= y 0.0)]prim((and (<= y 0.0) (>= y 0.0) (<= x (- (/ 5.0 4.0))) (>= x (- (/ 5.0 4.0))))) *)
   let flow = ["y", z3v "x"; "x", (mk_mul y (fl (-1.0)))] |> Env.from_list in
   let inv = mk_ge y (fl 0.0) in
@@ -430,13 +458,18 @@ let%test _ =
         mk_le x (mk_div (fl (-.5.0)) (fl 4.0));
         mk_ge x (mk_div (fl (-.5.0)) (fl 4.0))])
   in
-  let t2 = Dyn(flow,inv,Prim post) in
-  let res = is_satisfiable_conjunction t1 t2 in
-  match res with
-  | `Sat _ -> true
-  | _ -> false
+  let exception Unsat in
+  try
+    let post_m = callZ3 post |> function `Sat m -> m | _ -> raise Unsat in
+    (* let t2 = Dyn(flow,inv,Prim post) in *)
+    (* let res = is_satisfiable_conjunction t1 t2 in *)
+    let res = check_satisfiability ~pre:t1 ~flow:flow ~inv:inv ~post:post_m in
+    match res with
+    | `Sat _ -> true
+    | _ -> false
+  with
+    Unsat -> false
 ;;
-
 
 let interpolant t1 t2 =
   let module Z = Z3Intf in
@@ -445,12 +478,11 @@ let interpolant t1 t2 =
   printf "t2:%a@." pp t2;
    *)
   let t1, t2 = simplify t1, simplify t2 in
-  (*
   printf "t1simpl:%a@." pp t1;
   printf "t2simpl:%a@." pp t2;
-   *)
   match t1,t2 with
   | Prim t1', Prim t2' -> Z.interpolant t1' t2'
+  | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
   | _, _ ->
      printf "interpolant: eliminating@.";
      let t1,t2 = dl_elim_dyn t1, dl_elim_dyn t2 in
