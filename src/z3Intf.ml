@@ -467,5 +467,8 @@ let rec sample ~n fml =
       | _ -> acc
   in
   let res = iter n [] fml in
-  let () = printf "sample: %a@." (Util.pp_list pp_model ()) res in
+  let () =
+    printf "sample of: %a@." pp_expr fml;
+    printf "sample: %a@." (Util.pp_list pp_model ~sep:"@\n--@\n" ()) res
+  in
   res

@@ -235,16 +235,6 @@ let rec check_satisfiability ~pre ~flow ~inv ~(post:Z3.Model.model) =
           (* vars is 0-origin while y' is 1-origin.  Therefore, i+1. *)
           |> (fun f -> y'.{i+1} <- f))
   in
-  (*
-  let post_array =
-    Z.callZ3 post |>
-    (function
-      | `Sat m ->
-          (* printf "m:%a@." Z.pp_model m; *)
-          model_to_array ~vars:vars ~model:m
-      | _ -> Util.error "should not happen")
-  in
-*)
   let post_array = model_to_array ~vars:vars ~model:post in
   let t = 10. in
   let n = 1000 in
@@ -252,14 +242,14 @@ let rec check_satisfiability ~pre ~flow ~inv ~(post:Z3.Model.model) =
   let ode = Odepack.lsoda f post_array 0. 0. in
   let exception Result in
   let res = ref `Unknown in
-  (* let () = printf "vars: %a@." (Util.pp_list String.pp ~sep:";" ()) vars in *)
+  let () = printf "vars: %a@." (Util.pp_list String.pp ~sep:";" ()) vars in
   try
     for i = 0 to n - 1 do
       let vec =
         float i *. dt
         |> Odepack.sol ode
       in
-      (* let () = printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec in *)
+      let () = printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec in
       let m = array_to_model ~vars:vars ~array:vec in
       match Z.eval m pre |> Z.callZ3 with
       | `Sat m' -> res := `Sat m; raise Result
@@ -293,13 +283,6 @@ let%test _ =
   with
     Unsat -> false
 
-
-(*
-let dl_discharge t = 
-  let open Z3Intf in
-  dl_elim_dyn t |> callZ3
-*)
-
 let rec is_valid_implication ?(nsamples=10) t1 t2 =
   let module Z = Z3Intf in
   let z3res_to_res r =
@@ -313,12 +296,6 @@ let rec is_valid_implication ?(nsamples=10) t1 t2 =
     | `Valid -> fprintf fmt "Valid"
     | `Unknown -> fprintf fmt "Unknown"
   in
-  (*
-  let () =
-    printf "t1:%a@." pp t1;
-    printf "t2:%a@." pp t2
-  in
-*)
   let t1, t2 = simplify t1, simplify t2 in
   let () =
     printf "%aCHECKING THE VALIDITY OF:%a@." U.pp_start_style U.Green U.pp_end_style ();
@@ -326,10 +303,6 @@ let rec is_valid_implication ?(nsamples=10) t1 t2 =
     printf "%aIMPLIES%a@." U.pp_start_style U.Green U.pp_end_style ();
     printf "%a@." pp t2
   in
-  (*
-  printf "t1simpl:%a@." pp t1;
-  printf "t2simpl:%a@." pp t2;
-   *)
   let ret =
     match t1,t2 with
     | Prim e, _ when Z.is_unsat e -> `Valid
@@ -340,24 +313,28 @@ let rec is_valid_implication ?(nsamples=10) t1 t2 =
     | _, Dyn(_,_,Prim post) when Z.is_unsat (Z.mk_not post) -> `Valid
     | Prim e1, Dyn(f,inv,Prim post) ->
         (* Check whether "e1 implies post is valid"; if not, the entire formula is not valid *)
-        (* let r = is_valid_implication t1 post in *)
-        let r = `Valid in
+        let r = Z.mk_and e1 (Z.mk_not post) |> Z.callZ3 |> z3res_to_res in
         begin
           match r with
-          | `NotValid m -> `NotValid [m]
+          | `NotValid m -> `NotValid m
           | _ ->
+              let module S = SpaceexComponent in
               printf "is_valid_implication: primdyn: eliminating@.";
-              (* Util.not_implemented "Dl.is_valid_implication: primdyn" *)
-              let samples : Z3.Model.model list = Z.sample ~n:nsamples post in
-              let results = List.map ~f:(fun m -> check_satisfiability ~pre:e1 ~flow:f ~inv:inv ~post:m) samples in
-              (* Z.mk_and e1 (Z.mk_not (dl_elim_dyn t2)) |> Z.callZ3 |> z3res_to_res *)
+              (* Take samples from the precondition. *)
+              let samples : Z3.Model.model list = Z.sample ~n:nsamples e1 in
+              (* Check whether there is a post state that can be
+                 reached from the (sampled) prestates along with the
+                 inverted dynamics. *)
+              let results = List.map ~f:(fun m -> (m, check_satisfiability ~pre:post ~flow:(S.invert_flow f) ~inv:inv ~post:m)) samples in
+              (* If the sample cannot reach a post state, then report
+                 it as a counterexample. *)
               let res =
                 List.fold_left results
                   ~init:[]
-                  ~f:(fun acc r ->
+                  ~f:(fun acc (mpre,r) ->
                       match r with
-                      | `Sat m -> m::acc
-                      | `Unsat -> acc
+                      | `Sat m -> acc
+                      | `Unsat -> mpre::acc
                       | `Unknown -> U.not_implemented "is_valid_implication: unknown")
               in
               match res with
@@ -369,40 +346,18 @@ let rec is_valid_implication ?(nsamples=10) t1 t2 =
   printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
   ret
 
-
-
-
-(*
 let%test _ =
-  let open Printf in
-  let open Bigarray in
-  let fname = Filename.temp_file "odepack" ".dat" in
-  let () =
-    let f _ y y' =
-      y'.{1} <- y.{2};
-      y'.{2} <- -. y.{1} in
-    let y = Array1.of_array float64 fortran_layout [| 0.; 1. |] in
-    let exact_sol t = (sin t, cos t) in
-    let t = 10. in
-    let n = 100 in
-    let dt = t /. float(n-1) in
-    let ode = Odepack.lsoda f y 0. 0. in
-    let fh = open_out fname in
-    let err = ref 0. in
-    for i = 0 to n - 1 do
-      let t = float i *. dt in
-      let y = Odepack.sol ode t in
-      let y1, y2 = exact_sol t in
-      let dy1 = y.{1} -. y1 and dy2 = y.{2} -. y2 in
-      fprintf fh "%f %f %f %g %g\n" t y.{1} y.{2} dy1 dy2;
-      err := max !err (max (abs_float dy1) (abs_float dy2));
-    done;
-    close_out fh;
-    printf "Computed max abs error = %g\n" !err;
-    printf "Wrote %S.\n" fname
-  in
-  true
-*)
+  let open Z3Intf in
+  let t1 = Prim (mk_le (mk_real_var "x") (mk_real_numeral_float 1.0)) in
+  let t2post = Prim (mk_le (mk_real_var "x") (mk_real_numeral_float 1.0)) in
+  let flow = ["x", mk_mul (mk_real_numeral_float (-1.0)) (mk_real_var "y"); "y", mk_real_var "x"] |> Env.from_list in
+  let inv = mk_le (mk_real_var "y") (mk_real_numeral_float 0.0) in
+  is_valid_implication t1 (Dyn(flow,inv,t2post)) |>
+  function
+    `Valid -> false
+  | `NotValid ms ->
+      List.for_all ms ~f:(fun m -> is_valid (eval m (mk_and (mk_le (mk_real_var "x") (mk_real_numeral_float 1.0)) (mk_le (mk_real_var "y") (mk_real_numeral_float 0.0)))))
+  | `Unknown -> false
 
 let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown ] =
   let module Z = Z3Intf in
