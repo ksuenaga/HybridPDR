@@ -142,64 +142,30 @@ let rec dl_elim_dyn t =
      let () = printf "Elimed: %a@." pp_expr res in
      res
 
-
-
-(*
-let dl_discharge t = 
+let array_to_model ~vars ~array =
   let open Z3Intf in
-  dl_elim_dyn t |> callZ3
-*)
-       
-let rec is_valid_implication t1 t2 =
-  let module Z = Z3Intf in
-  let z3res_to_res r =
-    match r with
-    | `Sat m -> `NotValid m
-    | `Unsat -> `Valid
-    | `Unknown -> `Unknown
+  let open Bigarray in
+  List.fold_left
+    vars
+    ~init:(mk_true,1)
+    ~f:(fun (e,idx) x -> (mk_and e (mk_eq (mk_real_var x) (mk_real_numeral_float array.{idx})),idx+1))
+  |> fst
+  |> callZ3
+  |> function `Sat m -> m | _ -> U.error "array_to_model: callZ3 error"
+
+let%test _ =
+  let open Z3Intf in
+  let open Bigarray in
+  let vars = ["x"; "y"] in
+  let array = Array1.of_array float64 fortran_layout [|1.0; 0.5|] in
+  (* let () = printf "array:%a@." (Util.pp_bigarray_fortran_array1 Float.pp) array in *)
+  let assoc =
+    array_to_model ~vars:vars ~array:array
+    |> assoc_of_model
+    |> List.map ~f:(fun (x,e) -> (x,get_float e))
   in
-  let pp_res fmt = function
-    | `NotValid m -> fprintf fmt "NotValid with %a" Z.pp_model m
-    | `Valid -> fprintf fmt "Valid"
-    | `Unknown -> fprintf fmt "Unknown"
-  in
-  (*
-  let () =
-    printf "t1:%a@." pp t1;
-    printf "t2:%a@." pp t2
-  in
-*)
-  let t1, t2 = simplify t1, simplify t2 in
-  let () =
-    printf "%aCHECKING THE VALIDITY OF:%a@." U.pp_start_style U.Green U.pp_end_style ();
-    printf "%a@." pp t1;
-    printf "%aIMPLIES%a@." U.pp_start_style U.Green U.pp_end_style ();
-    printf "%a@." pp t2
-  in
-  (*
-  printf "t1simpl:%a@." pp t1;
-  printf "t2simpl:%a@." pp t2;
-   *)
-  let ret =
-    match t1,t2 with
-    | Prim e, _ when Z.is_unsat e -> `Valid
-    | Prim e1, Prim e2 ->
-        Z.callZ3 (Z.mk_and e1 (Z.mk_not e2)) |> z3res_to_res
-    | Prim e1, Dyn(f,inv,post) ->
-        (* Check whether "e1 implies post is valid"; if not, the entire formula is not valid *)
-        let r = is_valid_implication t1 post in
-        begin
-          match r with
-          | `NotValid m -> `NotValid m
-          | _ ->
-              printf "is_valid_implication: primdyn: eliminating@.";
-              (* Util.not_implemented "Dl.is_valid_implication: primdyn" *)
-              Z.mk_and e1 (Z.mk_not (dl_elim_dyn t2)) |> Z.callZ3 |> z3res_to_res
-        end
-    | _,_ -> Util.not_implemented "Dl.is_valid_implication"
-  in
-  printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
-  ret
+  (* let () = printf "assoc:%a@." (Util.pp_list (Util.pp_pair String.pp Float.pp) ()) assoc in *)
+  assoc = [("y", 0.5); ("x", 1.0)]
 
 let model_to_array ~vars ~model =
   let module Z = Z3Intf in
@@ -248,31 +214,6 @@ let%test _ =
       `Sat m -> model_to_array ~vars:vars ~model:m = Array1.of_array float64 fortran_layout [|0.0; 0.5|]
     | _ -> false)
 
-let array_to_model ~vars ~array =
-  let open Z3Intf in
-  let open Bigarray in
-  List.fold_left
-    vars
-    ~init:(mk_true,1)
-    ~f:(fun (e,idx) x -> (mk_and e (mk_eq (mk_real_var x) (mk_real_numeral_float array.{idx})),idx+1))
-  |> fst
-  |> callZ3
-  |> function `Sat m -> m | _ -> U.error "array_to_model: callZ3 error"
-
-let%test _ =
-  let open Z3Intf in
-  let open Bigarray in
-  let vars = ["x"; "y"] in
-  let array = Array1.of_array float64 fortran_layout [|1.0; 0.5|] in
-  (* let () = printf "array:%a@." (Util.pp_bigarray_fortran_array1 Float.pp) array in *)
-  let assoc =
-    array_to_model ~vars:vars ~array:array
-    |> assoc_of_model
-    |> List.map ~f:(fun (x,e) -> (x,get_float e))
-  in
-  (* let () = printf "assoc:%a@." (Util.pp_list (Util.pp_pair String.pp Float.pp) ()) assoc in *)
-  assoc = [("y", 0.5); ("x", 1.0)]
-
 let rec check_satisfiability ~pre ~flow ~inv ~(post:Z3.Model.model) =
   let module S = SpaceexComponent in
   let module E = Env in
@@ -311,14 +252,14 @@ let rec check_satisfiability ~pre ~flow ~inv ~(post:Z3.Model.model) =
   let ode = Odepack.lsoda f post_array 0. 0. in
   let exception Result in
   let res = ref `Unknown in
-  let () = printf "vars: %a@." (Util.pp_list String.pp ~sep:";" ()) vars in
+  (* let () = printf "vars: %a@." (Util.pp_list String.pp ~sep:";" ()) vars in *)
   try
     for i = 0 to n - 1 do
       let vec =
         float i *. dt
         |> Odepack.sol ode
       in
-      let () = printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec in
+      (* let () = printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec in *)
       let m = array_to_model ~vars:vars ~array:vec in
       match Z.eval m pre |> Z.callZ3 with
       | `Sat m' -> res := `Sat m; raise Result
@@ -351,6 +292,85 @@ let%test _ =
     match res with `Unsat -> true | _ -> false
   with
     Unsat -> false
+
+
+(*
+let dl_discharge t = 
+  let open Z3Intf in
+  dl_elim_dyn t |> callZ3
+*)
+
+let rec is_valid_implication ?(nsamples=10) t1 t2 =
+  let module Z = Z3Intf in
+  let z3res_to_res r =
+    match r with
+    | `Sat m -> `NotValid [m]
+    | `Unsat -> `Valid
+    | `Unknown -> `Unknown
+  in
+  let pp_res fmt = function
+    | `NotValid ms -> fprintf fmt "NotValid with %a" (Util.pp_list Z.pp_model ()) ms
+    | `Valid -> fprintf fmt "Valid"
+    | `Unknown -> fprintf fmt "Unknown"
+  in
+  (*
+  let () =
+    printf "t1:%a@." pp t1;
+    printf "t2:%a@." pp t2
+  in
+*)
+  let t1, t2 = simplify t1, simplify t2 in
+  let () =
+    printf "%aCHECKING THE VALIDITY OF:%a@." U.pp_start_style U.Green U.pp_end_style ();
+    printf "%a@." pp t1;
+    printf "%aIMPLIES%a@." U.pp_start_style U.Green U.pp_end_style ();
+    printf "%a@." pp t2
+  in
+  (*
+  printf "t1simpl:%a@." pp t1;
+  printf "t2simpl:%a@." pp t2;
+   *)
+  let ret =
+    match t1,t2 with
+    | Prim e, _ when Z.is_unsat e -> `Valid
+    | _, Prim e when Z.is_unsat (Z.mk_not e) -> `Valid
+    (* | _, Prim e when Z.is_unsat (Z.mk_not e) -> `Valid *)
+    | Prim e1, Prim e2 ->
+        Z.callZ3 (Z.mk_and e1 (Z.mk_not e2)) |> z3res_to_res
+    | _, Dyn(_,_,Prim post) when Z.is_unsat (Z.mk_not post) -> `Valid
+    | Prim e1, Dyn(f,inv,Prim post) ->
+        (* Check whether "e1 implies post is valid"; if not, the entire formula is not valid *)
+        (* let r = is_valid_implication t1 post in *)
+        let r = `Valid in
+        begin
+          match r with
+          | `NotValid m -> `NotValid [m]
+          | _ ->
+              printf "is_valid_implication: primdyn: eliminating@.";
+              (* Util.not_implemented "Dl.is_valid_implication: primdyn" *)
+              let samples : Z3.Model.model list = Z.sample ~n:nsamples post in
+              let results = List.map ~f:(fun m -> check_satisfiability ~pre:e1 ~flow:f ~inv:inv ~post:m) samples in
+              (* Z.mk_and e1 (Z.mk_not (dl_elim_dyn t2)) |> Z.callZ3 |> z3res_to_res *)
+              let res =
+                List.fold_left results
+                  ~init:[]
+                  ~f:(fun acc r ->
+                      match r with
+                      | `Sat m -> m::acc
+                      | `Unsat -> acc
+                      | `Unknown -> U.not_implemented "is_valid_implication: unknown")
+              in
+              match res with
+              | [] -> `Valid
+              | _ -> `NotValid res
+        end
+    | _,_ -> Util.not_implemented "Dl.is_valid_implication"
+  in
+  printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
+  ret
+
+
+
 
 (*
 let%test _ =
@@ -471,7 +491,7 @@ let%test _ =
     Unsat -> false
 ;;
 
-let interpolant t1 t2 =
+let interpolant ?(nsamples=10) t1 t2 =
   let module Z = Z3Intf in
   (*
   printf "t1:%a@." pp t1;
@@ -483,7 +503,29 @@ let interpolant t1 t2 =
   match t1,t2 with
   | Prim t1', Prim t2' -> Z.interpolant t1' t2'
   | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
+  | And [Prim guard; Dyn(f,inv,Prim e1)], Prim e2 ->
+      let samples1 = Z.sample ~n:nsamples e1 in
+      let samples1 =
+        List.map samples1 ~f:(fun m -> check_satisfiability ~pre:guard ~flow:f ~inv:inv ~post:m)
+        |> List.filter ~f:(function `Sat _ -> true | _ -> false)
+        |> List.map ~f:(function `Sat m -> m | _ -> U.error "hoge")
+      in
+      let e1 =
+        List.fold_left samples1 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
+      in
+      let samples2 = Z.sample ~n:nsamples e2 in
+      let e2 =
+        List.fold_left samples2 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
+      in
+      let () =
+        let module U = Util in
+        printf "%aTaking interpolant of:@.%a@.and@.%a@.%a" U.pp_start_style U.Green Z.pp_expr e1 Z.pp_expr e2 U.pp_end_style ()
+      in
+      Z.interpolant e1 e2
   | _, _ ->
+      U.not_implemented "interpolant"
+      (*
      printf "interpolant: eliminating@.";
      let t1,t2 = dl_elim_dyn t1, dl_elim_dyn t2 in
      Z.interpolant t1 t2
+*)

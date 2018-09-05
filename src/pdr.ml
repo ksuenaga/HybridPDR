@@ -102,7 +102,7 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
       ~f:(fun b (loc,r) ->
         match b, r with
         | `Sat (l,m), _ -> `Sat (l,m)
-        | _, `NotValid m -> `Sat (loc,m)
+        | _, `NotValid(m::_) -> `Sat (loc,m)
         | `Unsat, `Valid -> `Unsat
         | _, `Unknown -> U.not_implemented "setup_init_frames: st0: unknown")
       res
@@ -127,11 +127,11 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
         safe_frame
      |]
   | `Sat(l,m), _ ->
-     printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
-     E.raise (E.of_string "0th frame is unsafe.")
+      printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
+      E.raise (E.of_string "0th frame is unsafe.")
   | _, `Sat(l,m) ->
-     printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
-     E.raise (E.of_string "1st frame is unsafe.")
+      printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
+      E.raise (E.of_string "1st frame is unsafe.")
     (*
   | `Unknown, _ | _, `Unknown ->
      E.raise (E.of_string "init: unknown: Cannot proceed.")
@@ -237,18 +237,19 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
       hs.transitions |> apply Dl.simplify
   in
   let () = printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe in
-  let inv_preframe_elimed = (* apply Dl.dl_elim_dyn invdisc_preframe *) invdisc_preframe in
-  let inv_preframe_elimed = apply2 Dl.mk_dl_or inv_preframe_elimed (apply Dl.mk_dl_prim frames.(0)) in
-  let () = printf "inv_preframe_elimed: %a@." (pp_frame Dl.pp) inv_preframe_elimed in
+  (* let inv_preframe_elimed = (* apply Dl.dl_elim_dyn invdisc_preframe *) invdisc_preframe in *)
+  let invdisc_preframe = apply2 Dl.mk_dl_or invdisc_preframe (apply Dl.mk_dl_prim frames.(0)) in
+  let () = printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe in
   let () = printf "eframe : %a@." (F.pp_frame pp_expr) eframe in
-  let interpolants = apply2 Dl.interpolant inv_preframe_elimed (apply Dl.mk_dl_prim eframe) in
+  let interpolants = apply2 Dl.interpolant invdisc_preframe (apply Dl.mk_dl_prim eframe) in
   let interpolants =
     apply_loc
       (fun (loc,st) ->
         match st with
         | `InterpolantFound e -> simplify e
         | _ ->
-           F.find eframe loc |> mk_not)
+            mk_true
+            (* F.find eframe loc |> mk_not *))
       interpolants
   in
   let () = printf "Interpolant: %a@." (pp_frame pp_expr) interpolants in
@@ -370,9 +371,10 @@ let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : f
         match r with
           | `Valid ->
               acc
-          | `NotValid m ->
+          | `NotValid ms ->
               (* let () = printf "Cex: %a@." pp_model m in *)
-              (loc,expr_of_model m,len-2)::acc
+              let newcex = List.map ms ~f:(fun m -> (loc,expr_of_model m,len-2)) in
+              newcex @ acc
           | `Unknown ->
               U.not_implemented "extend_frontier_iter: unknown"
         )

@@ -454,3 +454,18 @@ let is_unsat t =
 let atomic_pred_constructors =
   [("=", 2)]
 
+let rec sample ~n fml =
+  let rec iter n acc fml =
+    if n <= 0 then acc
+    else
+      callZ3 fml |> 
+      function
+      | `Sat m ->
+          let e = expr_of_model m in
+          iter (n-1) (m::acc) (mk_and fml (mk_not e))
+      | `Unsat -> acc
+      | _ -> acc
+  in
+  let res = iter n [] fml in
+  let () = printf "sample: %a@." (Util.pp_list pp_model ()) res in
+  res
