@@ -329,37 +329,75 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number) t1 t2 =
         Z.callZ3 (Z.mk_and e1 (Z.mk_not e2)) |> z3res_to_res
     | _, Dyn(_,_,Prim post) when Z.is_unsat (Z.mk_not post) -> `Valid
     | Prim e1, Dyn(f,inv,Prim post) ->
+        let rec apply_strategies l =
+          match l with
+          | [] -> `Unknown
+          | f::tl ->
+              f () |>
+              (fun r ->
+                 match r with
+                 | `Unknown -> apply_strategies tl
+                 | _ -> r)
+        in
         (* Check whether "e1 implies post is valid"; if not, the entire formula is not valid *)
-        let r = Z.mk_and e1 (Z.mk_not post) |> Z.callZ3 |> z3res_to_res in
-        begin
-          match r with
-          | `NotValid m -> `NotValid m
-          | _ ->
-              let module S = SpaceexComponent in
-              printf "is_valid_implication: primdyn: eliminating@.";
-              (* Take samples from the negation of the post condition. *)
-              let samples : Z3.Model.model list = Z.sample ~n:nsamples ~vars:(Env.domain f) ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor (Z.mk_not post) in
+        let check_e1_implies_post_is_valid () =
+          Z.mk_and e1 (Z.mk_not post) |> Z.callZ3 |>
+          function `Sat m -> `NotValid [m]
+                 | _ -> `Unknown
+        in
+        let check_e1_is_invariant () =
+          let module S = SpaceexComponent in
+          printf "is_valid_implication: primdyn: eliminating@.";
+          let vc =
+            let dtsymb = Z.mk_real_var "_dt" in
+            let vars = Env.domain f in
+            let wp = Z.substitute vars (List.map vars ~f:(fun x -> Z.mk_add (Z.mk_real_var x) (Z.mk_mul dtsymb (Env.find_exn f x)))) e1 in
+            let vc =
+              Z.mk_and e1 inv |> Z.mk_and (Z.mk_not wp) |> Z.mk_and (Z.mk_gt dtsymb (Z.mk_real_numeral_float 0.0))
+              |> Z.mk_and (Z.mk_lt dtsymb (Z.mk_real_numeral_float 0.1))
+            in
+            vc
+          in
+          let () = printf "vc:%a@." Z.pp_expr vc in
+          vc |> Z.callZ3 |>
+          function `Unsat -> `Valid
+                 | `Sat m -> printf "m:%a@." Z.pp_model m; `Unknown
+                 | `Unknown -> `Unknown
+        in
+        let discover_counterexample () =
+          (* Take samples from the negation of the post condition. *)
+          let samples : Z3.Model.model list = Z.sample ~n:nsamples ~vars:(Env.domain f) ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor (Z.mk_not post) in
               (*
               let () = printf "fml:%a@." Z.pp_expr (Z.mk_not post) in
               let () = printf "samples:%a@." (Util.pp_list Z.pp_model ()) samples in
 *)
-              (* Check whether there is a prestate that reach a sampled post state. *)
-              let results = List.map ~f:(fun m -> (m, check_satisfiability ~pre:e1 ~flow:f ~inv:inv ~post:m)) samples in
-              (* If the sample successfully reach the precondition,
+          (* Check whether there is a prestate that reach a sampled post state. *)
+          let results = List.map ~f:(fun m -> (m, check_satisfiability ~pre:e1 ~flow:f ~inv:inv ~post:m)) samples in
+          (* If the sample successfully reach the precondition,
                  then report it as a counterexample. *)
-              let res =
-                List.fold_left results
-                  ~init:[]
-                  ~f:(fun acc (mpost,r) ->
-                      match r with
-                      | `Sat m -> m::acc
-                      | `Unsat -> acc
-                      | `Unknown -> acc)
-              in
-              match res with
-              | [] -> `Valid
-              | _ -> `NotValid res
-        end
+          let res =
+            List.fold_left results
+              ~init:[]
+              ~f:(fun acc (mpost,r) ->
+                  match r with
+                  | `Sat m -> m::acc
+                  | `Unsat -> acc
+                  | `Unknown -> acc)
+          in
+          match res with
+          | [] -> `Unknown
+          | _ -> `NotValid res
+        in
+        let strategies =
+          [check_e1_implies_post_is_valid;
+           check_e1_is_invariant;
+           discover_counterexample;
+          ]
+        in
+        apply_strategies strategies
+
+              (*
+*)
     | _,_ -> Util.not_implemented "Dl.is_valid_implication"
   in
   printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
