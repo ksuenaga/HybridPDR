@@ -56,3 +56,8 @@ let pp_start_style fmt style =
   fprintf fmt "\027[%dm" (style_to_int style)
 let pp_end_style fmt () =
   fprintf fmt "\027[0m"
+
+let default_randomization_seed = 283903
+let default_trial_number = 20
+let default_randomization_factor = 0.5
+let default_drift_factor = 1.0

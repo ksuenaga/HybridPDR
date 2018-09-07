@@ -443,8 +443,8 @@ let%test _ =
   res = `Unsat
 
 let pp_model fmt m =
-  fprintf fmt "%s" (Z3.Model.to_string m)
-  (* fprintf fmt "%s" (Z3.Expr.to_string (expr_of_model m)) *)
+  (* fprintf fmt "%s" (Z3.Model.to_string m) *)
+  fprintf fmt "%s" (Z3.Expr.to_string (expr_of_model m))
 
 let is_valid t =
   let res = callZ3 (mk_not t) in
@@ -511,11 +511,11 @@ let rec sample ~n ~vars ~min ~max fml =
 *)
 
 (* [XXX] Rough implementation.  Needs to be made clean. *)
-let rec sample ~n ~vars ~min ~max fml =
+let rec sample ?(randomization_factor=Util.default_randomization_factor) ?(drift_factor=Util.default_drift_factor) ~n ~vars ~min ~max fml =
   (* let () = printf "vars:%a@." (Util.pp_list String.pp ~sep:"; " ()) vars in *)
   let exception UnsatUnknown in
   let random_float () =
-    Random.float_range (-10.0) (10.0)
+    Random.float_range (-.randomization_factor) randomization_factor
   in
   (* Extend a (potentially) parital model m to a full model whose domain is equal to vars. *)
   let extend m =
@@ -552,15 +552,15 @@ let rec sample ~n ~vars ~min ~max fml =
     let ret =
       List.map assoc
         ~f:(fun (x,f) ->
-            let absf = Float.abs f in
-            let df = Random.float_range (0.01 +. (-0.01) *. absf) (0.01 +. 0.01 *. absf) in
+            (* let absf = Float.abs f in *)
+            let df = Random.float_range (-.drift_factor) drift_factor in
             (x, f +. df))
       |> model_of_assoc
     in
     (* let () = printf "random_next:ret:%a@." pp_model ret in *)
     ret
   in
-  let take_one () =
+  let take_one fml =
     callZ3 fml |> 
     function
     | `Sat m -> extend m
@@ -571,6 +571,10 @@ let rec sample ~n ~vars ~min ~max fml =
     else
       let m' = random_next prev in
       let res_e = eval m' fml in
+      (*
+      let () = printf "m':%a@." pp_model m' in
+      let () = printf "res_e:%a@." pp_expr res_e in
+*)
       callZ3 res_e |>
       (function
         | `Sat _ ->
@@ -584,16 +588,19 @@ let rec sample ~n ~vars ~min ~max fml =
         | _ ->
             begin
               try
-                let m = take_one () in
+                let m = take_one fml in
                 let e = expr_of_model m in
                 iter m (n-1) (m::acc) (mk_and fml (mk_not e))
               with
               | UnsatUnknown -> acc
             end)
   in
-  let m = take_one () in
+  let m = take_one fml in
+  (*
   let e = expr_of_model m in
-  (* let () = printf "sample:e:%a@." pp_expr e in *)
+  let () = printf "fml:%a@." pp_expr fml in
+  let () = printf "initial sample:e:%a@." pp_expr e in
+*)
   let res = iter m n [m] (mk_and fml (mk_not (expr_of_model m))) in
   (*
   let () =

@@ -423,6 +423,7 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
     let frames = Array.map ~f:(apply simplify) frames in
     let frames = extend_frontier ~frames ~safe ~hs in
     let frames = propagate_clauses ~hs ~frames in
+    let () = printf "current frames: %a@." pp_frames frames in
     let k = Array.length frames in
     for i = 1 to k-2 do
       let () = printf "Verifying safety at frame %d and %d@." (i-1) i in
@@ -434,7 +435,8 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
               in
               b && (is_valid (mk_implies e e'))
              )
-          frames.(i) frames.(i-1) then
+          frames.(i) frames.(i-1)
+      then
         raise (SafetyVerified(i-1,frames))
     done;
     verify_iter ~hs ~safe ~candidates ~frames ~iteration_num:(iteration_num+1)
