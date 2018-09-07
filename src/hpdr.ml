@@ -162,6 +162,7 @@ let%test _ =
   |}]*)
 
 let _ =
+  let () = Random.self_init () in
   let open SpaceexComponent in
   let input_file = ref None in
   let init_cond = ref None in

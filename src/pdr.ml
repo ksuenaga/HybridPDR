@@ -249,7 +249,8 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
         | `InterpolantFound e -> simplify e
         | _ ->
             mk_true
-            (* F.find eframe loc |> mk_not *))
+            (* F.find eframe loc |> mk_not *)
+      )
       interpolants
   in
   let () = printf "Interpolant: %a@." (pp_frame pp_expr) interpolants in
@@ -314,37 +315,45 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
      if idx = 0 then
        raise (Counterexample(loc,e,idx))
      else
-       let is_continuous = idx = (Array.length frames - 1) in
-       let () = printf "is_continous: %b@." is_continuous in
-       let locs = S.locations hs in
-       let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
-       let () = printf "eframe: %a@." (pp_frame pp_expr) eframe in
-       let wpframe : Dl.t frame = wp ~is_continuous hs eframe in
-       let () = printf "wpframe: %a@." (pp_frame Dl.pp) wpframe in
-       let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
-       let () = printf "preframe: %a@." (pp_frame Dl.pp) preframe in
-       let res = apply2 Dl.is_satisfiable_conjunction preframe wpframe in
-       let propagated =
-         Frame.fold
-           res
-           ~init:[]
-           ~f:(fun l (loc,r) ->
-             match r with
-             | `Unsat -> l
-             | `Sat m -> (loc,expr_of_model m,idx-1)::l
-             | `Unknown ->
-                U.not_implemented "propagated: unknown")
-       in
-       let () = printf "propagated: %a@." (U.pp_list pp_ce ()) propagated in       
-       match propagated with
-       | [] ->
-          let preframe = frames.(idx-1) in
-          (* let preframe = F.apply Dl.dl_elim_dyn preframe in *)
-          let newframes = resolve_conflict frames hs preframe eframe loc idx in
-          let () = printf "newframes: %a@." pp_frames newframes in
-          remove_cti hs tl newframes
-       | _ -> remove_cti hs (propagated @ cexs) frames
- 
+       (* Check that (loc,e,idx) is still a counterexample *)
+       let e' = Frame.find frames.(idx) loc in
+       mk_and e e' |> callZ3 |>
+       function
+       | `Unsat ->
+           (* If this is not a counterexample anymore, skip this. *)
+           remove_cti hs tl frames
+       | `Sat _ | `Unknown ->
+           let is_continuous = idx = (Array.length frames - 1) in
+           let () = printf "is_continous: %b@." is_continuous in
+           let locs = S.locations hs in
+           let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
+           let () = printf "eframe: %a@." (pp_frame pp_expr) eframe in
+           let wpframe : Dl.t frame = wp ~is_continuous hs eframe in
+           let () = printf "wpframe: %a@." (pp_frame Dl.pp) wpframe in
+           let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
+           let () = printf "preframe: %a@." (pp_frame Dl.pp) preframe in
+           let res = apply2 Dl.is_satisfiable_conjunction preframe wpframe in
+           let propagated =
+             Frame.fold
+               res
+               ~init:[]
+               ~f:(fun l (loc,r) ->
+                   match r with
+                   | `Unsat -> l
+                   | `Sat m -> (loc,expr_of_model m,idx-1)::l
+                   | `Unknown ->
+                       U.not_implemented "propagated: unknown")
+           in
+           let () = printf "propagated: %a@." (U.pp_list pp_ce ()) propagated in       
+           match propagated with
+           | [] ->
+               let preframe = frames.(idx-1) in
+               (* let preframe = F.apply Dl.dl_elim_dyn preframe in *)
+               let newframes = resolve_conflict frames hs preframe eframe loc idx in
+               let () = printf "newframes: %a@." pp_frames newframes in
+               remove_cti hs tl newframes
+           | _ -> remove_cti hs (propagated @ cexs) frames
+                    
 let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : frames =
   let open Frame in
   let open Z3Intf in
@@ -406,6 +415,7 @@ let extend_frontier ~(frames:frames) ~(hs:S.t) ~(safe:Z3.Expr.expr) : frames =
 let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frames:frames) ~(iteration_num:int) =
   let open Frame in
   let open Z3Intf in
+  let open SpaceexComponent in
   let () = printf "(* Iteration of verification: %d *)@." iteration_num in
   let frames = Array.map ~f:(apply simplify) frames in
   let () = printf "frames:%a@." pp_frames frames in
@@ -415,7 +425,16 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
     let frames = propagate_clauses ~hs ~frames in
     let k = Array.length frames in
     for i = 1 to k-2 do
-      if fold2 ~init:true ~f:(fun b (_,e) (_,e') -> b && (is_valid (mk_implies e e'))) frames.(i) frames.(i-1) then
+      let () = printf "Verifying safety at frame %d and %d@." (i-1) i in
+      if fold2 ~init:true
+          ~f:(fun b (loc,e) (loc',e') ->
+              let () =
+                printf "frame %d at loc %a: %a@." i S.pp_id loc pp_expr e;
+                printf "frame %d at loc %a: %a@." (i-1) S.pp_id loc' pp_expr e';
+              in
+              b && (is_valid (mk_implies e e'))
+             )
+          frames.(i) frames.(i-1) then
         raise (SafetyVerified(i-1,frames))
     done;
     verify_iter ~hs ~safe ~candidates ~frames ~iteration_num:(iteration_num+1)

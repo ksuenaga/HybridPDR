@@ -234,20 +234,21 @@ tseitin-cnf
  *      let _ = equal (make_expr (of_string "(int 3)")) (mk_numeral_i !ctx 3)
  *    end) *)
 
+let get_float e =
+  let module R = Z3.Arithmetic.Real in
+  R.get_ratio e |> Ratio.float_of_ratio
+
 let assoc_of_model m =
   let module M = Z3.Model in
   let module FD = Z3.FuncDecl in
   let module R = Z3.Arithmetic.Real in
   let module U = Util in
   let fds = M.get_const_decls m in
-  let interps = List.map fds ~f:(M.get_const_interp m) |> List.map ~f:(function Some m -> m | None -> U.error "Z3intf.get_value") in
+  let interps = List.map fds ~f:(M.get_const_interp m) |> List.map ~f:(function Some m -> get_float m | None -> U.error "Z3intf.get_value") in
   let ids = List.map fds ~f:FD.get_name |> List.map ~f:Z3.Symbol.to_string in
   let assoc = List.zip_exn ids interps in
   assoc
 
-let get_float e =
-  let module R = Z3.Arithmetic.Real in
-  R.get_ratio e |> Ratio.float_of_ratio
 
 let expr_of_model ~(model:Z3.Model.model) : Z3.Expr.expr =
   (* let open Z3Intf in *)
@@ -280,6 +281,13 @@ let model_of_assoc (l:(string * float) list) : Z3.Model.model =
     List.fold_left l
       ~init:mk_true
       ~f:(fun e (k,f) ->
+          (*
+          let () =
+            printf "e:%a@." pp_expr e;
+            printf "k:%s@." k;
+            printf "f:%f@." f;
+          in
+          *)
           mk_and e (mk_eq (mk_real_var k) (mk_real_numeral_float f)))
   in
   match callZ3 e with
@@ -454,7 +462,35 @@ let is_unsat t =
 let atomic_pred_constructors =
   [("=", 2)]
 
-let rec sample ~n fml =
+(*
+let rec sample_random ~n ~min ~max ~vars fml =
+  let rec iter n acc fml =
+    if n <= 0 then acc
+    else
+      let f = Random.float_range min max in
+      let m =
+        List.fold_left vars
+          ~init:[]
+          ~f:(fun l x -> (x, f)::l)
+        |> model_of_assoc
+      in
+      (* let () = printf "sampled:%a@." pp_model m in *)
+      let res_e = eval m fml in
+      if is_valid res_e then
+        iter (n-1) (m::acc) fml
+      else
+        iter n acc fml
+  in
+  let res = iter n [] fml in
+  let () =
+    printf "sample of: %a@." pp_expr fml;
+    printf "sample: %a@." (Util.pp_list pp_model ~sep:"@\n--@\n" ()) res
+  in
+  res
+*)
+  
+(*
+let rec sample ~n ~vars ~min ~max fml =
   let rec iter n acc fml =
     if n <= 0 then acc
     else
@@ -472,3 +508,99 @@ let rec sample ~n fml =
     printf "sample: %a@." (Util.pp_list pp_model ~sep:"@\n--@\n" ()) res
   in
   res
+*)
+
+(* [XXX] Rough implementation.  Needs to be made clean. *)
+let rec sample ~n ~vars ~min ~max fml =
+  (* let () = printf "vars:%a@." (Util.pp_list String.pp ~sep:"; " ()) vars in *)
+  let exception UnsatUnknown in
+  let random_float () =
+    Random.float_range (-10.0) (10.0)
+  in
+  (* Extend a (potentially) parital model m to a full model whose domain is equal to vars. *)
+  let extend m =
+    (* let () = printf "extend:m:%a@." pp_model m in *)
+    let assoc = assoc_of_model m in
+    let domain_assoc = List.map ~f:fst assoc in
+    (* let () = printf "domain_assoc:%a@." (Util.pp_list String.pp ~sep:";" ()) domain_assoc in *)
+    let diff =
+      vars |>
+      List.filter ~f:(fun x -> List.for_all ~f:(fun y -> not (x = y)) domain_assoc)
+    in
+    (* let () = printf "diff:%a@." (Util.pp_list String.pp ~sep:";" ()) diff in *)
+    let res = List.map diff ~f:(fun x -> (x, random_float ())) in
+    let assoc_res = assoc @ res in
+    (* let () = printf "assoc_res:%a@." (Util.pp_list (Util.pp_pair String.pp Float.pp) ~sep:"; " ()) assoc_res in *)
+    let ret = assoc_res |> model_of_assoc in
+    (* let () = printf "ret:%a@." pp_model ret in *)
+    ret
+  in
+  (* Let m = { x1 -> v1; ...; xn -> vn }.  randomize m returns { x1 ->
+     v1'; ...; xn -> vn' } where v1' ... vn' are randomly sampled
+     floats.  *)
+  (*
+  let randomize m =
+    m |> assoc_of_model |>
+    List.map ~f:(fun (k,f) -> (k, random_float ()))
+    |> model_of_assoc
+  in
+*)
+  (* 1-step random walk from m.  m needs to be a full model. *)
+  let random_next m =
+    (* let () = printf "random_next:m:%a@." pp_model m in *)
+    let assoc = assoc_of_model m in
+    let ret =
+      List.map assoc
+        ~f:(fun (x,f) ->
+            let absf = Float.abs f in
+            let df = Random.float_range (0.01 +. (-0.01) *. absf) (0.01 +. 0.01 *. absf) in
+            (x, f +. df))
+      |> model_of_assoc
+    in
+    (* let () = printf "random_next:ret:%a@." pp_model ret in *)
+    ret
+  in
+  let take_one () =
+    callZ3 fml |> 
+    function
+    | `Sat m -> extend m
+    | _ -> raise UnsatUnknown
+  in
+  let rec iter prev n acc fml =
+    if n <= 0 then acc
+    else
+      let m' = random_next prev in
+      let res_e = eval m' fml in
+      callZ3 res_e |>
+      (function
+        | `Sat _ ->
+            (*
+            let () = printf "m'':%a@." pp_model m'' in
+            let m'' = randomize m'' in
+            let () = printf "randomized m'':%a@." pp_model m'' in
+            let m_ret = model_of_assoc ((assoc_of_model m') @ (assoc_of_model m'')) in
+            *)
+            iter m' (n-1) (m'::acc) (mk_and fml (mk_not (expr_of_model m')))
+        | _ ->
+            begin
+              try
+                let m = take_one () in
+                let e = expr_of_model m in
+                iter m (n-1) (m::acc) (mk_and fml (mk_not e))
+              with
+              | UnsatUnknown -> acc
+            end)
+  in
+  let m = take_one () in
+  let e = expr_of_model m in
+  (* let () = printf "sample:e:%a@." pp_expr e in *)
+  let res = iter m n [m] (mk_and fml (mk_not (expr_of_model m))) in
+  (*
+  let () =
+    printf "sample of: %a@." pp_expr fml;
+    printf "sample: %a@." (Util.pp_list pp_model ~sep:"@\n--@\n" ()) res
+  in
+  *)
+  res
+
+
