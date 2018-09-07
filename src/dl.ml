@@ -354,7 +354,7 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number) t1 t2 =
                       match r with
                       | `Sat m -> m::acc
                       | `Unsat -> acc
-                      | `Unknown -> U.not_implemented "is_valid_implication: unknown")
+                      | `Unknown -> acc)
               in
               match res with
               | [] -> `Valid
