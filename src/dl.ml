@@ -347,7 +347,6 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number) t1 t2 =
         in
         let check_e1_is_invariant () =
           let module S = SpaceexComponent in
-          printf "is_valid_implication: primdyn: eliminating@.";
           let vc =
             let dtsymb = Z.mk_real_var "_dt" in
             let vars = Env.domain f in
@@ -364,12 +363,31 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number) t1 t2 =
                  | `Sat m -> printf "m:%a@." Z.pp_model m; `Unknown
                  | `Unknown -> `Unknown
         in
+        (* [XXX] Factor out the common part with check_e1_is_invarinat *)
+        let check_post_is_invariant () =
+          let module S = SpaceexComponent in
+          let vc =
+            let dtsymb = Z.mk_real_var "_dt" in
+            let vars = Env.domain f in
+            let wp = Z.substitute vars (List.map vars ~f:(fun x -> Z.mk_add (Z.mk_real_var x) (Z.mk_mul dtsymb (Env.find_exn f x)))) post in
+            let vc =
+              Z.mk_and post inv |> Z.mk_and (Z.mk_not wp) |> Z.mk_and (Z.mk_gt dtsymb (Z.mk_real_numeral_float 0.0))
+              |> Z.mk_and (Z.mk_lt dtsymb (Z.mk_real_numeral_float 0.1))
+            in
+            vc
+          in
+          let () = printf "vc:%a@." Z.pp_expr vc in
+          vc |> Z.callZ3 |>
+          function `Unsat -> `Valid
+                 | `Sat m -> printf "m:%a@." Z.pp_model m; `Unknown
+                 | `Unknown -> `Unknown
+        in
         let discover_counterexample () =
           (* Take samples from the negation of the post condition. *)
           let samples : Z3.Model.model list = Z.sample ~n:nsamples ~vars:(Env.domain f) ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor (Z.mk_not post) in
-              (*
-              let () = printf "fml:%a@." Z.pp_expr (Z.mk_not post) in
-              let () = printf "samples:%a@." (Util.pp_list Z.pp_model ()) samples in
+          (*
+          let () = printf "fml:%a@." Z.pp_expr (Z.mk_not post) in
+          let () = printf "samples:%a@." (Util.pp_list Z.pp_model ()) samples in
 *)
           (* Check whether there is a prestate that reach a sampled post state. *)
           let results = List.map ~f:(fun m -> (m, check_satisfiability ~pre:e1 ~flow:f ~inv:inv ~post:m)) samples in
@@ -391,6 +409,7 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number) t1 t2 =
         let strategies =
           [check_e1_implies_post_is_valid;
            check_e1_is_invariant;
+           check_post_is_invariant;
            discover_counterexample;
           ]
         in
