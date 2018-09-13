@@ -324,9 +324,9 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
            remove_cti hs tl frames
        | `Sat _ | `Unknown ->
           let is_continuous = idx = (Array.length frames - 1) in
-          let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
           let locs = S.locations hs in
-          let propagated = propagate_one_step ~is_continuous ~hs ~ce:(loc,e,idx) ~preframe ~locs in
+          let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
+          let propagated = propagate_one_step ~is_continuous ~hs ~ce:(loc,e,idx) ~preframe in
           match propagated with
           | [] ->
              let preframe = frames.(idx-1) in
@@ -336,10 +336,11 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
              let () = printf "newframes: %a@." pp_frames newframes in
              remove_cti hs tl newframes
           | _ -> remove_cti hs (propagated @ cexs) frames
-and propagate_one_step ~is_continuous ~hs ~ce ~preframe ~locs =
+and propagate_one_step ~is_continuous ~hs ~preframe ~ce =
   let open Frame in
   let open Z3Intf in
   let loc,e,idx = ce in
+  let locs = S.locations hs in
   let () = printf "is_continous: %b@." is_continuous in
   let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
   let () = printf "eframe: %a@." (pp_frame pp_expr) eframe in
@@ -360,13 +361,12 @@ and propagate_one_step ~is_continuous ~hs ~ce ~preframe ~locs =
   in
   let () = printf "backpropagated to:@.%a@.from:@.%a@." (U.pp_list pp_ce ()) propagated (Frame.pp_frame pp_expr) eframe in
   propagated
-  
 
 let%test _ =
   let open Z3Intf in
+  let open Frame in
   let hs = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) |> List.hd_exn in
-  let loc1 = S.id_of_string "1" in
-  let loc2 = S.id_of_string "2" in
+  let loc1,loc2 = S.id_of_string "1", S.id_of_string "2" in
   let x,y = mk_real_var "x", mk_real_var "y" in
   let expr =
     [mk_le x (mk_real_numeral_float (5433.0 /. 3125.0));
@@ -375,14 +375,17 @@ let%test _ =
      mk_ge y (mk_real_numeral_float (990679.0 /. 1000000.0))]
     |> List.fold_left ~init:mk_true ~f:mk_and
   in
-  let cexs = [loc2, expr, 1] in
-  let open Frame in
-  let preframe = lift [loc1; loc2] mk_true in
+  let ce = (loc2, expr, 1) in
+  let preframe = lift [loc1; loc2] (Dl.mk_dl_prim mk_true) in
   let eframe = lift [loc1; loc2] mk_false |> apply_on_id (mk_or expr) loc2 in
-  (* let frames = remove_cti hs cexs [|frame0; frame1|] in *)
-  true
-  (* Frame.find *)
-  
+  let propagated = propagate_one_step ~is_continuous:true ~hs ~preframe ~ce in
+  let () = printf "TEST: backpropagated to:@.%a@.from:@.%a@." (U.pp_list pp_ce ()) propagated (Frame.pp_frame pp_expr) eframe in
+  List.for_all propagated
+    ~f:(fun (id,e,_) ->
+      if S.string_of_id id = "2" then
+        callZ3 e = `Unsat
+      else
+        true)
                     (*
 backpropagated to:
 At location "2", at frame 1, CE: (and (<= y (- 1.0)) (>= y (- 1.0)) (<= x 0.0) (>= x 0.0))
