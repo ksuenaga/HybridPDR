@@ -537,7 +537,7 @@ let interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
   | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
   | And [Prim guard; Dyn(f,inv,Prim e1)], Prim e2 ->
       let vars = Env.domain f in
-      let samples1 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
+      let samples1 = Z.sample ~n:20 ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
       let samples1 =
         List.map samples1 ~f:(fun m -> check_satisfiability ~pre:guard ~flow:f ~inv:inv ~post:m)
         |> List.filter ~f:(function `Sat _ -> true | _ -> false)
@@ -546,7 +546,7 @@ let interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
       let e1 =
         List.fold_left samples1 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
       in
-      let samples2 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e2 in
+      let samples2 = Z.sample ~n:20 ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e2 in
       let e2 =
         List.fold_left samples2 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
       in

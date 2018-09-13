@@ -574,7 +574,7 @@ let rec sample ?(randomization_factor=Util.default_randomization_factor) ?(drift
       (*
       let () = printf "m':%a@." pp_model m' in
       let () = printf "res_e:%a@." pp_expr res_e in
-*)
+         *)
       callZ3 res_e |>
       (function
         | `Sat _ ->
@@ -583,7 +583,7 @@ let rec sample ?(randomization_factor=Util.default_randomization_factor) ?(drift
             let m'' = randomize m'' in
             let () = printf "randomized m'':%a@." pp_model m'' in
             let m_ret = model_of_assoc ((assoc_of_model m') @ (assoc_of_model m'')) in
-            *)
+*)
             iter m' (n-1) (m'::acc) (mk_and fml (mk_not (expr_of_model m')))
         | _ ->
             begin
@@ -596,11 +596,9 @@ let rec sample ?(randomization_factor=Util.default_randomization_factor) ?(drift
             end)
   in
   let m = take_one fml in
-  (*
   let e = expr_of_model m in
   let () = printf "fml:%a@." pp_expr fml in
   let () = printf "initial sample:e:%a@." pp_expr e in
-*)
   let res = iter m n [m] (mk_and fml (mk_not (expr_of_model m))) in
   (*
   let () =

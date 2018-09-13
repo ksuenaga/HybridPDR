@@ -323,37 +323,84 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
            (* If this is not a counterexample anymore, skip this. *)
            remove_cti hs tl frames
        | `Sat _ | `Unknown ->
-           let is_continuous = idx = (Array.length frames - 1) in
-           let () = printf "is_continous: %b@." is_continuous in
-           let locs = S.locations hs in
-           let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
-           let () = printf "eframe: %a@." (pp_frame pp_expr) eframe in
-           let wpframe : Dl.t frame = wp ~is_continuous hs eframe in
-           let () = printf "wpframe: %a@." (pp_frame Dl.pp) wpframe in
-           let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
-           let () = printf "preframe: %a@." (pp_frame Dl.pp) preframe in
-           let res = apply2 Dl.is_satisfiable_conjunction preframe wpframe in
-           let propagated =
-             Frame.fold
-               res
-               ~init:[]
-               ~f:(fun l (loc,r) ->
-                   match r with
-                   | `Unsat -> l
-                   | `Sat m -> (loc,expr_of_model m,idx-1)::l
-                   | `Unknown ->
-                       U.not_implemented "propagated: unknown")
-           in
-           let () = printf "propagated: %a@." (U.pp_list pp_ce ()) propagated in       
-           match propagated with
-           | [] ->
-               let preframe = frames.(idx-1) in
-               (* let preframe = F.apply Dl.dl_elim_dyn preframe in *)
-               let newframes = resolve_conflict frames hs preframe eframe loc idx in
-               let () = printf "newframes: %a@." pp_frames newframes in
-               remove_cti hs tl newframes
-           | _ -> remove_cti hs (propagated @ cexs) frames
-                    
+          let is_continuous = idx = (Array.length frames - 1) in
+          let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
+          let locs = S.locations hs in
+          let propagated = propagate_one_step ~is_continuous ~hs ~ce:(loc,e,idx) ~preframe ~locs in
+          match propagated with
+          | [] ->
+             let preframe = frames.(idx-1) in
+             let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
+             (* let preframe = F.apply Dl.dl_elim_dyn preframe in *)
+             let newframes = resolve_conflict frames hs preframe eframe loc idx in
+             let () = printf "newframes: %a@." pp_frames newframes in
+             remove_cti hs tl newframes
+          | _ -> remove_cti hs (propagated @ cexs) frames
+and propagate_one_step ~is_continuous ~hs ~ce ~preframe ~locs =
+  let open Frame in
+  let open Z3Intf in
+  let loc,e,idx = ce in
+  let () = printf "is_continous: %b@." is_continuous in
+  let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
+  let () = printf "eframe: %a@." (pp_frame pp_expr) eframe in
+  let wpframe : Dl.t frame = wp ~is_continuous hs eframe in
+  let () = printf "wpframe: %a@." (pp_frame Dl.pp) wpframe in
+  let () = printf "preframe: %a@." (pp_frame Dl.pp) preframe in
+  let res = apply2 Dl.is_satisfiable_conjunction preframe wpframe in
+  let propagated =
+    Frame.fold
+      res
+      ~init:[]
+      ~f:(fun l (loc,r) ->
+        match r with
+        | `Unsat -> l
+        | `Sat m -> (loc,expr_of_model m,idx-1)::l
+        | `Unknown ->
+           U.not_implemented "propagated: unknown")
+  in
+  let () = printf "backpropagated to:@.%a@.from:@.%a@." (U.pp_list pp_ce ()) propagated (Frame.pp_frame pp_expr) eframe in
+  propagated
+  
+
+let%test _ =
+  let open Z3Intf in
+  let hs = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) |> List.hd_exn in
+  let loc1 = S.id_of_string "1" in
+  let loc2 = S.id_of_string "2" in
+  let x,y = mk_real_var "x", mk_real_var "y" in
+  let expr =
+    [mk_le x (mk_real_numeral_float (5433.0 /. 3125.0));
+     mk_ge x (mk_real_numeral_float (5433.0 /. 3125.0));
+     mk_le y (mk_real_numeral_float (990679.0 /. 1000000.0));
+     mk_ge y (mk_real_numeral_float (990679.0 /. 1000000.0))]
+    |> List.fold_left ~init:mk_true ~f:mk_and
+  in
+  let cexs = [loc2, expr, 1] in
+  let open Frame in
+  let preframe = lift [loc1; loc2] mk_true in
+  let eframe = lift [loc1; loc2] mk_false |> apply_on_id (mk_or expr) loc2 in
+  (* let frames = remove_cti hs cexs [|frame0; frame1|] in *)
+  true
+  (* Frame.find *)
+  
+                    (*
+backpropagated to:
+At location "2", at frame 1, CE: (and (<= y (- 1.0)) (>= y (- 1.0)) (<= x 0.0) (>= x 0.0))
+At location "1", at frame 1, CE: (and (<= y (- (/ 5433.0 3125.0)))
+     (>= y (- (/ 5433.0 3125.0)))
+     (<= x (/ 990679.0 1000000.0))
+     (>= x (/ 990679.0 1000000.0)))
+from:
+[("1", false);
+  ("2",
+   (or (and (<= y (- (/ 5433.0 3125.0)))
+         (>= y (- (/ 5433.0 3125.0)))
+         (<= x (/ 990679.0 1000000.0))
+         (>= x (/ 990679.0 1000000.0)))
+    false))
+  ]
+                     *)
+
 let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : frames =
   let open Frame in
   let open Z3Intf in
