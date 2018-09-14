@@ -21,6 +21,8 @@ let rec simplify t =
   let module Z = Z3Intf in
   match t with
   | Prim t' -> Prim (Z.simplify t')
+  | Dyn(false,_,_,Prim z3) when Z.callZ3 z3 = `Unsat -> Prim Z.mk_false
+             (*
   | Dyn(is_partial, f, inv, Prim z3) ->
      let inv,z3 = Z.simplify inv, Z.simplify z3 in
      let invres,z3res = Z.callZ3 inv, Z.callZ3 z3 in
@@ -34,6 +36,7 @@ let rec simplify t =
             | _ -> Dyn(is_partial, f, inv, Prim z3)
           end
      end
+              *)
   | Dyn(is_partial, f, inv, t') -> Dyn(is_partial, f, Z.simplify inv, simplify t')
   | And ts ->
      let ts = List.map ~f:simplify ts in
