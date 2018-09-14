@@ -313,7 +313,7 @@ let%test _ =
   with
     Unsat -> false
 
-let rec is_valid_implication ?(nsamples=Util.default_trial_number) t1 t2 =
+let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 =
   let module Z = Z3Intf in
   let z3res_to_res r =
     match r with
@@ -417,7 +417,7 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number) t1 t2 =
           in
           match res with
           | [] -> `Unknown
-          | _ -> `NotValid res
+          | hd::_ -> `NotValid [hd]
         in
         let strategies =
           [check_e1_implies_post_is_valid;
@@ -550,7 +550,7 @@ let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
   | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
   | And [Prim guard; Dyn(is_partial,f,inv,Prim e1)], Prim e2 ->
       let vars = Env.domain f in
-      let samples1 = Z.sample ~n:1 ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
+      let samples1 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
       let samples1 =
         List.map samples1 ~f:(fun m -> check_satisfiability ~pre:guard ~flow:f ~inv:inv ~post:m)
         |> List.filter ~f:(function `Sat _ -> true | _ -> false)
@@ -559,7 +559,7 @@ let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
       let e1 =
         List.fold_left samples1 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
       in
-      let samples2 = Z.sample ~n:1 ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e2 in
+      let samples2 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e2 in
       let e2 =
         List.fold_left samples2 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
       in

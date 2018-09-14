@@ -58,6 +58,7 @@ let pp_end_style fmt () =
   fprintf fmt "\027[0m"
 
 let default_randomization_seed = 283903
-let default_trial_number = 20
+let default_trial_number = 1
+let default_trial_number_for_ce = 20
 let default_randomization_factor = 0.5
 let default_drift_factor = 1.0
