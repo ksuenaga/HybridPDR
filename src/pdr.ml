@@ -36,7 +36,7 @@ let pp_result fmt r =
 
 exception ContradictorySpec of Z3.Model.model list
 
-let wp ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
+let wp ~is_partial ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
   let open SpaceexComponent in
   let open Frame in
   let open Z3Intf in
@@ -63,7 +63,7 @@ let wp ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
         ~f:(fun acc locid ->
           let loc = Env.find_exn hs.locations locid in
           let post = Frame.find frame locid in
-          let wpcond = mk_dl_dyn loc.flow loc.inv (mk_dl_prim post) in
+          let wpcond = mk_dl_dyn ~is_partial loc.flow loc.inv (mk_dl_prim post) in
           apply_on_id (mk_dl_and wpcond) locid acc)
         locs
     else
@@ -80,7 +80,7 @@ let wp ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
           let cmd = t.command in
           let post_z3_pre = mk_implies guard (wp_command_z3 cmd post_z3) in
           (* [XXX] Really? mk_dl_and or mk_dl_or? *)
-          apply_on_id (fun e -> mk_dl_or e (mk_dl_dyn srcloc.flow srcloc.inv (mk_dl_prim post_z3_pre))) srcid l)
+          apply_on_id (fun e -> mk_dl_or e (mk_dl_dyn ~is_partial srcloc.flow srcloc.inv (mk_dl_prim post_z3_pre))) srcid l)
         hs.transitions
   in
   ret
@@ -117,7 +117,7 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
   let st0 = check_resframe res0 in
   (* 1-step reachability *)
   let () = printf "(* Checking the safety of 1st frame *)@." in
-  let wp_frame = wp ~is_continuous:false hs safe_frame in
+  let wp_frame = wp ~is_partial:true ~is_continuous:false hs safe_frame in
   let res1 = apply2 Dl.is_valid_implication (apply Dl.mk_dl_prim init_frame) wp_frame in
   let st1 = check_resframe res1 in
   match st0,st1 with
@@ -178,7 +178,7 @@ let propagate_clauses ~(hs:S.t) ~(frames:frames) : frames =
         ~f:(fun a ->
           let preframe = apply (mk_and a) frames.(i) in
           let postframe = lift locs a in
-          let wp = wp ~is_continuous:false hs postframe in
+          let wp = wp ~is_partial:true ~is_continuous:false hs postframe in
           (* let wp_elimed = apply Dl.dl_elim_dyn wp in *)
           (* let vc = apply2 mk_implies preframe wp_elimed in *)
           (* let vc = apply2 mk_implies preframe wp in *)
@@ -218,7 +218,7 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
         let preloc = Env.find_exn hs.locations loc in
         let preflow_inverted = S.invert_flow preloc.flow in
         let preinv = preloc.inv in
-        let ret = Dl.mk_dl_dyn preflow_inverted preinv (Dl.mk_dl_prim z3expr_preframe) in
+        let ret = Dl.mk_dl_dyn ~is_partial:false preflow_inverted preinv (Dl.mk_dl_prim z3expr_preframe) in
         ret)
       preframe |> apply Dl.simplify
   in
@@ -344,7 +344,7 @@ and propagate_one_step ~is_continuous ~hs ~preframe ~ce =
   let () = printf "is_continous: %b@." is_continuous in
   let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
   let () = printf "eframe: %a@." (pp_frame pp_expr) eframe in
-  let wpframe : Dl.t frame = wp ~is_continuous hs eframe in
+  let wpframe : Dl.t frame = wp ~is_partial:false ~is_continuous hs eframe in
   let () = printf "wpframe: %a@." (pp_frame Dl.pp) wpframe in
   let () = printf "preframe: %a@." (pp_frame Dl.pp) preframe in
   let res = apply2 Dl.is_satisfiable_conjunction preframe wpframe in
@@ -412,7 +412,7 @@ let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : f
   let () = printf "(* Checking the safety of the frontier *)@." in
   let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(len-1) in
   let () = printf "pre: %a@." (pp_frame Dl.pp) preframe in
-  let wpframe : Dl.t frame = wp ~is_continuous:true hs (lift locs safe) in
+  let wpframe : Dl.t frame = wp ~is_partial:true ~is_continuous:true hs (lift locs safe) in
   let () = printf "wp: %a@." (pp_frame Dl.pp) wpframe in
   let res = apply2 Dl.is_valid_implication preframe wpframe in
   (*

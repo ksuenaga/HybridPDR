@@ -7,7 +7,13 @@ module U = Util
 
 type t =
   | Prim of Z3.Expr.expr
-  | Dyn of S.flow * Z3.Expr.expr * t
+  (* `Dyn(is_partial, f, inv, t)` is true iff (1) if `is_partial` is
+     `true`, then all the reachable state along with flow `f` and the
+     invariant `inv` satisfies `t`; and (2) if `is_partial` is
+     `false`, then there exists a finite-time trajectory originating
+     from the current state along with flow `f` and invariant `inv`
+     and, at the final state, `t` holds. *)
+  | Dyn of bool * S.flow * Z3.Expr.expr * t
   | And of t list
   | Or of t list
 
@@ -15,7 +21,8 @@ let rec simplify t =
   let module Z = Z3Intf in
   match t with
   | Prim t' -> Prim (Z.simplify t')
-  | Dyn(f, inv, Prim z3) ->
+  (*
+  | Dyn(is_partial, f, inv, Prim z3) ->
      let inv, z3 = Z.simplify inv, Z.simplify z3 in
      let invres, z3res = Z.callZ3 inv, Z.callZ3 z3 in
      begin
@@ -25,22 +32,27 @@ let rec simplify t =
           begin
             match invres with
             | `Unsat -> Prim z3
-            | _ -> Dyn(f, inv, Prim z3)
+            | _ -> Dyn(is_partial, f, inv, Prim z3)
           end
      end
-  | Dyn(f, inv, t') -> Dyn(f, Z.simplify inv, simplify t')
+   *)
+  | Dyn(is_partial, f, inv, t') -> Dyn(is_partial, f, Z.simplify inv, simplify t')
   | And ts ->
      let ts = List.map ~f:simplify ts in
      And (ts)
   | Or ts ->
      let ts = List.map ~f:simplify ts in
      Or (ts)
-        
+     
 let rec pp fmt t =
   let open Z3Intf in
   match t with
   | Prim z -> fprintf fmt "prim(%a)" pp_expr z
-  | Dyn(flow,inv,t) -> fprintf fmt "[%a & %a]%a" S.pp_flow flow pp_expr inv pp t
+  | Dyn(is_partial, flow,inv,t) ->
+     if is_partial then
+       fprintf fmt "[%a & %a]%a" S.pp_flow flow pp_expr inv pp t
+     else
+       fprintf fmt "<%a & %a>%a" S.pp_flow flow pp_expr inv pp t
   | And ts ->
      fprintf fmt "(%a)" (U.pp_list pp ~sep:" && " ()) ts
   | Or ts ->
@@ -52,7 +64,7 @@ let rec dl_is_valid e =
   | Dyn _ -> false (* Unknown *)
   | Or es -> List.exists ~f:dl_is_valid es
   | And es -> List.for_all ~f:dl_is_valid es
-
+            
 let rec dl_is_unsat e =
   match e with
   | Prim z -> Z3Intf.is_unsat z
@@ -62,8 +74,8 @@ let rec dl_is_unsat e =
             
 let mk_dl_prim e = Prim e
 
-let mk_dl_dyn f e t = Dyn(f,e,t)
-         
+let mk_dl_dyn ~is_partial f e t = Dyn(is_partial, f,e,t)
+                               
 let mk_dl_and e1 e2 =
   let open Z3Intf in
   if dl_is_unsat e1 || dl_is_unsat e2 then
@@ -79,7 +91,7 @@ let mk_dl_and e1 e2 =
     | Prim z1, Prim z2 -> Prim (mk_and z1 z2)
     | e1,e2 -> And [e1;e2]
 
-          
+             
 let mk_dl_or e1 e2 =
   let open Z3Intf in
   if dl_is_valid e1 || dl_is_valid e2 then
@@ -94,13 +106,13 @@ let mk_dl_or e1 e2 =
     | Or l, e | e, Or l -> Or (e::l)
     | Prim z1, Prim z2 -> Prim (mk_or z1 z2)
     | e1,e2 -> Or [e1;e2]
-                 (*
+(*
     | _ ->
         printf "e1:%a@." pp e1;
         printf "e2:%a@." pp e2;        
         Util.not_implemented "mk_dl_or"
-           *)
-                 
+ *)
+             
 let rec elim_dyn_iter ~acc flow inv (t:Z3.Expr.expr) =
   let open Z3Intf in
   let module S = SpaceexComponent in
@@ -110,13 +122,13 @@ let rec elim_dyn_iter ~acc flow inv (t:Z3.Expr.expr) =
   else
     (* let res = callZ3 tprev in *)
     elim_dyn_iter ~acc:(mk_or acc tprev) flow inv tprev
-      (*
+(*
     match res with
     | `Sat _ -> elim_dyn_iter ~acc:(mk_or acc tprev) flow inv tprev
     | `Unsat -> acc
     | `Unknown ->
        E.raise (E.of_string "elim_dyn_iter: got stuck")
-       *)
+ *)
 let rec dl_elim_dyn t =
   (* U.not_implemented "dl_elim_dyn" *)
   (*
@@ -125,7 +137,7 @@ let rec dl_elim_dyn t =
   match t with
   | Prim z -> z |> simplify
   | _ ->   U.not_implemented "dl_elim_dyn"
-*)
+   *)
   let open Z3Intf in
   match t with
   | Prim z -> z |> simplify
@@ -141,7 +153,7 @@ let rec dl_elim_dyn t =
        ~f:(fun z t ->
          mk_or z (dl_elim_dyn t))
        ts |> simplify
-  | Dyn(flow,inv,t') ->
+  | Dyn(is_partial, flow,inv,t') ->
      let () = printf "Eliminating: %a@." pp t in
      let t' = dl_elim_dyn t' in
      let res = simplify (elim_dyn_iter ~acc:t' flow inv t') in
@@ -327,8 +339,8 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number) t1 t2 =
     (* | _, Prim e when Z.is_unsat (Z.mk_not e) -> `Valid *)
     | Prim e1, Prim e2 ->
         Z.callZ3 (Z.mk_and e1 (Z.mk_not e2)) |> z3res_to_res
-    | _, Dyn(_,_,Prim post) when Z.is_unsat (Z.mk_not post) -> `Valid
-    | Prim e1, Dyn(f,inv,Prim post) ->
+    (* | _, Dyn(,_,_,Prim post) when Z.is_unsat (Z.mk_not post) -> `Valid *)
+    | Prim e1, Dyn(true,f,inv,Prim post) ->
         let rec apply_strategies l =
           match l with
           | [] -> `Unknown
@@ -428,7 +440,7 @@ let%test _ =
   let t2post = Prim (mk_le (mk_real_var "x") (mk_real_numeral_float 1.0)) in
   let flow = ["x", mk_mul (mk_real_numeral_float (-1.0)) (mk_real_var "y"); "y", mk_real_var "x"] |> Env.from_list in
   let inv = mk_le (mk_real_var "y") (mk_real_numeral_float 0.0) in
-  is_valid_implication t1 (Dyn(flow,inv,t2post)) |>
+  is_valid_implication t1 (Dyn(true,flow,inv,t2post)) |>
   function
     `Valid -> false
   | `NotValid ms ->
@@ -465,8 +477,8 @@ let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown 
     | Prim e, _ when Z.is_unsat e -> `Unsat
     | _, Prim e when Z.is_unsat e -> `Unsat
     | Prim e1, Prim e2 ->
-        Z.callZ3 (Z.mk_and e1 e2) |> z3res_to_res
-    | Prim e, Dyn(f,inv,Prim e_post) | Dyn(f,inv,Prim e_post), Prim e ->
+       Z.callZ3 (Z.mk_and e1 e2) |> z3res_to_res
+    | Prim e, Dyn(false,f,inv,Prim e_post) | Dyn(false,f,inv,Prim e_post), Prim e ->
         (* Check whether "e and post is sat"; if it is, the entire formula is sat *)
         (* let r = is_satisfiable_conjunction (Prim e) post in *)
         let r = Z.mk_and e e_post |> Z.callZ3 in
@@ -535,7 +547,7 @@ let interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
   match t1,t2 with
   | Prim t1', Prim t2' -> Z.interpolant t1' t2'
   | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
-  | And [Prim guard; Dyn(f,inv,Prim e1)], Prim e2 ->
+  | And [Prim guard; Dyn(is_partial,f,inv,Prim e1)], Prim e2 ->
       let vars = Env.domain f in
       let samples1 = Z.sample ~n:20 ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
       let samples1 =
