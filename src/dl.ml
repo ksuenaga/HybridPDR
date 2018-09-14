@@ -21,13 +21,12 @@ let rec simplify t =
   let module Z = Z3Intf in
   match t with
   | Prim t' -> Prim (Z.simplify t')
-  (*
   | Dyn(is_partial, f, inv, Prim z3) ->
-     let inv, z3 = Z.simplify inv, Z.simplify z3 in
-     let invres, z3res = Z.callZ3 inv, Z.callZ3 z3 in
+     let inv,z3 = Z.simplify inv, Z.simplify z3 in
+     let invres,z3res = Z.callZ3 inv, Z.callZ3 z3 in
      begin
-       match z3res with
-       | `Unsat -> Prim (Z.mk_false)
+       match is_partial,z3res with
+       | true,`Unsat -> Prim (Z.mk_false)
        | _ ->
           begin
             match invres with
@@ -35,7 +34,6 @@ let rec simplify t =
             | _ -> Dyn(is_partial, f, inv, Prim z3)
           end
      end
-   *)
   | Dyn(is_partial, f, inv, t') -> Dyn(is_partial, f, Z.simplify inv, simplify t')
   | And ts ->
      let ts = List.map ~f:simplify ts in
@@ -535,7 +533,7 @@ let%test _ =
     Unsat -> false
 ;;
 
-let interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
+let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
   let module Z = Z3Intf in
   (*
   printf "t1:%a@." pp t1;
@@ -567,6 +565,16 @@ let interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
         printf "%aTaking interpolant of:@.%a@.and@.%a@.%a" U.pp_start_style U.Green Z.pp_expr e1 Z.pp_expr e2 U.pp_end_style ()
       in
       Z.interpolant e1 e2
+  | Or ts, Prim e2 ->
+     List.fold_left ts
+       ~init:(`InterpolantFound Z.mk_false)
+       ~f:(fun res t ->
+         match res with
+         | `InterpolantFound itp ->
+            interpolant t (Prim e2) |>
+              (function `InterpolantFound itp' -> `InterpolantFound (Z.mk_or itp itp')
+                      | elseres -> elseres)
+         | elseres -> elseres)
   | _, _ ->
       U.not_implemented "interpolant"
       (*

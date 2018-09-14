@@ -393,7 +393,10 @@ let%test _ =
       if S.string_of_id id = "2" then
         callZ3 e = `Unsat
       else
-        true)
+        true) &&
+    List.exists propagated
+      ~f:(fun (id,e,_) ->
+        S.string_of_id id = "1" && (callZ3 e |> function `Sat _ -> true | _ -> false))
                     (*
 backpropagated to:
 At location "2", at frame 1, CE: (and (<= y (- 1.0)) (>= y (- 1.0)) (<= x 0.0) (>= x 0.0))
