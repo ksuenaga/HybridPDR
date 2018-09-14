@@ -75,12 +75,20 @@ let wp ~is_partial ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
           let tgtid = t.target in
           (* let tgtloc = Env.find_exn hs.locations tgtid in *)
           let post_z3 = find frame tgtid in
-          (* [XXX] Really? mk_and or mk_implies? *)
           let guard = t.guard in
           let cmd = t.command in
-          let post_z3_pre = mk_implies guard (wp_command_z3 cmd post_z3) in
+          let post_z3_pre =
+            if is_partial then
+              mk_implies guard (wp_command_z3 cmd post_z3)
+            else
+              mk_and guard (wp_command_z3 cmd post_z3)
+          in
           (* [XXX] Really? mk_dl_and or mk_dl_or? *)
-          apply_on_id (fun e -> mk_dl_or e (mk_dl_dyn ~is_partial srcloc.flow srcloc.inv (mk_dl_prim post_z3_pre))) srcid l)
+          apply_on_id
+            (fun e ->
+              mk_dl_or e (mk_dl_dyn ~is_partial srcloc.flow srcloc.inv (mk_dl_prim post_z3_pre))
+            )
+            srcid l)
         hs.transitions
   in
   ret
@@ -378,7 +386,7 @@ let%test _ =
   let ce = (loc2, expr, 1) in
   let preframe = lift [loc1; loc2] (Dl.mk_dl_prim mk_true) in
   let eframe = lift [loc1; loc2] mk_false |> apply_on_id (mk_or expr) loc2 in
-  let propagated = propagate_one_step ~is_continuous:true ~hs ~preframe ~ce in
+  let propagated = propagate_one_step ~is_continuous:false ~hs ~preframe ~ce in
   let () = printf "TEST: backpropagated to:@.%a@.from:@.%a@." (U.pp_list pp_ce ()) propagated (Frame.pp_frame pp_expr) eframe in
   List.for_all propagated
     ~f:(fun (id,e,_) ->
