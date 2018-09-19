@@ -243,7 +243,6 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
         ret)
       preframe |> apply Dl.simplify
   in
-  let () = printf "invcont_preframe: %a@." (pp_frame Dl.pp) invcont_preframe in
   let invdisc_preframe =
     MySet.fold
       ~init:(lift locs (Dl.mk_dl_prim mk_false))
@@ -257,11 +256,8 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
         resframe |> apply_on_id (Dl.mk_dl_or res) tgtid)
       hs.transitions |> apply Dl.simplify
   in
-  let () = printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe in
   (* let inv_preframe_elimed = (* apply Dl.dl_elim_dyn invdisc_preframe *) invdisc_preframe in *)
   let invdisc_preframe = apply2 Dl.mk_dl_or invdisc_preframe (apply Dl.mk_dl_prim frames.(0)) in
-  let () = printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe in
-  let () = printf "eframe : %a@." (F.pp_frame pp_expr) eframe in
   let interpolants = apply2 Dl.interpolant invdisc_preframe (apply Dl.mk_dl_prim eframe) in
   let interpolants =
     apply_loc
@@ -274,9 +270,15 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
       )
       interpolants
   in
-  let () = printf "Interpolant: %a@." (pp_frame pp_expr) interpolants in
+  let () =
+    lazy (printf "invcont_preframe: %a@." (pp_frame Dl.pp) invcont_preframe;
+          printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe;
+          printf "eframe : %a@." (F.pp_frame pp_expr) eframe;
+          printf "Interpolant: %a@." (pp_frame pp_expr) interpolants)
+    |> Util.debug
+  in
   for i = 1 to idx do
-    let () = printf "Strengthen: %d@." i in
+    let () = lazy (printf "Strengthen: %d@." i) |> Util.debug in
     frames.(i) <- apply2 mk_and frames.(i) interpolants
   done;
   Array.map ~f:(apply simplify) frames
@@ -326,13 +328,19 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
   let open Frame in
   let open Z3Intf in
   (* Sort in the increasing order of the index part. *)
-  let () = printf "remove_cti: Current cexs are:@." in
-  let () = printf "%a@." (U.pp_list pp_ce ()) cexs in
+  let () =
+    lazy (printf "remove_cti: Current cexs are:@.";
+          printf "%a@." (U.pp_list pp_ce ()) cexs)
+    |> Util.debug
+  in
   let cexs = List.sort ~compare:(fun (_,_,idx1) (_,_,idx2) -> compare idx1 idx2) cexs in
   match cexs with
   | [] -> frames
   | (loc,e,idx)::tl ->
-     let () = printf "remove_cti: processing %a@." pp_ce (loc,e,idx) in
+     let () =
+       lazy (printf "remove_cti: processing %a@." pp_ce (loc,e,idx))
+       |> Util.debug
+     in
      if idx = 0 then
        raise (Counterexample(loc,e,idx))
      else
@@ -354,7 +362,7 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
              let eframe : Z3.Expr.expr frame = lift locs mk_false |> apply_on_id (mk_or e) loc in
              (* let preframe = F.apply Dl.dl_elim_dyn preframe in *)
              let newframes = resolve_conflict frames hs preframe eframe loc idx in
-             let () = printf "newframes: %a@." pp_frames newframes in
+             let () = lazy (printf "newframes: %a@." pp_frames newframes) |> Util.debug in
              remove_cti hs tl newframes
           | _ -> remove_cti hs (propagated @ cexs) frames
 and propagate_one_step ~is_continuous ~hs ~preframe ~ce =

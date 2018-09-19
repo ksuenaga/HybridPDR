@@ -499,7 +499,7 @@ let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown 
           | _ ->
               let exception Unsat in
               let exception Unknown in
-              printf "is_satisfiable_conjunction: primdyn: eliminating@.";
+              lazy (printf "is_satisfiable_conjunction: primdyn: eliminating@.") |> Util.debug;
               try
                 let e_post = Z.callZ3 e_post |> function `Sat m -> m | `Unsat -> raise Unsat | `Unknown -> raise Unknown in
                 check_satisfiability ~pre:e ~flow:f ~inv:inv ~post:e_post
@@ -553,8 +553,8 @@ let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
   printf "t2:%a@." pp t2;
    *)
   let t1, t2 = simplify t1, simplify t2 in
-  printf "t1simpl:%a@." pp t1;
-  printf "t2simpl:%a@." pp t2;
+  lazy (printf "t1simpl:%a@." pp t1;
+        printf "t2simpl:%a@." pp t2) |> Util.debug;
   match t1,t2 with
   | Prim t1', Prim t2' -> Z.interpolant t1' t2'
   | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
@@ -575,7 +575,8 @@ let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
       in
       let () =
         let module U = Util in
-        printf "%aTaking interpolant of:@.%a@.and@.%a@.%a" U.pp_start_style U.Green Z.pp_expr e1 Z.pp_expr e2 U.pp_end_style ()
+        lazy (printf "%aTaking interpolant of:@.%a@.and@.%a@.%a" U.pp_start_style U.Green Z.pp_expr e1 Z.pp_expr e2 U.pp_end_style ())
+        |> Util.debug
       in
       Z.interpolant e1 e2
   | Or ts, Prim e2 ->

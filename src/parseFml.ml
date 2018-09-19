@@ -328,20 +328,17 @@ let rec sexp_to_atomics s =
      let res = List.fold_left ~init:[] ~f:(fun acc b -> (binding_to_atomics b) @ acc) bindings in
      List.fold_left ~init:res ~f:(fun acc s -> (sexp_to_atomics s) @ acc) s
   | Atom id ->
-     printf "s:%a@." Sexp.pp s; []
+     []
   (* E.raise (E.of_string "sexp_to_atomics: atom should not appear here.") *)
   | List _ ->
-     printf "s:%a@." Sexp.pp s;
      E.raise (E.of_string "sexp_to_atomics: not implemented.")
 and binding_to_atomics b =
   let open Sexp in
   let open Z3Intf in
   match b with
   | List[Atom id; s] ->
-     printf "id:%s@." id;
      sexp_to_atomics s
   | _ ->
-     printf "s:%a@." Sexp.pp b;
      E.raise (E.of_string "binding_to_atomics: not implemented.")
 and sexp_to_arithexpr s : Z3.Expr.expr =
   let open Sexp in
