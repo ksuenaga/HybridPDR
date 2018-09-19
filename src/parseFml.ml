@@ -336,7 +336,7 @@ and binding_to_atomics b =
   let open Sexp in
   let open Z3Intf in
   match b with
-  | List[Atom id; s] ->
+  | List[Atom id; s] -> 
      sexp_to_atomics s
   | _ ->
      E.raise (E.of_string "binding_to_atomics: not implemented.")
