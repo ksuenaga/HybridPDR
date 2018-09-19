@@ -31,12 +31,15 @@ let parse_verif_task_from_file ?(initial_condition=Z3Intf.mk_true) ?(safety_regi
 (* Verifier core *)
 let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr.result =
   let open SpaceexComponent in
-  let _ = printf "(******* Starting verification *******)@." in
-  let _ = printf "(******* System to be verified *******)@." in
-  let _ = printf "%a@." pp model in
-  let _ = printf "Initial location: %s@." (SpaceexComponent.string_of_id init_id) in
-  let _ = printf "Initial condition: %s@." (Z3.Expr.to_string init) in
-  let _ = printf "Safe region: %s@." (Z3.Expr.to_string safe) in
+  let () =
+    lazy (printf "(******* Starting verification *******)@.";
+          printf "(******* System to be verified *******)@.";
+          printf "%a@." pp model;
+          printf "Initial location: %s@." (SpaceexComponent.string_of_id init_id);
+          printf "Initial condition: %s@." (Z3.Expr.to_string init);
+          printf "Safe region: %s@." (Z3.Expr.to_string safe))
+    |> Util.debug
+  in
   (* Setup frames *)
   (* let locs = locations model in *)
   (* let t = Pdr.init model init_id init safe in *)
@@ -82,7 +85,27 @@ let%test _ =
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line2/line.xml")) in
   let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x < 1.0") in
+  let res,time =
+    lazy (verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.5"))
+    |> Util.measure_time
+  in
+  let () =
+    printResult res;
+    printf "Time: %f@." time
+  in
+  true
+
+let%test _ =
+  let open Z3Intf in
+  let open Cnf in
+  let open ParseFml in
+  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line2/line.xml")) in
+  let model = List.hd_exn models in
+  let res, time =
+    lazy (verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 0.5"))
+    |> Util.measure_time
+  in
+  let () = printf "Time: %f@." time in
   let _ = printResult res in
   true
   

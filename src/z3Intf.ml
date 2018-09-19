@@ -597,8 +597,11 @@ let rec sample ?(randomization_factor=Util.default_randomization_factor) ?(drift
   in
   let m = take_one fml in
   let e = expr_of_model m in
-  let () = printf "fml:%a@." pp_expr fml in
-  let () = printf "initial sample:e:%a@." pp_expr e in
+  let () =
+    lazy (printf "fml:%a@." pp_expr fml;
+          printf "initial sample:e:%a@." pp_expr e)
+    |> Util.debug
+  in
   let res = iter m n [m] (mk_and fml (mk_not (expr_of_model m))) in
   (*
   let () =

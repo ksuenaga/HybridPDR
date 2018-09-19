@@ -328,10 +328,12 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
   in
   let t1, t2 = simplify t1, simplify t2 in
   let () =
-    printf "%aCHECKING THE VALIDITY OF:%a@." U.pp_start_style U.Green U.pp_end_style ();
-    printf "%a@." pp t1;
-    printf "%aIMPLIES%a@." U.pp_start_style U.Green U.pp_end_style ();
-    printf "%a@." pp t2
+    lazy (
+        printf "%aCHECKING THE VALIDITY OF:%a@." U.pp_start_style U.Green U.pp_end_style ();
+        printf "%a@." pp t1;
+        printf "%aIMPLIES%a@." U.pp_start_style U.Green U.pp_end_style ();
+        printf "%a@." pp t2
+      ) |> U.debug
   in
   let ret =
     match t1,t2 with
@@ -370,10 +372,14 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
             in
             vc
           in
-          let () = printf "vc:%a@." Z.pp_expr vc in
+          let () =
+            lazy (printf "vc:%a@." Z.pp_expr vc) |> U.debug
+          in
           vc |> Z.callZ3 |>
           function `Unsat -> `Valid
-                 | `Sat m -> printf "m:%a@." Z.pp_model m; `Unknown
+                 | `Sat m ->
+                    lazy (printf "m:%a@." Z.pp_model m) |> U.debug;
+                    `Unknown
                  | `Unknown -> `Unknown
         in
         (* [XXX] Factor out the common part with check_e1_is_invarinat *)
@@ -389,10 +395,12 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
             in
             vc
           in
-          let () = printf "vc:%a@." Z.pp_expr vc in
+          let () = lazy (printf "vc:%a@." Z.pp_expr vc) |> U.debug in
           vc |> Z.callZ3 |>
           function `Unsat -> `Valid
-                 | `Sat m -> printf "m:%a@." Z.pp_model m; `Unknown
+                 | `Sat m ->
+                    lazy (printf "m:%a@." Z.pp_model m) |> U.debug;
+                    `Unknown
                  | `Unknown -> `Unknown
         in
         let discover_counterexample () =
@@ -432,7 +440,7 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
 *)
     | _,_ -> Util.not_implemented "Dl.is_valid_implication"
   in
-  printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
+  lazy (printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ()) |> U.debug;
   ret
 
 let%test _ =
@@ -463,15 +471,17 @@ let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown 
     | `Unknown -> fprintf fmt "Unknown"
   in
   let () =
-    printf "t1:%a@." pp t1;
-    printf "t2:%a@." pp t2
+    lazy (printf "t1:%a@." pp t1;
+          printf "t2:%a@." pp t2) 
+    |> U.debug
   in
   let t1, t2 = simplify t1, simplify t2 in
   let () =
-    printf "%aCHECKING WHETHER THE FOLLOWING IS UNSAT:%a@." U.pp_start_style U.Green U.pp_end_style ();
-    printf "%a@." pp t1;
-    printf "%aAND%a@." U.pp_start_style U.Green U.pp_end_style ();
-    printf "%a@." pp t2
+    lazy (printf "%aCHECKING WHETHER THE FOLLOWING IS UNSAT:%a@." U.pp_start_style U.Green U.pp_end_style ();
+          printf "%a@." pp t1;
+          printf "%aAND%a@." U.pp_start_style U.Green U.pp_end_style ();
+          printf "%a@." pp t2)
+    |> U.debug
   in
   let ret =
     match t1,t2 with
@@ -499,7 +509,7 @@ let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown 
         end
     | _,_ -> Util.not_implemented "Dl.is_satisfiable_conjunction"
   in
-  printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ();
+  lazy (printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ()) |> U.debug;
   ret
 
 let%test _ =

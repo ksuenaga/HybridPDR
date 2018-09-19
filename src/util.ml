@@ -62,3 +62,21 @@ let default_trial_number = 1
 let default_trial_number_for_ce = 20
 let default_randomization_factor = 0.5
 let default_drift_factor = 1.0
+
+let debug_flag = ref false
+
+let debug promise =
+  if !debug_flag then
+    Lazy.force promise
+
+  (*
+let fdebug fmt s =
+  if !debug_flag then
+    Format.fprintf fmt s
+   *)
+
+let measure_time promise =
+  let s = Unix.gettimeofday () in
+  let ret = Lazy.force promise in
+  let e = Unix.gettimeofday () in  
+  (ret, e-.s)
