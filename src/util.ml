@@ -77,6 +77,13 @@ let fdebug fmt s =
 
 let measure_time promise =
   let s = Unix.gettimeofday () in
-  let ret = Lazy.force promise in
-  let e = Unix.gettimeofday () in  
-  (ret, e-.s)
+  try
+    let ret = Lazy.force promise in
+    let e = Unix.gettimeofday () in
+    let () = printf "Time: %f@." (e-.s) in
+    ret
+  with
+  | exn ->
+     let e = Unix.gettimeofday () in
+     let () = printf "Time: %f@." (e-.s) in
+     raise exn

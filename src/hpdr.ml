@@ -85,13 +85,12 @@ let%test _ =
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line2/line.xml")) in
   let model = List.hd_exn models in
-  let res,time =
+  let res =
     lazy (verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.5"))
     |> Util.measure_time
   in
   let () =
-    printResult res;
-    printf "Time: %f@." time
+    printResult res
   in
   true
 
@@ -101,11 +100,10 @@ let%test _ =
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line2/line.xml")) in
   let model = List.hd_exn models in
-  let res, time =
+  let res =
     lazy (verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 0.5"))
     |> Util.measure_time
   in
-  let () = printf "Time: %f@." time in
   let _ = printResult res in
   true
   
