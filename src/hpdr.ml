@@ -29,7 +29,7 @@ let parse_verif_task_from_file ?(initial_condition=Z3Intf.mk_true) ?(safety_regi
   model
   
 (* Verifier core *)
-let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr.result =
+let verify ?(tactic_in=In_channel.stdin) ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr.result =
   let open SpaceexComponent in
   let () =
     lazy (printf "(******* Starting verification *******)@.";
@@ -46,7 +46,7 @@ let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr
   (* let _ = printf "verify: %a@." Pdr.pp_frames t in *)
   (* let result = Pdr.verify ~hs:model ~locs:locs ~vcgen_partial:(DischargeVC.to_vcgen_partial model) ~vcgen_total:(DischargeVC.to_vcgen_total model) ~safe:safe ~candidates:[] ~frames:t ~iteration_num:0 in *)
   (* let result = printf "result:%a@." Pdr.pp_result result in *)
-  let result = Pdr.verify ~hs:model ~initloc:init_id ~safe:safe ~init:init in
+  let result = Pdr.verify ~tactic_in ~hs:model ~initloc:init_id ~safe:safe ~init:init in
   result
 
 (* Output the result *)
@@ -116,14 +116,15 @@ let%test _ =
   let _ = printResult res in
   true
    *)
-  
+
 let%test _ =
   let open Z3Intf in
   let open Cnf in
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
   let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
+  let tactic_in = In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle_tactic1.smt2") in
+  let res = verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
 
@@ -249,7 +250,7 @@ let _ =
       None -> printf "No new location for srcroot"  (*None*)
     | Some s -> printf "New location for srcroot"   (*Sys.command "srcroot_newLocation_script"*)
   in*)
-  let result = verify ~model:t ~init_id:init_id ~init:init_cond ~safe:safety_region in
+  let result = verify ~tactic_in:stdin ~model:t ~init_id:init_id ~init:init_cond ~safe:safety_region in
   let _ = printResult result in
   ()
 

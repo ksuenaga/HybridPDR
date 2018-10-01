@@ -219,7 +219,7 @@ let propagate_clauses ~(hs:S.t) ~(frames:frames) : frames =
   done;
   frames
 
-let resolve_conflict_query (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
+let resolve_conflict_query (is_continuous:bool) (tactic_in: In_channel.t) (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
   let open Z3Intf in
   let vars : string list = Env.domain hs.params |> List.map ~f:SpaceexComponent.string_of_id in
   let () =
@@ -251,6 +251,7 @@ let resolve_conflict_query (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Fram
         let cex = Frame.find eframe tgtid in
         let interpolant =
           let open Sexp in
+          let initexpr = Frame.find frames.(0) srcid in
           let () =
             printf "Give an interpolant for the following problem:@.";
             printf "Pre:%a@." pp_expr preframe_expr;
@@ -258,16 +259,31 @@ let resolve_conflict_query (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Fram
             printf "Inv:%a@." pp_expr preinv;
             printf "Guard:%a@." pp_expr guard;
             printf "Command:%a@." SpaceexComponent.pp_command t.command;
-            printf "Init:%a@." pp_expr (Frame.find frames.(0) srcid);
+            printf "Continuous:%b@." is_continuous;
+            printf "Init:%a@." pp_expr initexpr;
             printf "------@.";
             printf "CEX:%a@." pp_expr cex;
-            printf "> @.";
+            printf ">>> @.";
           in
-          let queried = Sexp.input_sexp In_channel.stdin in
-          let () = printf "input sexp: %a@." Sexp.pp queried in
-          let z3 = ParseFml.sexp_to_z3 queried in
-          let () = printf "z3:%a@." pp_expr z3 in
-          z3
+          let cex_unsat = Z3Intf.callZ3 cex in
+          let pre_unsat = Z3Intf.callZ3 preframe_expr in
+          let init_unsat = Z3Intf.callZ3 initexpr in
+          match cex_unsat, pre_unsat, init_unsat with
+          | `Unsat, _, _ ->
+             (* If cex is unsatifiable, then true is an interpolant. *)
+             mk_true
+          | _, `Unsat, `Unsat ->
+             (* Both pre and init are unsat, then false is an interpolant *)
+             mk_false
+          | _ ->
+             let queried =
+               try Sexp.input_sexp tactic_in with
+               | End_of_file -> Sexp.input_sexp stdin
+             in
+             let () = printf "input sexp: %a@." Sexp.pp queried in
+             let z3 = ParseFml.sexp_to_z3 queried in
+             let () = printf "z3:%a@." pp_expr z3 in
+             z3
         in
         let res = apply_on_id (mk_or interpolant) tgtid resframe in
         res)
@@ -284,7 +300,7 @@ let resolve_conflict_query (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Fram
   in
   ret
   
-let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
+let resolve_conflict (is_continuous:bool) (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
   let open Z3Intf in
   let () =
     lazy (
@@ -394,7 +410,7 @@ let resolve_conflict (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.fram
 exception Counterexample of ce
 exception SafetyVerified of int * frames
 
-let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
+let rec remove_cti (tactic_in:In_channel.t) (hs:S.t) (cexs:ce list) (frames:frames) : frames =
   let open Frame in
   let open Z3Intf in
   (* Sort in the increasing order of the index part. *)
@@ -421,7 +437,7 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
          function
          | `Unsat ->
             (* If this is not a counterexample anymore, skip this. *)
-            remove_cti hs tl frames
+            remove_cti tactic_in hs tl frames
          | `Sat _ | `Unknown ->
             let is_continuous = idx = (Array.length frames - 1) in
             let locs = S.locations hs in
@@ -438,13 +454,13 @@ let rec remove_cti (hs:S.t) (cexs:ce list) (frames:frames) : frames =
                (* let preframe = F.apply Dl.dl_elim_dyn preframe in *)
                let newframes =
                  if !U.query_for_reolsve_conflict then
-                   resolve_conflict_query frames hs preframe eframe loc idx
+                   resolve_conflict_query is_continuous tactic_in frames hs preframe eframe loc idx
                  else
-                   resolve_conflict frames hs preframe eframe loc idx
+                   resolve_conflict is_continuous frames hs preframe eframe loc idx
                in
                let () = lazy (printf "newframes: %a@." pp_frames newframes) |> Util.debug !Util.debug_remove_cti in
-               remove_cti hs tl newframes
-            | _ -> remove_cti hs (propagated @ cexs) frames
+               remove_cti tactic_in hs tl newframes
+            | _ -> remove_cti tactic_in hs (propagated @ cexs) frames
 and propagate_one_step ~is_continuous ~hs ~preframe ~ce =
   let open Frame in
   let open Z3Intf in
@@ -528,7 +544,7 @@ from:
   ]
                      *)
 
-let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : frames =
+let rec extend_frontier_iter ~(tactic_in:In_channel.t) ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : frames =
   let open Frame in
   let open Z3Intf in
   let locs = S.locations hs in
@@ -569,9 +585,9 @@ let rec extend_frontier_iter ~(hs:S.t) ~(frames:frames) ~(safe:Z3.Expr.expr) : f
   (* let () = printf "cexs: %a@." (U.pp_list pp_ce ()) cexs in *)
   match cexs with
   | [] -> frames
-  | _ -> remove_cti hs cexs frames
+  | _ -> remove_cti tactic_in hs cexs frames
   
-let extend_frontier ~(frames:frames) ~(hs:S.t) ~(safe:Z3.Expr.expr) : frames =
+let extend_frontier ~tactic_in ~(frames:frames) ~(hs:S.t) ~(safe:Z3.Expr.expr) : frames =
   let open Frame in
   let () =
     lazy (printf "(*** Extending frontier ***)@.";
@@ -593,9 +609,9 @@ let extend_frontier ~(frames:frames) ~(hs:S.t) ~(safe:Z3.Expr.expr) : frames =
     lazy (printf "new frames: %a@." pp_frames newframes)
     |> U.debug !U.debug_extend_frontier
   in
-  extend_frontier_iter ~frames:newframes ~safe ~hs
+  extend_frontier_iter ~tactic_in ~frames:newframes ~safe ~hs
     
-let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frames:frames) ~(iteration_num:int) =
+let rec verify_iter ~tactic_in ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frames:frames) ~(iteration_num:int) =
   let open Frame in
   let open Z3Intf in
   let open SpaceexComponent in
@@ -607,7 +623,7 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
   in
   try
     let frames = Array.map ~f:(apply simplify) frames in
-    let frames = extend_frontier ~frames ~safe ~hs in
+    let frames = extend_frontier ~tactic_in ~frames ~safe ~hs in
     let frames = propagate_clauses ~hs ~frames in
     let () =
       lazy (printf "current frames: %a@." pp_frames frames) |> U.debug !U.debug_events
@@ -630,281 +646,11 @@ let rec verify_iter ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce list) ~(frame
       then
         raise (SafetyVerified(i-1,frames))
     done;
-    verify_iter ~hs ~safe ~candidates ~frames ~iteration_num:(iteration_num+1)
+    verify_iter ~tactic_in ~hs ~safe ~candidates ~frames ~iteration_num:(iteration_num+1)
   with
   | Counterexample ce -> Ng ce
   | SafetyVerified(i,frames) -> Ok (i,frames)
                       
-let verify ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.Expr.expr) =
+let verify ~(tactic_in:In_channel.t) ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.Expr.expr) =
   let init_frames = setup_init_frames ~hs ~initloc ~init ~safe in
-  verify_iter ~hs ~safe ~candidates:[] ~frames:init_frames ~iteration_num:0
-
-(** Old code **)
-
-(*  
-type vc_partial = DischargeVC.cont_triple_partial
-type vc_total = DischargeVC.cont_triple_total
-  
-exception Unsafe of Z3.Model.model list
-
-(* let rec induction_body (vcgen_partial:DischargeVC.vcgen_partial) (fs:frames) (n:int) = *)
-    
-(* [XXX] not tested *)
-let rec induction (locs:SpaceexComponent.id list) (vcgen_partial : DischargeVC.vcgen_partial) (fs : frames) =
-  (* [XXX] We need this.  We also need to compute postimage (not simply computing invariant atomic formula. *)
-  (* i = Array.length - 1 is the remainder frame.  We don't do
-     induction from this i.  Therefore, to Array.length fs - 2. *)
-  let open Frame in
-  for i = 0 to Array.length fs - 2 do
-    let pre_frame = fs.(i) in
-    (* Returns [(l1,e1);...;(ln,en)] where (li,ei) means ei holds at location li. *)
-    let open Z3Intf in
-    let open SpaceexComponent in
-    let open DischargeVC in
-    let rec locally_invariant_atomics
-              ~(pre_frame:Frame.frame)
-              ~(atomics:(SpaceexComponent.id * Z3.Expr.expr) list)
-            : (SpaceexComponent.id * Z3.Expr.expr) list =
-      List.fold_left
-        ~init:[]
-        ~f:(fun acc (pre_loc,atomic) ->
-          let pre_fml = Frame.find_exn pre_frame pre_loc in
-          let () = printf "pre_fml: %a@." pp_expr pre_fml in
-          let locvcs = vcgen_partial ~is_continuous:false ~pre_loc:pre_loc ~pre_fml:pre_fml ~atomic:atomic in
-          let () = printf "locvcs: %a@." (U.pp_list (U.pp_triple pp_cont_triple_partial pp_id pp_expr)) locvcs in
-          let filtered =
-            List.fold_left
-              ~init:[]
-              ~f:(fun acc (vc,l,atomic) ->
-                let res = DischargeVC.discharge_vc_partial vc in
-                if res then (l,atomic)::acc else acc)
-              locvcs
-          in
-        (* Util.not_implemented "locally_invariant_atomics" *)
-          filtered
-        )
-        atomics
-    in
-    let atomics : (SpaceexComponent.id * Cnf.t) list = Frame.extract_atomics fs.(i) in
-    let () = printf "atomics:@[%a@]@." (Util.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" SpaceexComponent.pp_id l Z3Intf.pp_expr e)) atomics in
-    let local_invs = locally_invariant_atomics ~pre_frame ~atomics in
-    let () = printf "local_invs:@[%a@]@." (Util.pp_list (fun fmt (l,e) -> fprintf fmt "%a -> %a" SpaceexComponent.pp_id l Z3Intf.pp_expr e)) local_invs in
-    for j = 1 to i + 1 do
-      List.iter
-        ~f:(fun inv -> fs.(j) <- Frame.strengthen local_invs fs.(j))
-        local_invs
-    done
-  done
-
-  
-(* [XXX] not tested *)
-let is_valid (fs : frames) =
-  Frame.is_valid_implication_frame fs.(Array.length fs - 2) fs.(Array.length fs - 3)
-
-(* [XXX] not tested *)
-let expand locs (safe:Cnf.t) (fs : frames) =
-  let open Z3Intf in
-  let st = Frame.is_valid_implication_cnf fs.(Array.length fs - 1) safe in
-  match st with
-  | `Valid ->
-     let subfs : frames =
-       Array.sub fs ~pos:0 ~len:(Array.length fs - 1)
-     in
-     let tail_part =
-       [| Frame.frame_lift locs mk_true;
-          Frame.frame_lift locs mk_true;
-       |]
-     in
-     let newframes = Array.concat [subfs; tail_part] in
-     `Expandable(newframes)
-  | `NotValid(loc,m) ->
-     let f = Frame.frame_and_cnf fs.(Array.length fs - 1) (mk_not safe) in
-     let e = Frame.find_exn f loc in
-     `NonExpandable(loc,e)
-  | `NotValidNoModel -> E.raise (E.of_string "expand: Unknown, cannot proceed.")
-
-let pp_candidate fmt m =
-  fprintf fmt "%s" (Z3.Model.to_string m)
-
-let rec explore_single_candidate_one_step
-          ~locs
-          ~(is_continuous : bool)
-          ~(candidate : (SpaceexComponent.id * Z3.Expr.expr * int))
-          ~(vcgen_total : DischargeVC.vcgen_total)
-          ~(pre : Frame.frame)
-          ~(post : Frame.frame)
-          ~(idx_pre : int)
-  =
-  (* If one of the triples has a correct precondition, then the entire vc is discharged *)
-  let open Frame in
-  let open DischargeVC in
-  let id, e, idx = candidate in
-  let () =
-    printf "Counterexample at loc %a in frame %d: %a@." SpaceexComponent.pp_id id idx Z3Intf.pp_expr e;
-    printf "Try to propagate from the post region: %a@." pp_frame post;
-    printf "Try to propgate to the pre region: %a@." pp_frame pre
-  in
-  let triples = vcgen_total ~is_continuous:is_continuous ~pre:pre ~post:post ~candidate:candidate in
-  let propagated,pre =
-    let discharge_results =
-      List.map ~f:(fun triple -> DischargeVC.discharge_vc_total ~triple:triple ~idx_pre:idx_pre) triples
-    in
-    let is_propagated = function Propagated _ -> true | _ -> false in
-    let is_conflict = function Conflict _ -> true | _ -> false in
-    let propagated = List.exists ~f:is_propagated discharge_results in
-    let ret =
-      if propagated then
-        List.filter ~f:is_propagated discharge_results
-      else
-        List.filter ~f:is_conflict discharge_results
-    in
-    propagated,ret
-  in
-  match propagated,pre with
-  | true,l ->
-     let () =
-       printf "Successfuly propagated to %a@."
-         (Util.pp_list DischargeVC.pp_propagated_conflict)
-         l
-     in
-     let pre = List.map ~f:(function Propagated(loc,e,id) -> (loc,e,id) | _ -> assert(false)) pre in
-     propagated, `Propagated pre
-  | false, res ->
-     assert(List.for_all ~f:(function Conflict _ -> true | _ -> false) res);
-     let r =
-       List.fold_left
-         ~init:[]
-         ~f:(fun acc res ->
-           match res with
-             Conflict(loc,intp,idx) -> (loc,intp,idx)::acc
-           | _ -> failwith "explore_single_candidate_one_step: cannot happen.")
-         res
-     in
-     (*
-     let () =
-       printf "Conflict: Interpolant obtained@.";
-       printf "Interpolant: %a@." Frame.pp_locfmls r
-     in
-      *)
-     propagated, `Conflict r
-(* | _ -> E.raise (E.of_string "explore_single_candidate_one_step: Cannot proceed.") *)
-
-let rec exploreCE
-          ~(locs:SpaceexComponent.id list)
-          ~(vcgen_total:DischargeVC.vcgen_total)
-          ~(candidates : D.ce list)
-          ~(t : frames) =
-  let open Format in
-  let () =
-    printf "(* Iteration of exploreCE *)@.";
-    printf "frames:%a@." pp_frames t;
-    printf
-      "candidates:%a@."
-      (Util.pp_list D.pp_ce)
-      candidates
-  in
-  (* let _ = printf "hs:%a@." SpaceexComponent.pp hs in *)
-  (* let _ = printf "vcgen:%a@." SpaceexComponent.pp hs in *)
-  (* E.raise (E.of_string "exploreCE: not implemented") *)
-  match candidates with
-  | [] ->
-     `CENotFound t
-  | (loc,m,idx)::tl_cand ->
-     if idx = 0 then
-       `CEFound(loc,m,idx)
-     else
-       (* idx > 0 *)
-       begin
-         (* let postframe = t.(idx) in *)
-         (* NB: idx > 0 *)
-         let preframe = t.(idx - 1) in
-         let postframe = t.(idx) in
-         let is_continuous = (idx = Array.length t - 1) in
-         (* let hd2 = match tl_frame with hd2::_ -> hd2 | [] -> Frame.hybrid_frame_lift locs Cnf.cnf_true in *) 
-         let propagated,res = explore_single_candidate_one_step ~locs ~is_continuous:is_continuous ~candidate:(loc,m,idx) ~vcgen_total:vcgen_total ~post:postframe ~pre:preframe ~idx_pre:(idx-1) in
-         match res with
-         | `Propagated l ->
-           (* All the l are `Propagated *)
-           begin
-             exploreCE ~locs ~vcgen_total ~candidates:(l @ tl_cand) ~t:t
-            end
-         | `Conflict (hd::_) ->
-            (* All the l are `Conflict *)
-            let locid,ceExpr,idx = hd in
-            let () =
-              for i = 1 to idx+1 do
-                t.(i) <- Frame.strengthen ~locfmls:[locid,ceExpr] ~t:t.(i)
-              done
-              (* if idx < Array.length t - 1 then
-               *   t.(idx + 1) <- Frame.strengthen ~locfmls:l ~t:t.(idx) *)
-            in
-            (*
-            let () =
-              (* printf "Original frames: %a@." (Util.pp_list Frame.pp_frame) original_frames; *)
-              printf "Strengthened with interpolant: %a@." Frame.pp_locfmls l;
-              printf "At location: %a@." SpaceexComponent.pp_id loc;
-              (* printf "New frames: %a@." (Util.pp_list Frame.pp_frame) newframes; *)
-            in
-             *)
-            (* exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:newframes *)
-            exploreCE ~locs ~vcgen_total ~candidates:tl_cand ~t:t
-         | _ -> U.not_implemented "exploreCE"
-       end
-
-(* [XXX] Not tested *)
-let rec verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates ~frames ~iteration_num =
-  (* E.raise (E.of_string "verify: task: Sort out log messages before going further."); *)
-  let () = printf "@\n(** Iteration of verification: %d **)@." iteration_num in
-  assert(candidates = []);
-  let () = printf "frames:%a@." pp_frames frames in
-  let t = frames in
-  (* Do induction as much as possible. *)
-  let () = printf "(** Induction **)@." in
-  let () = printf "Frames before: %a@." pp_frames t in
-  let () = induction locs vcgen_partial t in
-  let () = printf "Frames after: %a@." pp_frames t in
-  (* Check whether the fixpoint is already reached. *)
-  let res = is_valid t in
-  match res with
-  | `Valid ->
-     let () = printf "(** Safety is proved! **)@." in
-     let () = printf "Frames: %a@." pp_frames t in
-     Ok t
-  | `NotValid _ | `NotValidNoModel ->
-     (* Inductive invariant is not reached yet. *)
-     begin
-       (* Check whether the tip of the frames is safe. *)
-       let () = printf "(** Check whether the frontier is safe **)@." in          
-       (*       let st = Frame.is_valid_implication_cnf fs.(Array.length t - 1) safe in *)
-       let st = expand locs safe t in
-       match st with
-       | `Expandable newframes ->
-          (* the tip of the frame is safe.  Expand the frames. *)
-          let () = printf "(** The frontier is safe; expanding **)@." in
-          let () = printf "New frames: %a@." pp_frames newframes in
-          (* Discard the candidates.  Continue verification. *)
-          verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes ~iteration_num:(iteration_num+1)
-       | `NonExpandable(loc,e) ->
-          (* Counterexample is found. *)
-          let () = printf "(** The frontier is not safe **)@." in
-          let newcandidates = [(loc, e, Array.length t - 1)] in
-          (* Push back the counterexample. *)
-          let res = exploreCE ~locs ~vcgen_total ~candidates:newcandidates ~t:t in
-          begin
-            match res with
-            | `CEFound trace ->
-               (* True counterexample is found. *)
-               Ng trace
-            | `CENotFound newframes ->
-               let () = printf "CE is not found@." in
-               let () = printf "Next iteration with frames %a@." (Util.pp_array Frame.pp_frame) newframes in
-               (* The frames are refined with newly found predicates.  Continue verification. *)
-               verify ~locs ~hs ~vcgen_partial ~vcgen_total ~safe ~candidates:[] ~frames:newframes ~iteration_num:(iteration_num+1)
-          end
-       | `NotValidNoModel ->
-          (* Got stuck. *)
-          E.raise (E.of_string "expand: Unknown, cannot proceed.")
-     end
-  (* frames should never be empty. *)
- *)
-    
+  verify_iter ~tactic_in ~hs ~safe ~candidates:[] ~frames:init_frames ~iteration_num:0

@@ -40,7 +40,7 @@ val locations : t -> id list
 val id_of_string : string -> id
 val string_of_id : id -> string
 val pp_flow : Format.formatter -> flow -> unit
-val pp_command : Format.formatter -> command0 -> unit
+val pp_command : Format.formatter -> command -> unit
 
 val prev_time : discretization_rate:float -> flow:flow -> post:Z3.Expr.expr -> Z3.Expr.expr
 

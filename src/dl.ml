@@ -261,25 +261,34 @@ let rec check_satisfiability ~pre ~flow ~inv ~(post:Z3.Model.model) =
   let ode = Odepack.lsoda f post_array 0. 0. in
   let exception Result in
   let res = ref `Unknown in
-  (* let () = printf "Solution:vars: %a@." (Util.pp_list String.pp ~sep:";" ()) vars in *)
+  let () =
+    lazy (printf "Solution:vars: %a@." (Util.pp_list String.pp ~sep:";" ()) vars)
+    |> Util.debug !Util.debug_check_satisfiability
+  in
   (*
   let () =
-    for i = 0 to n - 2do
-      let vec =
-        float i *. dt
-        |> Odepack.sol ode
-      in
-      printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec
-    done
+    lazy begin
+        for i = 0 to n - 2 do
+            let vec =
+              float i *. dt
+              |> Odepack.sol ode
+                in
+                printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec
+            done
+      end
+    |> Util.debug !Util.debug_check_satisfiability
   in
-*)
+   *)
   try
     for i = 0 to n - 1 do
       let vec =
         float i *. dt
         |> Odepack.sol ode
       in
-      (* let () = if i mod 10 = 0 then printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec in *)
+      let () =
+        lazy (if i mod 10 = 0 then printf "%a@." (Util.pp_bigarray_fortran_array1 Float.pp) vec)
+        |> Util.debug !Util.debug_check_satisfiability
+      in
       let m = array_to_model ~vars:vars ~array:vec in
       match Z.eval m pre |> Z.callZ3 with
       | `Sat m' -> res := `Sat m; raise Result
