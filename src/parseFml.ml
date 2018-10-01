@@ -366,7 +366,64 @@ and sexp_to_arithexpr s : Z3.Expr.expr =
   | List _ ->
      printf "sexp:%a@." pp s;
      Util.not_implemented "sexp_to_arithexpr"
-    
+and sexp_to_z3 s =
+  let open Sexp in
+  let open Z3Intf in
+  match s with
+    Atom "true" -> mk_true
+  | Atom "false" -> mk_false
+  | List [Atom "="; s1; s2] ->
+     mk_eq (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom "<="; s1; s2] ->
+     mk_le (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom ">="; s1; s2] ->
+     mk_ge (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List (Atom "and"::ss) ->
+     List.map ~f:sexp_to_z3 ss |> List.fold_left ~init:mk_true ~f:mk_and 
+  | List (Atom "or"::ss) ->
+     List.map ~f:sexp_to_z3 ss |> List.fold_left ~init:mk_false ~f:mk_or
+  | List [Atom ("not"); s]->
+     sexp_to_z3 s |> mk_not
+  (* E.raise (E.of_string "sexp_to_atomics: atom should not appear here.") *)
+  | List _ | Atom _ ->
+     E.raise (E.of_string "sexp_to_atomics: not implemented.")
+    (*
+and binding_to_atomics b =
+  let open Sexp in
+  let open Z3Intf in
+  match b with
+  | List[Atom id; s] -> 
+     sexp_to_atomics s
+  | _ ->
+     E.raise (E.of_string "binding_to_atomics: not implemented.")
+and sexp_to_arithexpr s : Z3.Expr.expr =
+  let open Sexp in
+  let open ParseFml in
+  let open Z3Intf in
+  match s with
+  | Atom s ->
+     let res = parse_basic s in
+     begin
+       match res with
+         Ident x -> mk_real_var x
+       | Float f -> mk_real_numeral_float f
+       | _ ->
+          printf "atom:%s@." s;
+          E.raise (E.of_string "sexp_to_arithexpr: Cannot appear here.")
+     end
+  | List [Atom "/"; s1; s2] ->
+     mk_div (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom "+"; s1; s2] ->
+     mk_add (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom "*"; s1; s2] ->
+     mk_mul (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom "-"; s] ->
+     mk_neg (sexp_to_arithexpr s)
+  | List _ ->
+     printf "sexp:%a@." pp s;
+     Util.not_implemented "sexp_to_arithexpr"
+     *)
+     
 let rec extract_atomics (hd:Z3.Expr.expr) : Z3.Expr.expr list =
   (* Util.not_implemented "extract_atomics." *)
   let module Expr =  Z3.Expr in

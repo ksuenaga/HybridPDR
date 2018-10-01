@@ -38,7 +38,7 @@ let verify ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr
           printf "Initial location: %s@." (SpaceexComponent.string_of_id init_id);
           printf "Initial condition: %s@." (Z3.Expr.to_string init);
           printf "Safe region: %s@." (Z3.Expr.to_string safe))
-    |> Util.debug
+    |> Util.debug !Util.debug_verify
   in
   (* Setup frames *)
   (* let locs = locations model in *)
@@ -55,6 +55,7 @@ let printResult result =
   
 (* Tests *)
 
+  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -67,7 +68,9 @@ let%test _ =
   in
   let _ = printResult res in
   true
-
+   *)
+  
+(*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -80,7 +83,9 @@ let%test _ =
   in
   let _ = printResult res in
   true
-
+ *)
+  
+  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -95,7 +100,9 @@ let%test _ =
     printResult res
   in
   true
+   *)
 
+(*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -108,8 +115,8 @@ let%test _ =
   in
   let _ = printResult res in
   true
+   *)
   
-  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -119,7 +126,6 @@ let%test _ =
   let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
-   *)
 
 (*
 let%test _ =

@@ -333,7 +333,7 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
         printf "%a@." pp t1;
         printf "%aIMPLIES%a@." U.pp_start_style U.Green U.pp_end_style ();
         printf "%a@." pp t2
-      ) |> U.debug
+      ) |> U.debug !U.debug_validity_check
   in
   let ret =
     match t1,t2 with
@@ -373,12 +373,12 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
             vc
           in
           let () =
-            lazy (printf "vc:%a@." Z.pp_expr vc) |> U.debug
+            lazy (printf "vc:%a@." Z.pp_expr vc) |> U.debug false
           in
           vc |> Z.callZ3 |>
           function `Unsat -> `Valid
                  | `Sat m ->
-                    lazy (printf "m:%a@." Z.pp_model m) |> U.debug;
+                    lazy (printf "m:%a@." Z.pp_model m) |> U.debug false;
                     `Unknown
                  | `Unknown -> `Unknown
         in
@@ -395,11 +395,11 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
             in
             vc
           in
-          let () = lazy (printf "vc:%a@." Z.pp_expr vc) |> U.debug in
+          let () = lazy (printf "vc:%a@." Z.pp_expr vc) |> U.debug false in
           vc |> Z.callZ3 |>
           function `Unsat -> `Valid
                  | `Sat m ->
-                    lazy (printf "m:%a@." Z.pp_model m) |> U.debug;
+                    lazy (printf "m:%a@." Z.pp_model m) |> U.debug false;
                     `Unknown
                  | `Unknown -> `Unknown
         in
@@ -440,7 +440,7 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
 *)
     | _,_ -> Util.not_implemented "Dl.is_valid_implication"
   in
-  lazy (printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ()) |> U.debug;
+  lazy (printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ()) |> U.debug !U.debug_validity_check;
   ret
 
 let%test _ =
@@ -473,7 +473,7 @@ let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown 
   let () =
     lazy (printf "t1:%a@." pp t1;
           printf "t2:%a@." pp t2) 
-    |> U.debug
+    |> U.debug false
   in
   let t1, t2 = simplify t1, simplify t2 in
   let () =
@@ -481,7 +481,7 @@ let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown 
           printf "%a@." pp t1;
           printf "%aAND%a@." U.pp_start_style U.Green U.pp_end_style ();
           printf "%a@." pp t2)
-    |> U.debug
+    |> U.debug !U.debug_conjunction_satisfiability
   in
   let ret =
     match t1,t2 with
@@ -499,7 +499,7 @@ let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown 
           | _ ->
               let exception Unsat in
               let exception Unknown in
-              lazy (printf "is_satisfiable_conjunction: primdyn: eliminating@.") |> Util.debug;
+              lazy (printf "is_satisfiable_conjunction: primdyn: eliminating@.") |> Util.debug false;
               try
                 let e_post = Z.callZ3 e_post |> function `Sat m -> m | `Unsat -> raise Unsat | `Unknown -> raise Unknown in
                 check_satisfiability ~pre:e ~flow:f ~inv:inv ~post:e_post
@@ -509,7 +509,7 @@ let rec is_satisfiable_conjunction t1 t2 : [> `Sat of Z3.Model.model | `Unknown 
         end
     | _,_ -> Util.not_implemented "Dl.is_satisfiable_conjunction"
   in
-  lazy (printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ()) |> U.debug;
+  lazy (printf "%aResult: %a%a@." U.pp_start_style U.Green pp_res ret U.pp_end_style ()) |> U.debug !U.debug_conjunction_satisfiability;
   ret
 
 let%test _ =
@@ -554,13 +554,13 @@ let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
    *)
   let t1, t2 = simplify t1, simplify t2 in
   lazy (printf "t1simpl:%a@." pp t1;
-        printf "t2simpl:%a@." pp t2) |> Util.debug;
+        printf "t2simpl:%a@." pp t2) |> Util.debug !U.debug_interpolation;
   match t1,t2 with
   | Prim t1', Prim t2' -> Z.interpolant t1' t2'
   | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
   | And [Prim guard; Dyn(is_partial,f,inv,Prim e1)], Prim e2 ->
-      let vars = Env.domain f in
-      let samples1 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
+     let vars = Env.domain f in
+     let samples1 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
       let samples1 =
         List.map samples1 ~f:(fun m -> check_satisfiability ~pre:guard ~flow:f ~inv:inv ~post:m)
         |> List.filter ~f:(function `Sat _ -> true | _ -> false)
@@ -576,9 +576,22 @@ let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
       let () =
         let module U = Util in
         lazy (printf "%aTaking interpolant of:@.%a@.and@.%a@.%a" U.pp_start_style U.Green Z.pp_expr e1 Z.pp_expr e2 U.pp_end_style ())
-        |> Util.debug
+        |> Util.debug !U.debug_interpolation
       in
-      Z.interpolant e1 e2
+      let res = Z.interpolant e1 e2 in
+      let () =
+        res |>
+          function `InterpolantFound itp ->
+                    lazy (printf "%aResult:@.%a@.%a" U.pp_start_style U.Green Z.pp_expr itp U.pp_end_style ())
+                    |> Util.debug !U.debug_interpolation
+                 | `InterpolantNotFound ->
+                    lazy (printf "%aNotFound:@.%a" U.pp_start_style U.Green U.pp_end_style ())
+                    |> Util.debug !U.debug_interpolation
+                 | `NotUnsatisfiable ->
+                    lazy (printf "%aNotUnsatisfiable:@.%a" U.pp_start_style U.Green U.pp_end_style ())
+                    |> Util.debug !U.debug_interpolation
+      in
+      res
   | Or ts, Prim e2 ->
      List.fold_left ts
        ~init:(`InterpolantFound Z.mk_false)

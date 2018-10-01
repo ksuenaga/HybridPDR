@@ -63,10 +63,25 @@ let default_trial_number_for_ce = 20
 let default_randomization_factor = 0.5
 let default_drift_factor = 1.0
 
-let debug_flag = ref false
+(* let debug_flag = ref false *)
+let debug_events = ref true
+let debug_sample = ref false
+let debug_validity_check = ref (*true*) false
+let debug_conjunction_satisfiability = ref (*true*) false
+let debug_interpolation = ref true
+let debug_propagate_clauses = ref false
+let debug_resolve_conflict = ref true
+let debug_remove_cti = ref false
+let debug_propagate_one_step = ref true
+let debug_frontier_iter = ref false
+let debug_extend_frontier = ref false
+let debug_verify_iter = ref true
+let debug_verify = ref true
 
-let debug promise =
-  if !debug_flag then
+let query_for_reolsve_conflict = ref true
+
+let debug flag promise =
+  if flag then
     Lazy.force promise
 
   (*

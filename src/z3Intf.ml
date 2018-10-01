@@ -58,9 +58,6 @@ let pp_result_callZ3 fmt res =
   | `Sat m -> fprintf fmt "Sat %s" (Z3.Model.to_string m)
   | `Unknown -> fprintf fmt "Unknown"
       
-let parse_smtlib2_expr s =
-  let open Z3.SMT in
-  parse_smtlib2_string !ctx s [] [] [] []
 
 let symbol s =
   Z3.Symbol.mk_string !ctx s
@@ -600,7 +597,7 @@ let rec sample ?(randomization_factor=Util.default_randomization_factor) ?(drift
   let () =
     lazy (printf "fml:%a@." pp_expr fml;
           printf "initial sample:e:%a@." pp_expr e)
-    |> Util.debug
+    |> Util.debug !Util.debug_sample
   in
   let res = iter m n [m] (mk_and fml (mk_not (expr_of_model m))) in
   (*
@@ -612,3 +609,8 @@ let rec sample ?(randomization_factor=Util.default_randomization_factor) ?(drift
   res
 
 
+let parse_smtlib2_expr vars s =
+  let open Z3.SMT in
+  let syms = List.map vars ~f:symbol in
+  let sorts = List.map vars ~f:(fun _ -> Z3.Arithmetic.Real.mk_sort !ctx) in
+  parse_smtlib2_string !ctx s syms sorts [] []
