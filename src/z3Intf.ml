@@ -10,7 +10,7 @@ let solver =
   Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "proof") true;
   Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "produce-interpolants") true;
   Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "ctx-simplify") true;
-  Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "elim_and") true;  
+  Z3.Params.add_bool !param (Z3.Symbol.mk_string !ctx "elim_and") true;
   let solver = Z3.Solver.mk_simple_solver !ctx in
   (*
   let _ = printf "Help:%s@." (Z3.Solver.get_help solver) in
@@ -66,7 +66,7 @@ let simplify e =
   let module Expr = Z3.Expr in
   let module P = Z3.Params in
   let param = P.mk_params !ctx in
-  let () = P.add_bool param (symbol "eq2ineq") true in
+  (* let () = P.add_bool param (symbol "eq2ineq") true in *)
   let () = P.add_bool param (symbol "ctx-simplify") true in
   let () = P.add_bool param (symbol "elilm_and") true in
   Expr.simplify e (Some(param))

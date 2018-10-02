@@ -27,8 +27,12 @@ let error msg =
   let module E = Error in
   E.raise (E.of_string ("error:" ^ msg))
 
-let pp_array pp_elm fmt a =
-  fprintf fmt "%a" (pp_list pp_elm ()) (Array.to_list a)
+let pp_array pp_elm ?(sep=format_of_string "@.") () fmt a =
+  let len = Array.length a in
+  for i = 0 to len - 1 do
+    fprintf fmt "%d:%a" i pp_elm a.(i);
+    fprintf fmt sep
+  done
 
 let pp_bigarray_fortran_array1 pp_elm fmt (a:('a,'b, Bigarray.fortran_layout) Bigarray.Array1.t) =
   let len = Bigarray.Array1.dim a in
@@ -64,22 +68,41 @@ let default_randomization_factor = 0.5
 let default_drift_factor = 1.0
 
 (* let debug_flag = ref false *)
-let debug_events = ref true
+let debug_events = ref false
 let debug_sample = ref false
 let debug_validity_check = ref (*true*) false
-let debug_conjunction_satisfiability = ref true
-let debug_check_satisfiability = ref true
-let debug_interpolation = ref true
+let debug_conjunction_satisfiability = ref false
+let debug_check_satisfiability = ref false
+let debug_interpolation = ref false
 let debug_propagate_clauses = ref false
-let debug_resolve_conflict = ref true
-let debug_remove_cti = ref true
-let debug_propagate_one_step = ref true
+let debug_resolve_conflict = ref false
+let debug_remove_cti = ref false
+let debug_propagate_one_step = ref false
 let debug_frontier_iter = ref false
 let debug_extend_frontier = ref false
-let debug_verify_iter = ref true
-let debug_verify = ref true
+let debug_verify_iter = ref false
+let debug_verify = ref false
+
+let debug_flags = [
+    debug_events;
+    debug_sample;
+    debug_validity_check;
+    debug_conjunction_satisfiability;
+    debug_check_satisfiability;
+    debug_interpolation;
+    debug_propagate_clauses;
+    debug_resolve_conflict;
+    debug_remove_cti;
+    debug_propagate_one_step;
+    debug_frontier_iter;
+    debug_extend_frontier;
+    debug_verify_iter;
+    debug_verify;
+  ]
 
 let query_for_reolsve_conflict = ref true
+
+let debug_all_off () = List.iter debug_flags ~f:(fun r -> r := false)
 
 let debug flag promise =
   if flag then

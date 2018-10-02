@@ -29,7 +29,7 @@ let pp_result fmt r =
   let open Z3Intf in
   match r with
   | Ok (i, fs) ->
-     fprintf fmt "Ok at frame %d:@.%a@." i (Util.pp_array (Frame.pp_frame pp_expr)) fs;
+     fprintf fmt "Ok at frame %d:@.%a@." i (Util.pp_array (Frame.pp_frame pp_expr) ()) fs;
        fprintf fmt "Computed invariant is:@.%a@." (Frame.pp_frame pp_expr) fs.(i)
   | Ng ce ->
      fprintf fmt "Ng:%a" pp_ce ce
@@ -92,6 +92,9 @@ let wp ~is_partial ~(is_continuous:bool) (hs:S.t) (frame:Z3.Expr.expr F.frame) =
         hs.transitions
   in
   ret
+
+exception Counterexample of ce
+exception SafetyVerified of int * frames
   
 let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.Expr.expr) : frames =
   let open Z3Intf in
@@ -134,10 +137,11 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
      |]
   | `Sat(l,m), _ ->
       printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
-      E.raise (E.of_string "0th frame is unsafe.")
+  (* E.raise (E.of_string "0th frame is unsafe.") *)
+      raise (Counterexample(l,expr_of_model m, 0))
   | _, `Sat(l,m) ->
       printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
-      E.raise (E.of_string "1st frame is unsafe.")
+      raise (Counterexample(l,expr_of_model m, 0))
     (*
   | `Unknown, _ | _, `Unknown ->
      E.raise (E.of_string "init: unknown: Cannot proceed.")
@@ -407,8 +411,6 @@ let resolve_conflict (is_continuous:bool) (frames: frames) (hs:S.t) (preframe:Z3
   frames
    *)
   
-exception Counterexample of ce
-exception SafetyVerified of int * frames
 
 let rec remove_cti (tactic_in:In_channel.t) (hs:S.t) (cexs:ce list) (frames:frames) : frames =
   let open Frame in
@@ -652,5 +654,8 @@ let rec verify_iter ~tactic_in ~(hs:S.t) ~(safe:Z3.Expr.expr) ~(candidates:ce li
   | SafetyVerified(i,frames) -> Ok (i,frames)
                       
 let verify ~(tactic_in:In_channel.t) ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.Expr.expr) =
-  let init_frames = setup_init_frames ~hs ~initloc ~init ~safe in
-  verify_iter ~tactic_in ~hs ~safe ~candidates:[] ~frames:init_frames ~iteration_num:0
+  try
+    let init_frames = setup_init_frames ~hs ~initloc ~init ~safe in
+    verify_iter ~tactic_in ~hs ~safe ~candidates:[] ~frames:init_frames ~iteration_num:0
+  with
+  | Counterexample ce -> Ng ce

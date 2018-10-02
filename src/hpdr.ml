@@ -60,31 +60,19 @@ let%test _ =
   let open Z3Intf in
   let open Cnf in
   let open ParseFml in
-  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
-  let model = List.hd_exn models in
-  let res =
-    lazy (verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.0 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0"))
-    |> Util.measure_time
-  in
-  let _ = printResult res in
-  true
-   *)
-  
-(*
-let%test _ =
-  let open Z3Intf in
-  let open Cnf in
-  let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line/line.xml")) in
   let model = List.hd_exn models in
+  let () = Util.debug_all_off (); Util.debug_verify := true in
   let res =
-    lazy (verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5 & y == 0.0")  ~safe:(parse_to_cnf "x <= 1.0"))
+    lazy (verify ~tactic_in:stdin ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5 & y == 0.0")  ~safe:(parse_to_cnf "x <= 1.0"))
     |> Util.measure_time
   in
   let _ = printResult res in
-  true
- *)
-  
+  match res with
+  | Ok _ -> true
+  | _ -> false
+   *)
+
   (*
 let%test _ =
   let open Z3Intf in
@@ -92,38 +80,64 @@ let%test _ =
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line2/line.xml")) in
   let model = List.hd_exn models in
+  let () = Util.debug_all_off (); Util.debug_verify := true in
   let res =
-    lazy (verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.5"))
+    lazy (verify ~tactic_in:stdin ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.5"))
     |> Util.measure_time
   in
   let () =
     printResult res
   in
-  true
+  match res with
+  | Ok _ -> true
+  | _ -> false
    *)
 
-(*
+  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/line2/line.xml")) in
   let model = List.hd_exn models in
+  let () = Util.debug_all_off (); Util.debug_verify := true in
   let res =
-    lazy (verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 0.5"))
+    lazy (verify ~tactic_in:stdin ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 0.5"))
     |> Util.measure_time
   in
   let _ = printResult res in
-  true
+  match res with
+  | Ng _ -> true
+  | _ -> false
    *)
 
+  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
+  let tactic_in = In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle_tactic2.smt2") in
   let model = List.hd_exn models in
+  let () = Util.debug_all_off (); Util.debug_verify := true; Util.debug_verify_iter := true in
+  let res =
+    lazy (verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.0 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0"))
+    |> Util.measure_time
+  in
+  let _ = printResult res in
+  match res with
+  | Ok _ -> true
+  | Ng _ -> false
+   *)
+  
+let%test _ =
+  let open Z3Intf in
+  let open Cnf in
+  let open ParseFml in
+  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
   let tactic_in = In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle_tactic1.smt2") in
+  let model = List.hd_exn models in
+  let () = Util.debug_all_off (); Util.debug_verify := true; Util.debug_verify_iter := true in
   let res = verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
