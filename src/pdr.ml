@@ -295,7 +295,7 @@ let resolve_conflict_query (is_continuous:bool) (tactic_in: In_channel.t) (frame
   in
   for i = 1 to idx do
     let () = lazy (printf "Strengthen: %d@." i) |> Util.debug !Util.debug_resolve_conflict in
-    frames.(i) <- apply2 mk_and frames.(i) interpolant_frame
+    frames.(i) <- apply2 mk_or frames.(0) (apply2 mk_and frames.(i) interpolant_frame)
   done;
   let ret = frames |> Array.map ~f:(apply simplify) in
   let () =

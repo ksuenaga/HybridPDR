@@ -103,6 +103,7 @@ let debug_flags = [
 let query_for_reolsve_conflict = ref true
 
 let debug_all_off () = List.iter debug_flags ~f:(fun r -> r := false)
+let debug_all_on () = List.iter debug_flags ~f:(fun r -> r := true)
 
 let debug flag promise =
   if flag then

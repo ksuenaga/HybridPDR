@@ -129,7 +129,8 @@ let%test _ =
   | Ok _ -> true
   | Ng _ -> false
    *)
-  
+
+  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -141,30 +142,19 @@ let%test _ =
   let res = verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
-
-(*
-let%test _ =
-  let open Z3Intf in
-  let open Cnf in
-  let open ParseFml in
-  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
-  let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x == 0.5 & y == 0.0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
-  let _ = printResult res in
-  true
    *)
 
-(*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
   let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
   let model = List.hd_exn models in
-  let res = verify ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x >= 0.0 & x <= 0.5 & y >= 0.0 & y <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 2.0") in
+  let tactic_in = In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle_tactic3.smt2") in
+  let () = Util.debug_all_on () in
+  let res = verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x >= 0.0 & x <= 0.5 & y >= 0.0 & y <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
-  *)
     
 (*
 let%test _ =
