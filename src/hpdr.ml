@@ -152,7 +152,7 @@ let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
   let model = List.hd_exn models in
   let tactic_in = In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle_tactic3.smt2") in
-  let () = Util.debug_all_on () in
+  let () = Util.debug_all_on (); Util.debug_check_satisfiability := false in
   let res = verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x >= 0.0 & x <= 0.5 & y >= 0.0 & y <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true

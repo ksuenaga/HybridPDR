@@ -448,8 +448,7 @@ let rec remove_cti (tactic_in:In_channel.t) (hs:S.t) (cexs:ce list) (frames:fram
             (* If this is not a counterexample anymore, skip this. *)
             remove_cti tactic_in hs tl frames
          | `Sat _ | `Unknown ->
-            (* If the previous idx is length - 2, then propagation should be continous. *)
-            let is_continuous = idx = (Array.length frames - 2) in
+            let is_continuous = idx = (Array.length frames - 1) in
             let locs = S.locations hs in
             let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
             let propagated = propagate_one_step ~is_continuous ~hs ~ce:(loc,e,idx) ~preframe in
@@ -585,7 +584,7 @@ let rec extend_frontier_iter ~(tactic_in:In_channel.t) ~(hs:S.t) ~(frames:frames
               acc
           | `NotValid ms ->
               (* let () = printf "Cex: %a@." pp_model m in *)
-              let newcex = List.map ms ~f:(fun m -> (loc,expr_of_model m,len-2)) in
+              let newcex = List.map ms ~f:(fun m -> (loc,expr_of_model m,len-1)) in
               newcex @ acc
           | `Unknown ->
               U.not_implemented "extend_frontier_iter: unknown"
