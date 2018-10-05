@@ -129,7 +129,8 @@ let%test _ =
   | Ok _ -> true
   | Ng _ -> false
    *)
-
+  
+  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -142,8 +143,8 @@ let%test _ =
   let res = verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
-
-  (*
+   *)
+  
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -155,7 +156,6 @@ let%test _ =
   let res = verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x >= 0.0 & x <= 0.5 & y >= 0.0 & y <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0") in
   let _ = printResult res in
   true
-   *)
   
 (*
 let%test _ =
