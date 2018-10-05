@@ -448,7 +448,7 @@ let rec remove_cti (tactic_in:In_channel.t) (hs:S.t) (cexs:ce list) (frames:fram
             (* If this is not a counterexample anymore, skip this. *)
             remove_cti tactic_in hs tl frames
          | `Sat _ | `Unknown ->
-            let is_continuous = idx = (Array.length frames - 1) in
+            let is_continuous = idx = (Array.length frames - 2) in
             let locs = S.locations hs in
             let preframe : Dl.t frame = apply Dl.mk_dl_prim frames.(idx-1) in
             let propagated = propagate_one_step ~is_continuous ~hs ~ce:(loc,e,idx) ~preframe in
