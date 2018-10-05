@@ -136,16 +136,16 @@ let setup_init_frames ~(hs:S.t) ~(initloc:S.id) ~(init:Z3.Expr.expr) ~(safe:Z3.E
         safe_frame
      |]
   | `Sat(l,m), _ ->
-      printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
-  (* E.raise (E.of_string "0th frame is unsafe.") *)
-      raise (Counterexample(l,expr_of_model m, 0))
+     printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
+     (* E.raise (E.of_string "0th frame is unsafe.") *)
+     raise (Counterexample(l,expr_of_model m, 0))
   | _, `Sat(l,m) ->
-      printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
-      raise (Counterexample(l,expr_of_model m, 0))
-    (*
+     printf "%a at %a@." Z3Intf.pp_model m S.pp_id l;
+     raise (Counterexample(l,expr_of_model m, 0))
+(*
   | `Unknown, _ | _, `Unknown ->
      E.raise (E.of_string "init: unknown: Cannot proceed.")
-     *)
+ *)
 
 let propagate_clauses ~(hs:S.t) ~(frames:frames) : frames =
   let open Frame in
@@ -236,7 +236,59 @@ let resolve_conflict_query (is_continuous:bool) (tactic_in: In_channel.t) (frame
   in
   let locs = S.locations hs in
   let open Frame in
-  let interpolant_frame =
+  (* [XXX] Factor out the common computation shared with "not continuous" case. *)
+  let compute_interpolant_frame_continuous () =
+    List.fold_left
+      locs
+      ~init:(lift locs mk_false)
+      ~f:(fun resframe locid ->
+        let open S in
+        let open Z3Intf in
+        (* let srcid,tgtid,guard = t.source,t.target,t.guard in *)
+        let loc = Env.find_exn hs.locations locid in
+        let () = printf "Location: %a@." pp_id locid in
+        let preframe_expr = Frame.find preframe locid in
+        let preflow,preinv = loc.flow, loc.inv in
+        let cex = Frame.find eframe locid in
+        let interpolant =
+          let open Sexp in
+          let initexpr = Frame.find frames.(0) locid in
+          let () =
+            printf "Give an interpolant for the following problem:@.";
+            printf "Pre:%a@." pp_expr preframe_expr;
+            printf "Flow:%a@." SpaceexComponent.pp_flow preflow;
+            printf "Inv:%a@." pp_expr preinv;
+            printf "Continuous:%b@." is_continuous;
+            printf "Init:%a@." pp_expr initexpr;
+            printf "------@.";
+            printf "CEX:%a@." pp_expr cex;
+            printf ">>> @.";
+          in
+          let cex_unsat = Z3Intf.callZ3 cex in
+          let pre_unsat = Z3Intf.callZ3 preframe_expr in
+          let init_unsat = Z3Intf.callZ3 initexpr in
+          match cex_unsat, pre_unsat, init_unsat with
+          | `Unsat, _, _ ->
+             (* If cex is unsatifiable, then true is an interpolant. *)
+             mk_true
+          | _, `Unsat, `Unsat ->
+             (* Both pre and init are unsat, then false is an interpolant *)
+             mk_false
+          | _ ->
+             let queried =
+               try Sexp.input_sexp tactic_in with
+               | End_of_file -> Sexp.input_sexp stdin
+             in
+             let () = printf "input sexp: %a@." Sexp.pp queried in
+             let z3 = ParseFml.sexp_to_z3 queried in
+             let () = printf "z3:%a@." pp_expr z3 in
+             z3
+        in
+        let res = apply_on_id (mk_or interpolant) locid resframe in
+        res)
+    |> apply simplify
+  in
+  let compute_interpolant_frame_not_continuous () =
     MySet.fold
       ~init:(lift locs mk_false)
       ~f:(fun resframe t ->
@@ -292,6 +344,12 @@ let resolve_conflict_query (is_continuous:bool) (tactic_in: In_channel.t) (frame
         let res = apply_on_id (mk_or interpolant) tgtid resframe in
         res)
       hs.transitions |> apply simplify
+  in
+  let interpolant_frame =
+    if is_continuous then
+      compute_interpolant_frame_continuous ()
+    else
+      compute_interpolant_frame_not_continuous ()
   in
   for i = 1 to idx do
     let () = lazy (printf "Strengthen: %d@." i) |> Util.debug !Util.debug_resolve_conflict in
