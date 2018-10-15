@@ -356,7 +356,7 @@ let resolve_conflict_query (is_continuous:bool) (tactic_in: In_channel.t) (frame
     let () =
       lazy (printf "Before:@.%a@." pp_frames frames) |> Util.debug !Util.debug_resolve_conflict
     in
-    frames.(i) <- apply2 mk_or frames.(0) (apply2 mk_and frames.(i) interpolant_frame);
+    frames.(i) <- (apply2 mk_or frames.(0) (apply2 mk_and frames.(i) interpolant_frame) |> apply simplify);
     let () =
       lazy (printf "After:@.%a@." pp_frames frames) |> Util.debug !Util.debug_resolve_conflict
     in
