@@ -318,6 +318,10 @@ let rec sexp_to_atomics s =
      [mk_eq (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
   | List [Atom "<="; s1; s2] ->
      [mk_le (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
+  | List [Atom "<"; s1; s2] ->
+     [mk_lt (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
+  | List [Atom ">"; s1; s2] ->
+     [mk_gt (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
   | List [Atom ">="; s1; s2] ->
      [mk_ge (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)]
   | List ((Atom ("and"|"or"))::ss) ->
@@ -376,6 +380,10 @@ and sexp_to_z3 s =
      mk_eq (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
   | List [Atom "<="; s1; s2] ->
      mk_le (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom "<"; s1; s2] ->
+     mk_lt (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
+  | List [Atom ">"; s1; s2] ->
+     mk_gt (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
   | List [Atom ">="; s1; s2] ->
      mk_ge (sexp_to_arithexpr s1) (sexp_to_arithexpr s2)
   | List (Atom "and"::ss) ->
@@ -386,7 +394,7 @@ and sexp_to_z3 s =
      sexp_to_z3 s |> mk_not
   (* E.raise (E.of_string "sexp_to_atomics: atom should not appear here.") *)
   | List _ | Atom _ ->
-     E.raise (E.of_string "sexp_to_atomics: not implemented.")
+     E.raise (E.of_string "sexp_to_z3: not implemented.")
     (*
 and binding_to_atomics b =
   let open Sexp in

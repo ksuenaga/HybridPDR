@@ -145,6 +145,7 @@ let%test _ =
   true
    *)
 
+  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -159,7 +160,25 @@ let%test _ =
   in
   let _ = printResult res in
   true
-  
+   *)
+
+  (*
+let%test _ =
+  let open Z3Intf in
+  let open Cnf in
+  let open ParseFml in
+  let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle.xml")) in
+  let model = List.hd_exn models in
+  let tactic_in = In_channel.create (!Config.srcroot ^ "/examples/examples/circle/circle_tactic4.smt2") in
+  let () = Util.debug_all_off (); Util.debug_resolve_conflict := true; Util.debug_remove_cti := true in
+  let res =
+    lazy (verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x >= 0.0 & x <= 0.5 & y >= 0.0 & y <= 0.5") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0"))
+    |> Util.measure_time
+  in
+  let _ = printResult res in
+  true
+   *)
+
   (*
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball/bball.xml")) in
@@ -169,7 +188,7 @@ let%test _ =
   let _ = printResult res in
   true
    *)
-    
+  
 (*
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/bball_nondet/bball_nondet.xml")) in
@@ -184,14 +203,29 @@ let%test _ =
   let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
   let _ = printResult res in
   true
-
+ *)
+  
 let%test _ =
+  let open Z3Intf in
+  let open Cnf in
+  let open ParseFml in
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator/filtered_oscillator.xml")) in
   let model = List.hd_exn models in
+  let tactic_in = In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator/filtered_oscillator_tactic1.smt") in
+  let () = Util.debug_all_on () in
+  let res =
+    lazy (verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "a1==-2 & x0==-0.7 & a2==-1 & y0==0.7 & c==0.5 & x==0.2 & y==0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1.0"))
+    |> Util.measure_time
+  in
+  let _ = printResult res in
+  true
+  (*
   let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
   let _ = printResult res in
   true
+   *)
 
+(*
 let%test _ =
   let models = SpaceexComponent.parse_from_channel (In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator_16/filtered_oscillator_16.xml")) in
   let model = List.hd_exn models in

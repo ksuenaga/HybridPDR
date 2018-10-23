@@ -363,6 +363,11 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
                  | `Unknown -> apply_strategies tl
                  | _ -> r)
         in
+        let check_notinv_implies_post () =
+          Z.mk_and (Z.mk_not inv) (Z.mk_not post) |> Z.callZ3 |>
+            function `Unsat -> `Valid
+                   | _ -> `Unknown
+        in
         (* Check whether "e1 implies post is valid"; if not, the entire formula is not valid *)
         let check_e1_implies_post_is_valid () =
           Z.mk_and e1 (Z.mk_not post) |> Z.callZ3 |>
@@ -438,6 +443,7 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
         in
         let strategies =
           [check_e1_implies_post_is_valid;
+           check_notinv_implies_post;
            check_e1_is_invariant;
            check_post_is_invariant;
            discover_counterexample;

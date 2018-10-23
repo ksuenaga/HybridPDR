@@ -10,20 +10,20 @@
     <param name="x0" type="real" local="false" d1="1" d2="1" dynamics="const" />
     <param name="y0" type="real" local="false" d1="1" d2="1" dynamics="const" />
     <location id="1" name="np" x="137.0" y="137.5" width="247.0" height="66.0">
-      <invariant>x&lt;=0 &amp; y &gt;= -c/x0*x</invariant>
-      <flow>x' == a1*x-a1*x0 &amp; y' == a2*y+a2*y0</flow>
+      <invariant>x&lt;=0 &amp; y &gt;= -0.714286*x</invariant>
+      <flow>x' == -2*x+1.4 &amp; y' == -1*y-0.7</flow>
     </location>
     <location id="2" name="nn" x="137.5" y="273.5" width="248.0" height="69.0">
-      <invariant>x&lt;=0 &amp; y &lt;= -c/x0*x</invariant>
-      <flow>x' == a1*x+a1*x0 &amp; y' == a2*y-a2*y0</flow>
+      <invariant>x&lt;=0 &amp; y &lt;= -0.714286*x</invariant>
+      <flow>x' == -2*x-1.4 &amp; y' == -1*y+0.7</flow>
     </location>
     <location id="3" name="pp" x="516.5" y="135.5" width="263.0" height="60.0">
-      <invariant>x&gt;=0 &amp; y &gt;= -c/x0*x</invariant>
-      <flow>x' == a1*x-a1*x0 &amp; y' == a2*y+a2*y0</flow>
+      <invariant>x&gt;=0 &amp; y &gt;= -0.714286*x</invariant>
+      <flow>x' == -2*x+1.4 &amp; y' == -1.0*y-0.7</flow>
     </location>
-    <location id="4" name="pn" x="516.0" y="273.0" width="265.0" height="72.0">
-      <invariant>x&gt;=0 &amp; y &lt;= -c/x0*x</invariant>
-      <flow>x' == a1*x+a1*x0 &amp; y' == a2*y-a2*y0</flow>
+    <location id="4" name="pn" x="517.0" y="274.0" width="265.0" height="72.0">
+      <invariant>x&gt;=0 &amp; y &lt;= -0.714286*x</invariant>
+      <flow>x' == -2*x-1.4 &amp; y' == -1*y+0.7</flow>
     </location>
     <transition source="2" target="1">
       <label>hop</label>
@@ -31,6 +31,7 @@
     </transition>
     <transition source="1" target="3">
       <label>hop</label>
+      <labelposition x="0.0" y="0.0" />
     </transition>
     <transition source="3" target="4">
       <label>hop</label>
@@ -38,6 +39,7 @@
     </transition>
     <transition source="4" target="2">
       <label>hop</label>
+      <labelposition x="0.0" y="0.0" />
     </transition>
   </component>
   <component id="filter_t">

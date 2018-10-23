@@ -351,8 +351,10 @@ let resolve_conflict_query (is_continuous:bool) (tactic_in: In_channel.t) (frame
     else
       compute_interpolant_frame_not_continuous ()
   in
+  let interpolant_frame = apply2 mk_or interpolant_frame frames.(0) in
   for i = 1 to idx do
     let () = lazy (printf "Strengthen: %d@." i) |> Util.debug !Util.debug_resolve_conflict in
+    let () = lazy (printf "fml: %a@." (pp_frame pp_expr) interpolant_frame) |> Util.debug !Util.debug_resolve_conflict in    
     let () =
       lazy (printf "Before:@.%a@." pp_frames frames) |> Util.debug !Util.debug_resolve_conflict
     in
@@ -631,6 +633,7 @@ let rec extend_frontier_iter ~(tactic_in:In_channel.t) ~(hs:S.t) ~(frames:frames
    *)
   let cexs =
     fold
+      res
       ~init:[]
       ~f:(fun acc (loc,r) ->
         (*
@@ -647,7 +650,6 @@ let rec extend_frontier_iter ~(tactic_in:In_channel.t) ~(hs:S.t) ~(frames:frames
           | `Unknown ->
               U.not_implemented "extend_frontier_iter: unknown"
         )
-      res
   in
   (* let () = printf "cexs: %a@." (U.pp_list pp_ce ()) cexs in *)
   match cexs with
