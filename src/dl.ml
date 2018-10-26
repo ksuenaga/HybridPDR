@@ -417,6 +417,35 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
                     `Unknown
                  | `Unknown -> `Unknown
         in
+        let check_negpost_is_invariant_wrt_invdyn () =
+          let module S = SpaceexComponent in
+          let vc =
+            (* let dtsymb = Z.mk_real_var "_dt" in *)
+            (* This is unsound, strictly speaking. *)
+            let dtsymb = Z.mk_real_numeral_float 0.000001 in
+            let vars = Env.domain f in
+            let negpost = Z.mk_not post in
+            let wp = Z.substitute vars (List.map vars ~f:(fun x -> Z.mk_add (Z.mk_real_var x) (Z.mk_mul dtsymb (Env.find_exn f x)))) negpost in
+            (*
+            let vc =
+            Z.mk_and post inv |> Z.mk_and (Z.mk_not wp) |> Z.mk_and (Z.mk_gt dtsymb (Z.mk_real_numeral_float 0.0))
+              |> Z.mk_and (Z.mk_lt dtsymb (Z.mk_real_numeral_float 0.1))
+            in
+             *)
+            let vc =
+              Z.mk_and wp inv |> Z.mk_and (Z.mk_not negpost) |> Z.mk_and (Z.mk_gt dtsymb (Z.mk_real_numeral_float 0.0))
+              |> Z.mk_and (Z.mk_lt dtsymb (Z.mk_real_numeral_float 0.1))
+            in
+            vc
+          in
+          let () = lazy (printf "vc:%a@." Z.pp_expr vc) |> U.debug false in
+          vc |> Z.callZ3 |>
+          function `Unsat -> `Valid
+                 | `Sat m ->
+                    lazy (printf "m:%a@." Z.pp_model m) |> U.debug false;
+                    `Unknown
+                 | `Unknown -> `Unknown
+        in
         let discover_counterexample () =
           (* Take samples from the negation of the post condition. *)
           let samples : Z3.Model.model list = Z.sample ~n:nsamples ~vars:(Env.domain f) ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor (Z.mk_not post) in
@@ -446,6 +475,7 @@ let rec is_valid_implication ?(nsamples=Util.default_trial_number_for_ce) t1 t2 
            check_notinv_implies_post;
            check_e1_is_invariant;
            check_post_is_invariant;
+           check_negpost_is_invariant_wrt_invdyn;
            discover_counterexample;
           ]
         in

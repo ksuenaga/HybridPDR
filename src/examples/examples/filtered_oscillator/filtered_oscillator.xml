@@ -9,19 +9,19 @@
     <param name="c" type="real" local="false" d1="1" d2="1" dynamics="const" />
     <param name="x0" type="real" local="false" d1="1" d2="1" dynamics="const" />
     <param name="y0" type="real" local="false" d1="1" d2="1" dynamics="const" />
-    <location id="1" name="np" x="137.0" y="137.5" width="247.0" height="66.0">
+    <location id="1" name="np1" x="137.0" y="137.5" width="247.0" height="66.0">
       <invariant>x&lt;=0 &amp; y &gt;= -0.714286*x</invariant>
       <flow>x' == -2*x+1.4 &amp; y' == -1*y-0.7</flow>
     </location>
-    <location id="2" name="nn" x="137.5" y="273.5" width="248.0" height="69.0">
+    <location id="2" name="nn2" x="137.5" y="273.5" width="248.0" height="69.0">
       <invariant>x&lt;=0 &amp; y &lt;= -0.714286*x</invariant>
       <flow>x' == -2*x-1.4 &amp; y' == -1*y+0.7</flow>
     </location>
-    <location id="3" name="pp" x="516.5" y="135.5" width="263.0" height="60.0">
+    <location id="3" name="pp3" x="516.5" y="135.5" width="263.0" height="60.0">
       <invariant>x&gt;=0 &amp; y &gt;= -0.714286*x</invariant>
       <flow>x' == -2*x+1.4 &amp; y' == -1.0*y-0.7</flow>
     </location>
-    <location id="4" name="pn" x="517.0" y="274.0" width="265.0" height="72.0">
+    <location id="4" name="pn4" x="517.0" y="274.0" width="265.0" height="72.0">
       <invariant>x&gt;=0 &amp; y &lt;= -0.714286*x</invariant>
       <flow>x' == -2*x-1.4 &amp; y' == -1*y+0.7</flow>
     </location>

@@ -28,11 +28,11 @@ let set_context param = ctx := Z3.mk_context param
                       
 let callZ3 z3expr =
   let open Format in
-  (* let _ = printf "callZ3: %s@." (Z3.Expr.to_string z3expr) in *)
+  let _ = lazy (printf "callZ3: %s@." (Z3.Expr.to_string z3expr)) |> Util.debug !Util.debug_z3 in
   Z3.Solver.push !solver;
   Z3.Solver.add !solver [z3expr];
   let st = Z3.Solver.check !solver [] in
-  (* let _ = printf "reply:%s@." (Z3.Solver.string_of_status st) in *)
+  let _ = lazy (printf "reply:%s@." (Z3.Solver.string_of_status st)) |> Util.debug !Util.debug_z3 in
   let res =
     match st with
     | Z3.Solver.UNSATISFIABLE ->

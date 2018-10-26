@@ -82,6 +82,7 @@ let debug_frontier_iter = ref false
 let debug_extend_frontier = ref false
 let debug_verify_iter = ref false
 let debug_verify = ref false
+let debug_z3 = ref false
 
 let debug_flags = [
     debug_events;
@@ -98,6 +99,7 @@ let debug_flags = [
     debug_extend_frontier;
     debug_verify_iter;
     debug_verify;
+    debug_z3;
   ]
 
 let query_for_reolsve_conflict = ref true
