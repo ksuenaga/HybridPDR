@@ -591,66 +591,66 @@ let%test _ =
     Unsat -> false
 ;;
 
-let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
-  let module Z = Z3Intf in
-  (*
-  printf "t1:%a@." pp t1;
-  printf "t2:%a@." pp t2;
-   *)
-  let t1, t2 = simplify t1, simplify t2 in
-  lazy (printf "t1simpl:%a@." pp t1;
-        printf "t2simpl:%a@." pp t2) |> Util.debug !U.debug_interpolation;
-  match t1,t2 with
-  | Prim t1', Prim t2' -> Z.interpolant t1' t2'
-  | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
-  | And [Prim guard; Dyn(is_partial,f,inv,Prim e1)], Prim e2 ->
-     let vars = Env.domain f in
-     let samples1 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
-      let samples1 =
-        List.map samples1 ~f:(fun m -> check_satisfiability ~pre:guard ~flow:f ~inv:inv ~post:m)
-        |> List.filter ~f:(function `Sat _ -> true | _ -> false)
-        |> List.map ~f:(function `Sat m -> m | _ -> U.error "hoge")
-      in
-      let e1 =
-        List.fold_left samples1 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
-      in
-      let samples2 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e2 in
-      let e2 =
-        List.fold_left samples2 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
-      in
-      let () =
-        let module U = Util in
-        lazy (printf "%aTaking interpolant of:@.%a@.and@.%a@.%a" U.pp_start_style U.Green Z.pp_expr e1 Z.pp_expr e2 U.pp_end_style ())
-        |> Util.debug !U.debug_interpolation
-      in
-      let res = Z.interpolant e1 e2 in
-      let () =
-        res |>
-          function `InterpolantFound itp ->
-                    lazy (printf "%aResult:@.%a@.%a" U.pp_start_style U.Green Z.pp_expr itp U.pp_end_style ())
-                    |> Util.debug !U.debug_interpolation
-                 | `InterpolantNotFound ->
-                    lazy (printf "%aNotFound:@.%a" U.pp_start_style U.Green U.pp_end_style ())
-                    |> Util.debug !U.debug_interpolation
-                 | `NotUnsatisfiable ->
-                    lazy (printf "%aNotUnsatisfiable:@.%a" U.pp_start_style U.Green U.pp_end_style ())
-                    |> Util.debug !U.debug_interpolation
-      in
-      res
-  | Or ts, Prim e2 ->
-     List.fold_left ts
-       ~init:(`InterpolantFound Z.mk_false)
-       ~f:(fun res t ->
-         match res with
-         | `InterpolantFound itp ->
-            interpolant t (Prim e2) |>
-              (function `InterpolantFound itp' -> `InterpolantFound (Z.mk_or itp itp')
-                      | elseres -> elseres)
-         | elseres -> elseres)
-  | _, _ ->
-      U.not_implemented "interpolant"
-      (*
-     printf "interpolant: eliminating@.";
-     let t1,t2 = dl_elim_dyn t1, dl_elim_dyn t2 in
-     Z.interpolant t1 t2
-*)
+(* let rec interpolant ?(nsamples=Util.default_trial_number) t1 t2 =
+ *   let module Z = Z3Intf in
+ *   (\*
+ *   printf "t1:%a@." pp t1;
+ *   printf "t2:%a@." pp t2;
+ *    *\)
+ *   let t1, t2 = simplify t1, simplify t2 in
+ *   lazy (printf "t1simpl:%a@." pp t1;
+ *         printf "t2simpl:%a@." pp t2) |> Util.debug !U.debug_interpolation;
+ *   match t1,t2 with
+ *   | Prim t1', Prim t2' -> Z.interpolant t1' t2'
+ *   | _, Prim t when Z.callZ3 t = `Unsat -> `InterpolantFound Z.mk_true
+ *   | And [Prim guard; Dyn(is_partial,f,inv,Prim e1)], Prim e2 ->
+ *      let vars = Env.domain f in
+ *      let samples1 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e1 in
+ *       let samples1 =
+ *         List.map samples1 ~f:(fun m -> check_satisfiability ~pre:guard ~flow:f ~inv:inv ~post:m)
+ *         |> List.filter ~f:(function `Sat _ -> true | _ -> false)
+ *         |> List.map ~f:(function `Sat m -> m | _ -> U.error "hoge")
+ *       in
+ *       let e1 =
+ *         List.fold_left samples1 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
+ *       in
+ *       let samples2 = Z.sample ~n:nsamples ~vars:vars ~min:(-.Util.default_randomization_factor) ~max:Util.default_randomization_factor e2 in
+ *       let e2 =
+ *         List.fold_left samples2 ~init:Z.mk_false ~f:(fun e m -> Z.mk_or e (Z.expr_of_model m))
+ *       in
+ *       let () =
+ *         let module U = Util in
+ *         lazy (printf "%aTaking interpolant of:@.%a@.and@.%a@.%a" U.pp_start_style U.Green Z.pp_expr e1 Z.pp_expr e2 U.pp_end_style ())
+ *         |> Util.debug !U.debug_interpolation
+ *       in
+ *       let res = Z.interpolant e1 e2 in
+ *       let () =
+ *         res |>
+ *           function `InterpolantFound itp ->
+ *                     lazy (printf "%aResult:@.%a@.%a" U.pp_start_style U.Green Z.pp_expr itp U.pp_end_style ())
+ *                     |> Util.debug !U.debug_interpolation
+ *                  | `InterpolantNotFound ->
+ *                     lazy (printf "%aNotFound:@.%a" U.pp_start_style U.Green U.pp_end_style ())
+ *                     |> Util.debug !U.debug_interpolation
+ *                  | `NotUnsatisfiable ->
+ *                     lazy (printf "%aNotUnsatisfiable:@.%a" U.pp_start_style U.Green U.pp_end_style ())
+ *                     |> Util.debug !U.debug_interpolation
+ *       in
+ *       res
+ *   | Or ts, Prim e2 ->
+ *      List.fold_left ts
+ *        ~init:(`InterpolantFound Z.mk_false)
+ *        ~f:(fun res t ->
+ *          match res with
+ *          | `InterpolantFound itp ->
+ *             interpolant t (Prim e2) |>
+ *               (function `InterpolantFound itp' -> `InterpolantFound (Z.mk_or itp itp')
+ *                       | elseres -> elseres)
+ *          | elseres -> elseres)
+ *   | _, _ ->
+ *       U.not_implemented "interpolant"
+ *       (\*
+ *      printf "interpolant: eliminating@.";
+ *      let t1,t2 = dl_elim_dyn t1, dl_elim_dyn t2 in
+ *      Z.interpolant t1 t2
+ * *\) *)

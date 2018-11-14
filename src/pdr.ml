@@ -371,112 +371,112 @@ let resolve_conflict_query (is_continuous:bool) (tactic_in: In_channel.t) (frame
   in
   ret
   
-let resolve_conflict (is_continuous:bool) (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
-  let open Z3Intf in
-  let () =
-    lazy (
-        printf "(*** resolve_conflict ***)@.";
-        printf "Frame %d at location %a@." idx S.pp_id loc;
-        printf "preframe: %a@." (F.pp_frame pp_expr) preframe;
-        printf "eframe : %a@." (F.pp_frame pp_expr) eframe
-      ) |> U.debug !U.debug_events
-  in
-  let locs = S.locations hs in
-  (* let not_ce = mk_not (Frame.find eframe loc) in *)
-  let open Frame in
-  (* invcont_preframe is [inverted_flow | inv]preframe *)
-  let invcont_preframe =
-    apply_loc
-      (fun (loc,z3expr_preframe) ->
-        let preloc = Env.find_exn hs.locations loc in
-        let preflow_inverted = S.invert_flow preloc.flow in
-        let preinv = preloc.inv in
-        let ret = Dl.mk_dl_dyn ~is_partial:false preflow_inverted preinv (Dl.mk_dl_prim z3expr_preframe) in
-        ret)
-      preframe |> apply Dl.simplify
-  in
-  let invdisc_preframe =
-    MySet.fold
-      ~init:(lift locs (Dl.mk_dl_prim mk_false))
-      ~f:(fun resframe t ->
-        let open S in
-        let srcid,tgtid,guard = t.source,t.target,t.guard in
-        let invcont_preframe_expr = Frame.find invcont_preframe srcid in
-        let res = Dl.mk_dl_and (Dl.mk_dl_prim guard) invcont_preframe_expr in
-        (* [XXX] Currently supports only the case where command is skip. *)
-        assert(S.command_is_empty t.command);
-        resframe |> apply_on_id (Dl.mk_dl_or res) tgtid)
-      hs.transitions |> apply Dl.simplify
-  in
-  (* let inv_preframe_elimed = (* apply Dl.dl_elim_dyn invdisc_preframe *) invdisc_preframe in *)
-  let invdisc_preframe = apply2 Dl.mk_dl_or invdisc_preframe (apply Dl.mk_dl_prim frames.(0)) in
-  let interpolants = apply2 Dl.interpolant invdisc_preframe (apply Dl.mk_dl_prim eframe) in
-  let interpolants =
-    apply_loc
-      (fun (loc,st) ->
-        match st with
-        | `InterpolantFound e -> simplify e
-        | _ ->
-            mk_true
-            (* F.find eframe loc |> mk_not *)
-      )
-      interpolants
-  in
-  let () =
-    lazy (printf "invcont_preframe: %a@." (pp_frame Dl.pp) invcont_preframe;
-          printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe;
-          printf "eframe : %a@." (F.pp_frame pp_expr) eframe;
-          printf "Interpolant: %a@." (pp_frame pp_expr) interpolants)
-    |> Util.debug !Util.debug_resolve_conflict
-  in
-  for i = 1 to idx do
-    let () = lazy (printf "Strengthen: %d@." i) |> Util.debug !Util.debug_resolve_conflict in
-    frames.(i) <- apply2 mk_and frames.(i) interpolants
-  done;
-  let ret = Array.map ~f:(apply simplify) frames in
-  let () =
-    lazy (printf "New frames:@.%a@." pp_frames ret)
-    |> Util.debug !Util.debug_resolve_conflict
-  in
-  ret
-  (* Returned frame of interpolants *)
-  (*
-  let itp_frame = ref (lift locs mk_true) in
-  let () =
-    printf "Constructing frame1@.";
-    Frame.fold
-      ~init:()
-      ~f:(fun _ (loc',pre_z3expr) ->
-        let () = printf "loc' : %a, pre_z3expr: %a@." S.pp_id loc' pp_expr pre_z3expr in
-        try
-          let trans = S.find_trans ~src:loc' ~tgt:loc hs in
-          let () = printf "trans : %a@." S.pp_trans trans in
-          let preloc = Env.find_exn hs.locations loc' in
-          let preflow_inverted = S.invert_flow preloc.flow in
-          let preinv = preloc.inv in
-          let guard = trans.guard in
-          let () = printf "guard : %a@." pp_expr guard in
-          (* [XXX] Currently supports only the case where command is skip. *)
-          assert(S.command_is_empty trans.command);
-          let ret = Dl.mk_dl_and (Dl.mk_dl_prim guard) (Dl.mk_dl_dyn preflow_inverted preinv (Dl.mk_dl_prim pre_z3expr)) in
-          let ret = Dl.dl_elim_dyn ret in
-          let () = printf "ret: %a@." pp_expr ret in
-          let itp = interpolant ret not_ce in
-          match itp with
-          | `InterpolantFound(itp_z3) ->
-             let () = printf "itp: %a@." pp_expr itp_z3 in
-             itp_frame := apply_on_id (fun e -> mk_and e itp_z3) loc !itp_frame
-          | _ ->
-             U.not_implemented "resolve_conflict: interpolant"
-        with
-        | Not_found -> ()
-      )
-      preframe
-  in
-  let () = printf "itp_frame: %a@." (Frame.pp_frame Z3Intf.pp_expr) !itp_frame in
-  frames.(idx) <- apply2 mk_and frames.(idx) !itp_frame;
-  frames
-   *)
+(* let resolve_conflict (is_continuous:bool) (frames: frames) (hs:S.t) (preframe:Z3.Expr.expr Frame.frame) (eframe : Z3.Expr.expr Frame.frame) (loc:S.id) idx : frames =
+ *   let open Z3Intf in
+ *   let () =
+ *     lazy (
+ *         printf "(\*** resolve_conflict ***\)@.";
+ *         printf "Frame %d at location %a@." idx S.pp_id loc;
+ *         printf "preframe: %a@." (F.pp_frame pp_expr) preframe;
+ *         printf "eframe : %a@." (F.pp_frame pp_expr) eframe
+ *       ) |> U.debug !U.debug_events
+ *   in
+ *   let locs = S.locations hs in
+ *   (\* let not_ce = mk_not (Frame.find eframe loc) in *\)
+ *   let open Frame in
+ *   (\* invcont_preframe is [inverted_flow | inv]preframe *\)
+ *   let invcont_preframe =
+ *     apply_loc
+ *       (fun (loc,z3expr_preframe) ->
+ *         let preloc = Env.find_exn hs.locations loc in
+ *         let preflow_inverted = S.invert_flow preloc.flow in
+ *         let preinv = preloc.inv in
+ *         let ret = Dl.mk_dl_dyn ~is_partial:false preflow_inverted preinv (Dl.mk_dl_prim z3expr_preframe) in
+ *         ret)
+ *       preframe |> apply Dl.simplify
+ *   in
+ *   let invdisc_preframe =
+ *     MySet.fold
+ *       ~init:(lift locs (Dl.mk_dl_prim mk_false))
+ *       ~f:(fun resframe t ->
+ *         let open S in
+ *         let srcid,tgtid,guard = t.source,t.target,t.guard in
+ *         let invcont_preframe_expr = Frame.find invcont_preframe srcid in
+ *         let res = Dl.mk_dl_and (Dl.mk_dl_prim guard) invcont_preframe_expr in
+ *         (\* [XXX] Currently supports only the case where command is skip. *\)
+ *         assert(S.command_is_empty t.command);
+ *         resframe |> apply_on_id (Dl.mk_dl_or res) tgtid)
+ *       hs.transitions |> apply Dl.simplify
+ *   in
+ *   (\* let inv_preframe_elimed = (\* apply Dl.dl_elim_dyn invdisc_preframe *\) invdisc_preframe in *\)
+ *   let invdisc_preframe = apply2 Dl.mk_dl_or invdisc_preframe (apply Dl.mk_dl_prim frames.(0)) in
+ *   let interpolants = apply2 Dl.interpolant invdisc_preframe (apply Dl.mk_dl_prim eframe) in
+ *   let interpolants =
+ *     apply_loc
+ *       (fun (loc,st) ->
+ *         match st with
+ *         | `InterpolantFound e -> simplify e
+ *         | _ ->
+ *             mk_true
+ *             (\* F.find eframe loc |> mk_not *\)
+ *       )
+ *       interpolants
+ *   in
+ *   let () =
+ *     lazy (printf "invcont_preframe: %a@." (pp_frame Dl.pp) invcont_preframe;
+ *           printf "invdisc_preframe: %a@." (pp_frame Dl.pp) invdisc_preframe;
+ *           printf "eframe : %a@." (F.pp_frame pp_expr) eframe;
+ *           printf "Interpolant: %a@." (pp_frame pp_expr) interpolants)
+ *     |> Util.debug !Util.debug_resolve_conflict
+ *   in
+ *   for i = 1 to idx do
+ *     let () = lazy (printf "Strengthen: %d@." i) |> Util.debug !Util.debug_resolve_conflict in
+ *     frames.(i) <- apply2 mk_and frames.(i) interpolants
+ *   done;
+ *   let ret = Array.map ~f:(apply simplify) frames in
+ *   let () =
+ *     lazy (printf "New frames:@.%a@." pp_frames ret)
+ *     |> Util.debug !Util.debug_resolve_conflict
+ *   in
+ *   ret
+ *   (\* Returned frame of interpolants *\)
+ *   (\*
+ *   let itp_frame = ref (lift locs mk_true) in
+ *   let () =
+ *     printf "Constructing frame1@.";
+ *     Frame.fold
+ *       ~init:()
+ *       ~f:(fun _ (loc',pre_z3expr) ->
+ *         let () = printf "loc' : %a, pre_z3expr: %a@." S.pp_id loc' pp_expr pre_z3expr in
+ *         try
+ *           let trans = S.find_trans ~src:loc' ~tgt:loc hs in
+ *           let () = printf "trans : %a@." S.pp_trans trans in
+ *           let preloc = Env.find_exn hs.locations loc' in
+ *           let preflow_inverted = S.invert_flow preloc.flow in
+ *           let preinv = preloc.inv in
+ *           let guard = trans.guard in
+ *           let () = printf "guard : %a@." pp_expr guard in
+ *           (\* [XXX] Currently supports only the case where command is skip. *\)
+ *           assert(S.command_is_empty trans.command);
+ *           let ret = Dl.mk_dl_and (Dl.mk_dl_prim guard) (Dl.mk_dl_dyn preflow_inverted preinv (Dl.mk_dl_prim pre_z3expr)) in
+ *           let ret = Dl.dl_elim_dyn ret in
+ *           let () = printf "ret: %a@." pp_expr ret in
+ *           let itp = interpolant ret not_ce in
+ *           match itp with
+ *           | `InterpolantFound(itp_z3) ->
+ *              let () = printf "itp: %a@." pp_expr itp_z3 in
+ *              itp_frame := apply_on_id (fun e -> mk_and e itp_z3) loc !itp_frame
+ *           | _ ->
+ *              U.not_implemented "resolve_conflict: interpolant"
+ *         with
+ *         | Not_found -> ()
+ *       )
+ *       preframe
+ *   in
+ *   let () = printf "itp_frame: %a@." (Frame.pp_frame Z3Intf.pp_expr) !itp_frame in
+ *   frames.(idx) <- apply2 mk_and frames.(idx) !itp_frame;
+ *   frames
+ *    *\) *)
   
 
 let rec remove_cti (tactic_in:In_channel.t) (hs:S.t) (cexs:ce list) (frames:frames) : frames =
@@ -525,7 +525,8 @@ let rec remove_cti (tactic_in:In_channel.t) (hs:S.t) (cexs:ce list) (frames:fram
                  if !U.query_for_reolsve_conflict then
                    resolve_conflict_query is_continuous tactic_in frames hs preframe eframe loc idx
                  else
-                   resolve_conflict is_continuous frames hs preframe eframe loc idx
+                   (* resolve_conflict is_continuous frames hs preframe eframe loc idx *)
+                   failwith "Generalization by interpolants is temporariliy disabled."
                in
                let () = lazy (printf "newframes: %a@." pp_frames newframes) |> Util.debug !Util.debug_remove_cti in
                remove_cti tactic_in hs tl newframes

@@ -214,16 +214,11 @@ let%test _ =
   let tactic_in = In_channel.create (!Config.srcroot ^ "/examples/examples/filtered_oscillator/filtered_oscillator_tactic1.smt") in
   let () = Util.debug_all_off () (*; Util.debug_check_satisfiability := false *) in
   let res =
-    lazy (verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "a1==-2 & x0==-0.7 & a2==-1 & y0==0.7 & c==0.5 & x==0.2 & y==0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 1"))
+    lazy (verify ~tactic_in:tactic_in ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "a1==-2 & x0==-0.7 & a2==-1 & y0==0.7 & c==0.5 & x==0.2 & y==0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 0.6"))
     |> Util.measure_time
   in
   let _ = printResult res in
   true
-  (*
-  let res = verify model Z3Intf.mk_true Z3Intf.mk_true in
-  let _ = printResult res in
-  true
-   *)
   
 (*
 let%test _ =

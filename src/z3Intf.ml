@@ -356,7 +356,8 @@ let%test _ =
   match res1,res2 with
   | `Unsat, `Sat _ -> true
   | _ -> false
- 
+
+       (*
 let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) =
   let open Z3.Interpolation in
   (*
@@ -403,32 +404,33 @@ let interpolant (e1:Z3.Expr.expr) (e2:Z3.Expr.expr) =
        | Some [] -> assert(false)
      end
   | _ -> `NotUnsatisfiable
-
-let%test _ =
-  let x = mk_real_var "x" in
-  (* let y = mk_real_var "y" in *)
-  (* let z = mk_real_var "z" in   *)
-  let e1 = mk_gt x (mk_real_numeral_s "1.0") in
-  let e2 = mk_lt x (mk_real_numeral_s "0.0") in
-  let res3 = callZ3 (mk_and e1 e2) in
-  (*
-  let _ =
-    match res3 with
-      `Unsat -> printf "OK@."
-    | _ -> Util.not_implemented "hoge"
-  in
-   *)
-  let intp = interpolant e1 e2 in
-  match intp with
-  | `InterpolantFound intp ->
-     begin
-       let res1 = callZ3 (simplify (mk_not (mk_implies e1 intp))) in
-       let res2 = callZ3 (simplify (mk_and intp e2)) in
-       match res1,res2,res3 with
-       | `Unsat,`Unsat,`Unsat -> true
-       | _,_,_ -> false
-     end
-  | _ -> false
+        *)
+       
+(* let%test _ =
+ *   let x = mk_real_var "x" in
+ *   (\* let y = mk_real_var "y" in *\)
+ *   (\* let z = mk_real_var "z" in   *\)
+ *   let e1 = mk_gt x (mk_real_numeral_s "1.0") in
+ *   let e2 = mk_lt x (mk_real_numeral_s "0.0") in
+ *   let res3 = callZ3 (mk_and e1 e2) in
+ *   (\*
+ *   let _ =
+ *     match res3 with
+ *       `Unsat -> printf "OK@."
+ *     | _ -> Util.not_implemented "hoge"
+ *   in
+ *    *\)
+ *   let intp = interpolant e1 e2 in
+ *   match intp with
+ *   | `InterpolantFound intp ->
+ *      begin
+ *        let res1 = callZ3 (simplify (mk_not (mk_implies e1 intp))) in
+ *        let res2 = callZ3 (simplify (mk_and intp e2)) in
+ *        match res1,res2,res3 with
+ *        | `Unsat,`Unsat,`Unsat -> true
+ *        | _,_,_ -> false
+ *      end
+ *   | _ -> false *)
 
 let%test _ =
   let e1 = mk_le (mk_real_var "x") (mk_real_numeral_float 1.0) in
