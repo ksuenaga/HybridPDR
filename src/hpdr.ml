@@ -145,6 +145,7 @@ let%test _ =
   true
    *)
 
+  (*
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -159,7 +160,8 @@ let%test _ =
   in
   let _ = printResult res in
   true
-
+   *)
+  
   (*
 let%test _ =
   let open Z3Intf in
@@ -242,7 +244,7 @@ let%test _ =
     src_root path edited
   |}]*)
 
-let _ =
+let main () =
   let () = Random.init Util.default_randomization_seed in
   let open SpaceexComponent in
   let input_file = ref None in

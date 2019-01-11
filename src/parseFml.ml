@@ -346,7 +346,7 @@ and binding_to_atomics b =
      E.raise (E.of_string "binding_to_atomics: not implemented.")
 and sexp_to_arithexpr s : Z3.Expr.expr =
   let open Sexp in
-  let open ParseFml in
+  (* let open ParseFml in *)
   let open Z3Intf in
   match s with
   | Atom s ->
