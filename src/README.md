@@ -1,20 +1,43 @@
 # Hybrid PDR
 
-# Requirement
-  * jbuilder
-  * Core
-  * Sexplib
+## Depedency (APT packages)
+  * gfortran
+  * libgmp-dev
+  * m4
+  * python
 
 ```
-opam install jbuilder core sexplib
+apt update && apt install gfortran libgmp-dev m4 python
 ```
 
-# How to build
+## Requirement (OPAM packages)
+  * bau
+  * bisect_ppx
+  * core
+  * dune
+  * mparser
+  * ocaml-migrate-parsetree
+  * odepack
+  * ppx_deriving
+  * ppx_driver
+  * sexplib
+  * xml-light
+  * z3
+
 ```
-jbuilder build hpdr.exe
+opam install bau bisect_ppx core dune mparser ocaml-migrate-parsetree odepack ppx_deriving ppx_driver sexplib xml-light z3
 ```
 
-# Running test
+## How to build
+
 ```
-jbuilder runtest
+dune build hpdrMain.exe --profile=release
+```
+
+This command will produce `src/_build/default/hpdrMain.exe`.
+
+## Running test
+
+```
+dune runtest
 ```
