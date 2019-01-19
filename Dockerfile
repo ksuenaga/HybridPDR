@@ -25,9 +25,11 @@ RUN sed -i -e 's/jobs: 127/jobs: 1/g' ~/.opam/config \
         sexplib \
         xml-light \
         z3
-        
+
+ENV LD_LIBRARY_PATH="/home/opam/.opam/4.07/lib/z3"
+
 # Copy HybridPDR
-COPY src .
+COPY --chown=opam:opam src .
 
 # Install dependencies for HybridPDR
 USER root
@@ -47,7 +49,7 @@ RUN git pull \
     && sed -i -e 's http://forge.ocamlcore.org/frs/download.php/379/ocamlify-0.0.1.tar.gz https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/ocamlify/0.0.1-3build1/ocamlify_0.0.1.orig.tar.gz g' ~/.opam/repo/default/packages/ocamlify/ocamlify.0.0.1/opam \
     && opam install eliom
 
-#COPY docker-entrypoint.sh /usr/local/bin/
+COPY --chown=opam:opam app app
 #ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 8080
