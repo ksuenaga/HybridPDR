@@ -1,0 +1,12 @@
+* HybridPDR by Flask
+
+For example:
+$ virtualenv --system-site-packages -p python3 .
+$ source ./bin/activate
+(venv) $ pip3 install --upgrade flask
+
+To run app with hot-reload:
+(venv) $ export FLASK_APP=./flask.py
+(venv) $ export FLASK_DEBUG=1
+(venv) $ export FLASK_ENV=development
+(venv) $ flask run
