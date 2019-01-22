@@ -13,20 +13,6 @@ module E = Error
 (* Parse command-line arguments
    [XXX] Not tested
  *)
-let parse_verif_task_from_file ?(initial_condition=Z3Intf.mk_true) ?(safety_region=Z3Intf.mk_true) input_file =
-  let input_file = input_file in
-  (* let input_stream = ref In_channel.stdin in *)
-  (*
-  let initial_condition = ref initial_condition in
-  let safety_region = ref safety_region in
-   *)
-  let input_stream =
-    try In_channel.create input_file
-    with Not_found_s _ -> E.raise (E.of_string "Input model not found.")
-  in
-  let model = SpaceexComponent.parse_from_channel input_stream in
-  (* (model, !initial_condition, !safety_region) *)
-  model
   
 (* Verifier core *)
 let verify ?(tactic_in=In_channel.stdin) ~model ?(init_id=SpaceexComponent.id_of_string "1") ~init ~safe : Pdr.result =
@@ -92,7 +78,7 @@ let%test _ =
   | Ok _ -> true
   | _ -> false
    *)
-  
+
   (*
 let%test _ =
   let open Z3Intf in
@@ -102,7 +88,14 @@ let%test _ =
   let model = List.hd_exn models in
   let () = Util.debug_all_off (); Util.debug_verify := true in
   let res =
-    lazy (verify ~tactic_in:stdin ~init_id:(SpaceexComponent.id_of_string "1") ~model:model ~init:(parse_to_cnf "x <= 0") (* Cnf.cnf_true *) ~safe:(parse_to_cnf "x <= 0.5"))
+    lazy (
+        verify
+          ~tactic_in:stdin
+          ~model:model
+          ~init_id:(SpaceexComponent.id_of_string "1")
+          ~init:(parse_to_cnf "x <= 0")
+          ~safe:(parse_to_cnf "x <= 0.5")
+      )
     |> Util.measure_time
   in
   let _ = printResult res in
@@ -110,8 +103,7 @@ let%test _ =
   | Ng _ -> true
   | _ -> false
    *)
-
-  (*
+  
 let%test _ =
   let open Z3Intf in
   let open Cnf in
@@ -128,7 +120,6 @@ let%test _ =
   match res with
   | Ok _ -> true
   | Ng _ -> false
-   *)
 
   (*
 let%test _ =
@@ -244,55 +235,11 @@ let%test _ =
     src_root path edited
   |}]*)
 
-let main () =
+let main ~model ~init_id ~init ~safe =
   let () = Random.init Util.default_randomization_seed in
   let open SpaceexComponent in
-  let input_file = ref None in
-  let init_cond = ref None in
-  let safety_region = ref None in
-  let init_id = ref None in
-  (*let srcroot_arg = ref None in*)
-  (*let set_srcroot_dir dir = Config.srcroot := dir (*); printf "src_root path edited" Config.srcroot*) in*)
-  let _ =
-    Arg.parse
-      ["model", String (fun s -> input_file := Some s), "Model file in SpaceEx format";
-       "init", String (fun s -> init_cond := Some s), "Initial condition in SpaceEx format. (Whole space if omitted.)";
-       "safe", String (fun s -> safety_region := Some s), "Safety region in SpaceEx format. (Whole space if omitted.)";
-       "initid", String (fun s -> init_id := Some s), "ID of the initial location.";
-       (*"srcroot", String (fun s -> srcroot_arg := Some s), "Edit srcroot folder path";*)
-       (*"srcroot", Arg.String (set_srcroot_dir), "Edit srcroot folder path";*)
-      ]
-      (fun s -> E.raise (E.of_string "Anonymous argument is not allowed"))
-  in
-  let ts =
-    match !input_file with
-      None -> E.raise (E.of_string "Model file not specified")
-    | Some s -> parse_verif_task_from_file s
-  in
-  let t = List.hd_exn ts in
-  let init_cond =
-    match !init_cond with
-      None -> Z3Intf.mk_true
-    | Some s -> Cnf.parse s
-  in
-  let safety_region =
-    match !safety_region with
-      None -> Z3Intf.mk_true
-    | Some s -> Cnf.parse s
-  in
-  let init_id =
-    match !init_id with
-      None -> id_of_string "1"
-    | Some s -> id_of_string s
-  in
-  (*let srcroot_arg =
-    match !srcroot_arg with
-      None -> printf "No new location for srcroot"  (*None*)
-    | Some s -> printf "New location for srcroot"   (*Sys.command "srcroot_newLocation_script"*)
-  in*)
-  let result = verify ~tactic_in:stdin ~model:t ~init_id:init_id ~init:init_cond ~safe:safety_region in
+  let result = verify ~tactic_in:stdin ~model ~init_id ~init ~safe in
   let _ = printResult result in
   ()
 
 (**************** Commandline args ****************)
-  
