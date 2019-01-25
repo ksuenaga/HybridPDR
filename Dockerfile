@@ -2,12 +2,14 @@ FROM ocaml/opam2:debian-stable
 
 # Install dependencies for HybridPDR
 USER root
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - \
+    && apt-get install --no-install-recommends -y \
         gfortran \
         libgmp-dev \
         m4 \
         python \
         python3-pip \
+        nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Install requirements for HybridPDR
@@ -31,11 +33,14 @@ RUN sed -i -e 's/jobs: 127/jobs: 4/g' ~/.opam/config \
 
 ENV LD_LIBRARY_PATH="/home/opam/.opam/4.07/lib/z3"
 
-# Copy requirements.txt
-COPY --chown=opam:opam flask/requirements.txt flask/requirements.txt
+WORKDIR $HOME
 
-# Install Flask
-RUN pip3 install -r flask/requirements.txt
+# Copy list of deps
+COPY --chown=opam:opam flask/requirements.txt flask/package.json flask/
+
+# Install deps of flask app
+RUN pip3 install -r flask/requirements.txt \
+    && npm install --prefix flask
 
 # Copy HybridPDR
 COPY --chown=opam:opam src .
