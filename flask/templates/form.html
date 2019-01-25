@@ -1,0 +1,26 @@
+<!doctype html>
+<title>HybridPDR</title>
+<form method=post>
+  <dl>
+    <dt>Definition</dt>
+    <dd><textarea rows=20 cols=80 name="xml_raw">{{ xml_raw | e }}</textarea></dd>
+    <dt>Tactics</dt>
+    <dd><textarea rows=10 cols=80 name="tactics">{{ tactics | e }}</textarea></dd>
+    <dt>Initial Condition</dt>
+    <dd><textarea rows=3 cols=80 name="initial">{{ initial | e }}</textarea></dd>
+    <dt>Safety Condition</dt>
+    <dd><textarea rows=1 cols=80 name="safety">{{ safety | e }}</textarea></dd>
+    <dt>Result</dt>
+    <dd><textarea rows=10 cols=80 name="result" readonly>{{ result | e }}</textarea></dd>
+  </dl>
+  <p><input type=submit value=submit>
+</form>
+{% with msgs = get_flashed_messages() %}
+  {% if msgs %}
+<ul class=flashes>
+      {% for msg in msgs %}
+  <li>{{ msg }}</li>
+      {% endfor %}
+</ul>
+  {% endif %}
+{% endwith %}

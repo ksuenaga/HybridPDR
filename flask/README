@@ -1,5 +1,11 @@
 * HybridPDR by Flask
 
+To build javascript:
+$ npm install
+To hot-reload javascript:
+$ npm run start
+cf. https://github.com/jwkvam/minimal-flask-react
+
 For example:
 $ virtualenv --system-site-packages -p python3 .
 $ source ./bin/activate
