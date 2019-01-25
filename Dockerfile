@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 # Install requirements for HybridPDR
 USER opam
-RUN sed -i -e 's/jobs: 127/jobs: 1/g' ~/.opam/config \
+RUN sed -i -e 's/jobs: 127/jobs: 4/g' ~/.opam/config \
     && opam install \
         bau \
         bisect_ppx \
