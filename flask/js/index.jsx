@@ -7,7 +7,7 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-        xml_raw: ""
+        xml_model: ""
       , tactics: ""
       , initial: ""
       , safety: ""
@@ -22,7 +22,7 @@ class App extends React.Component {
     request
       .post('/run')
       .send({
-          xml_raw: this.state.xml_raw
+          xml_model: this.state.xml_model
         , tactics: this.state.tactics
         , initial: this.state.initial
         , safety: this.state.safety
@@ -52,8 +52,8 @@ class App extends React.Component {
         <dt>Definition</dt>
         <dd>
           <textarea cols="80" rows="20"
-                    name="xml_raw"
-                    value={this.state.xml_raw}
+                    name="xml_model"
+                    value={this.state.xml_model}
                     onChange={this.handleChange}
             />
         </dd>
@@ -67,18 +67,18 @@ class App extends React.Component {
         </dd>
         <dt>Initial Condition</dt>
         <dd>
-          <textarea cols="80" rows="3"
-                    name="initial"
-                    value={this.state.initial}
-                    onChange={this.handleChange}
+          <input size="80"
+                 name="initial"
+                 value={this.state.initial}
+                 onChange={this.handleChange}
             />
         </dd>
         <dt>Safety Condition</dt>
         <dd>
-          <textarea cols="80" rows="1"
-                    name="safety"
-                    value={this.state.safety}
-                    onChange={this.handleChange}
+          <input size="80"
+                 name="safety"
+                 value={this.state.safety}
+                 onChange={this.handleChange}
             />
         </dd>
         <dt>Result</dt>

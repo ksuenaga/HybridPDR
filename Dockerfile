@@ -41,9 +41,9 @@ ENV FLASK_APP=flask/app.py
 ENV LD_LIBRARY_PATH="$HOME/.opam/4.07/lib/z3"
 
 # Copy and build HybridPDR
-COPY --chown=opam:opam src .
+COPY --chown=opam:opam src src
 RUN . $HOME/.opam/opam-init/variables.sh \
-    && dune build hpdrMain.exe --profile=release
+    && dune build src/hpdrMain.exe --profile=release
 
 # Copy list of deps
 COPY --chown=opam:opam flask/requirements.txt flask/package.json flask/
