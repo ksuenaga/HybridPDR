@@ -31,9 +31,19 @@ RUN sed -i -e 's/jobs: 127/jobs: 4/g' ~/.opam/config \
         xml-light \
         z3
 
-ENV LD_LIBRARY_PATH="/home/opam/.opam/4.07/lib/z3"
-
 WORKDIR $HOME
+
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+ENV PATH=$HOME/.local/bin:$PATH
+ENV FLASK_APP=flask/app.py
+
+ENV LD_LIBRARY_PATH="$HOME/.opam/4.07/lib/z3"
+
+# Copy and build HybridPDR
+COPY --chown=opam:opam src .
+RUN . $HOME/.opam/opam-init/variables.sh \
+    && dune build hpdrMain.exe --profile=release
 
 # Copy list of deps
 COPY --chown=opam:opam flask/requirements.txt flask/package.json flask/
@@ -42,18 +52,8 @@ COPY --chown=opam:opam flask/requirements.txt flask/package.json flask/
 RUN pip3 install -r flask/requirements.txt \
     && npm install --prefix flask
 
-# Copy HybridPDR
-COPY --chown=opam:opam src .
-
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-ENV PATH=$HOME/.local/bin:$PATH
-ENV FLASK_APP=flask/app.py
-
-# Copy Flask app
+# Copy Flask app and build javascript
 COPY --chown=opam:opam flask flask
-
-# Build javascript
 RUN npm run dev --prefix flask
 
 #ENTRYPOINT ["docker-entrypoint.sh"]
