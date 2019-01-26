@@ -53,6 +53,9 @@ ENV FLASK_APP=flask/app.py
 # Copy Flask app
 COPY --chown=opam:opam flask flask
 
+# Build javascript
+RUN npm run dev --prefix flask
+
 #ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 5000
 CMD ["flask", "run", "--host=0.0.0.0"]
