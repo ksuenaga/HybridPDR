@@ -1,6 +1,11 @@
-const React = require('react');
-const ReactDOM = require('react-dom');
-const request = require('superagent');
+import React from 'react';
+import { render } from 'react-dom';
+import brace from 'brace';
+import AceEditor from 'react-ace';
+import request from 'superagent';
+
+import 'brace/mode/xml';
+import 'brace/theme/github';
 
 
 class App extends React.Component {
@@ -13,8 +18,12 @@ class App extends React.Component {
       , safety: ""
       , result: ""
     };
-    this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
+    this.handleChangeXmlmodel = this.handleChangeXmlmodel.bind(this);
+    this.handleChangeTactics = this.handleChangeTactics.bind(this);
+    this.handleChangeInitial = this.handleChangeInitial.bind(this);
+    this.handleChangeSafety = this.handleChangeSafety.bind(this);
+    this.handleChangeResult = this.handleChangeResult.bind(this);
   }
 
   handleSubmit(event) {
@@ -36,12 +45,36 @@ class App extends React.Component {
       }.bind(this));
   }
 
-  handleChange(event) {
+  handleChangeXmlmodel(newValue) {
+    this.setState({
+      xml_model: newValue
+    });
+  }
+
+  handleChangeTactics(newValue) {
+    this.setState({
+      tactics: newValue
+    });
+  }
+
+  handleChangeInitial(newValue) {
+    this.setState({
+      initial: newValue
+    });
+  }
+
+  handleChangeSafety(newValue) {
+    this.setState({
+      safety: newValue
+    });
+  }
+
+  handleChangeResult(event) {
     const target = event.target;
     const value = target.type === 'checkbox' ? target.checked : target.value;
     const name = target.name;
     this.setState({
-      [name]: value
+      [name]: newValue
     });
   }
 
@@ -51,42 +84,54 @@ class App extends React.Component {
         <dl>
         <dt>Definition</dt>
         <dd>
-          <textarea cols="80" rows="20"
-                    name="xml_model"
-                    value={this.state.xml_model}
-                    onChange={this.handleChange}
-            />
+          <AceEditor
+            mode="xml"
+            theme="github"
+            name="xml_model"
+            width="650px" height="350px"
+            onChange={this.handleChangeXmlmodel}
+            value={this.state.xml_model}
+          />
         </dd>
         <dt>Tactics</dt>
         <dd>
-          <textarea cols="80" rows="10"
-                    name="tactics"
-                    value={this.state.tactics}
-                    onChange={this.handleChange}
-            />
+          <AceEditor
+            mode="xml"
+            theme="github"
+            name="tactics"
+            width="650px" height="350px"
+            onChange={this.handleChangeTactics}
+            value={this.state.tactics}
+          />
         </dd>
         <dt>Initial Condition</dt>
         <dd>
-          <input size="80"
-                 name="initial"
-                 value={this.state.initial}
-                 onChange={this.handleChange}
-            />
+          <AceEditor
+            mode="xml"
+            theme="github"
+            name="initial"
+            width="650px" height="50px"
+            onChange={this.handleChangeInitial}
+            value={this.state.initial}
+          />
         </dd>
         <dt>Safety Condition</dt>
         <dd>
-          <input size="80"
-                 name="safety"
-                 value={this.state.safety}
-                 onChange={this.handleChange}
-            />
+          <AceEditor
+            mode="xml"
+            theme="github"
+            name="safety"
+            width="650px" height="50px"
+            onChange={this.handleChangeSafety}
+            value={this.state.safety}
+          />
         </dd>
         <dt>Result</dt>
         <dd>
           <textarea cols="80" rows="20"
                     name="result"
                     value={this.state.result}
-                    onChange={this.handleChange}
+                    onChange={this.handleChangeResult}
                     readOnly
             />
         </dd>
@@ -97,4 +142,4 @@ class App extends React.Component {
   }
 }
 
-ReactDOM.render(<App />, document.getElementById('app'));
+render(<App />, document.getElementById('app'));
