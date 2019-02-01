@@ -34,6 +34,7 @@ let () =
          "-safe", String (fun s -> safety_region := Some s), "Safety region in SpaceEx format. (Whole space if omitted.)";
          "-initid", String (fun s -> init_id := Some s), "ID of the initial location.";
          "-interactive", Unit (fun () -> Util.interactive := true), "Block if no tactic is available";
+         "-debug", Unit (fun () -> Util.debug_all_on ()), "Generate debug info";
          (*"srcroot", String (fun s -> srcroot_arg := Some s), "Edit srcroot folder path";*)
          (*"srcroot", Arg.String (set_srcroot_dir), "Edit srcroot folder path";*)
         ]
@@ -74,4 +75,3 @@ let () =
      exit 3
   | _ -> exit 2
 ;;
-
