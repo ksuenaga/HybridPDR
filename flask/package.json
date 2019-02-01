@@ -14,9 +14,15 @@
     "webpack-cli": "^3.2.1"
   },
   "dependencies": {
+    "css-loader": "",
+    "file-loader": "",
+    "jquery.fancytree": "",
+    "less": "^3.0.0",
+    "less-loader": "",
     "react": "^16.7.0",
     "react-ace": "^6.3.2",
     "react-dom": "^16.7.0",
+    "style-loader": "",
     "superagent": "^4.1.0"
   }
 }

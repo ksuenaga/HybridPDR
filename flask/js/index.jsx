@@ -4,6 +4,16 @@ import brace from 'brace';
 import AceEditor from 'react-ace';
 import request from 'superagent';
 
+import $ from "jquery";
+
+import 'jquery.fancytree/dist/skin-lion/ui.fancytree.less';  // CSS or LESS
+
+import {createTree} from 'jquery.fancytree';
+
+import 'jquery.fancytree/dist/modules/jquery.fancytree.edit';
+import 'jquery.fancytree/dist/modules/jquery.fancytree.filter';
+
+
 import 'brace/mode/xml';
 import 'brace/theme/github';
 
@@ -80,6 +90,8 @@ class App extends React.Component {
 
   render() {
     return (
+      <div>
+      <div id="tree"></div>
       <form onSubmit={this.handleSubmit}>
         <dl>
         <dt>Definition</dt>
@@ -138,8 +150,20 @@ class App extends React.Component {
         </dl>
         <input type="submit" value="Validate" />
       </form>
+      </div>
     );
   }
 }
 
 render(<App />, document.getElementById('app'));
+
+const tree = createTree('#tree', {
+  extensions: ['edit', 'filter'],
+  source: [
+    {title: "Node 1", key: "1"},
+    {title: "Folder 2", key: "2", folder: true, children: [
+      {title: "Node 2.1", key: "3"},
+      {title: "Node 2.2", key: "4"}
+    ]}
+  ],
+});
