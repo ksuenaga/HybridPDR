@@ -6,6 +6,8 @@ module E = Error
 module U = Util
 module S = SpaceexComponent
 module F = Frame
+
+exception NoTactic
        
 open Format
 
@@ -277,7 +279,10 @@ let resolve_conflict_query (is_continuous:bool) (tactic_in: In_channel.t) (frame
           | _ ->
              let queried =
                try Sexp.input_sexp tactic_in with
-               | End_of_file -> Sexp.input_sexp stdin
+               | End_of_file ->
+                  (* if !Util.interactive then Sexp.input_sexp stdin *)
+                  (* else *)
+                  raise NoTactic
              in
              let () = printf "input sexp: %a@." Sexp.pp queried in
              let z3 = ParseFml.sexp_to_z3 queried in

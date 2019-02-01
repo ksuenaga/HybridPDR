@@ -8,6 +8,8 @@ type result =
   | Ng of DischargeVC.ce
 val pp_result : formatter -> result -> unit
 
+exception NoTactic
+
 (* init l initfml safefml returns the initial frames.  l is the id of the initial state. *)
 (* val init : hs:S.t -> initloc:S.id -> init:Z3.Expr.expr -> safe:Z3.Expr.expr -> frames *)
 

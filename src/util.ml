@@ -84,6 +84,8 @@ let debug_verify_iter = ref false
 let debug_verify = ref false
 let debug_z3 = ref false
 
+let interactive = ref false
+
 let debug_flags = [
     debug_events;
     debug_sample;

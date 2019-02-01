@@ -33,6 +33,7 @@ let () =
          "-init", String (fun s -> init_cond := Some s), "Initial condition in SpaceEx format. (Whole space if omitted.)";
          "-safe", String (fun s -> safety_region := Some s), "Safety region in SpaceEx format. (Whole space if omitted.)";
          "-initid", String (fun s -> init_id := Some s), "ID of the initial location.";
+         "-interactive", Unit (fun () -> Util.interactive := true), "Block if no tactic is available";
          (*"srcroot", String (fun s -> srcroot_arg := Some s), "Edit srcroot folder path";*)
          (*"srcroot", Arg.String (set_srcroot_dir), "Edit srcroot folder path";*)
         ]
@@ -68,6 +69,9 @@ let () =
     let () = Hpdr.main ~model ~init ~safe ~init_id in
     exit 0
   with
-    _ -> exit 2
+  | Pdr.NoTactic ->
+     printf "No further tactic is available.";
+     exit 3
+  | _ -> exit 2
 ;;
 
