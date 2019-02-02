@@ -27,6 +27,7 @@ class App extends React.Component {
       , initial: ""
       , safety: ""
       , result: ""
+      , debug: false
     };
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleChangeXmlmodel = this.handleChangeXmlmodel.bind(this);
@@ -34,6 +35,7 @@ class App extends React.Component {
     this.handleChangeInitial = this.handleChangeInitial.bind(this);
     this.handleChangeSafety = this.handleChangeSafety.bind(this);
     this.handleChangeResult = this.handleChangeResult.bind(this);
+    this.handleClick = this.handleClick.bind(this);
   }
 
   handleSubmit(event) {
@@ -45,6 +47,7 @@ class App extends React.Component {
         , tactics: this.state.tactics
         , initial: this.state.initial
         , safety: this.state.safety
+        , debug: this.state.debug
       })
       .end(function(err, res){
         if (err) {
@@ -85,6 +88,12 @@ class App extends React.Component {
     const name = target.name;
     this.setState({
       [name]: newValue
+    });
+  }
+
+  handleClick(newValue) {
+    this.setState({
+      debug: document.getElementById('debug').checked
     });
   }
 
@@ -149,6 +158,8 @@ class App extends React.Component {
         </dd>
         </dl>
         <input type="submit" value="Validate" />
+        <input type="checkbox" id="debug" onClick={this.handleClick} />
+        <label>debug mode</label>
       </form>
       </div>
     );

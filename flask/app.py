@@ -10,7 +10,7 @@ import tempfile
 app = Flask(__name__)
 app.secret_key = b'5J\xa8\xf6\xc8%Im3[\xe6\xc3R\x88\x08\xc7'
 
-def verify(xml_model, str_tactics, str_initial, str_safety):
+def verify(xml_model, str_tactics, str_initial, str_safety, debug):
   try:
     with tempfile.NamedTemporaryFile(delete = False, mode = 'w', suffix = '.xml') as tmp_model:
       filename_model = tmp_model.name
@@ -20,14 +20,17 @@ def verify(xml_model, str_tactics, str_initial, str_safety):
       os.path.dirname(__file__),
       '../_build/default/src/hpdrMain.exe'
       )
-    try:
-      with Popen([
+    command = [
           filename_exe,
           '-model', filename_model,
           '-init', str_initial,
           '-safe', str_safety,
           '-initid', '1',
-          ], stdin = PIPE, stdout = PIPE, stderr = STDOUT
+          ]
+    if debug:
+      command.append('-debug')
+    try:
+      with Popen(command, stdin = PIPE, stdout = PIPE, stderr = STDOUT
                  , universal_newlines = True, shell = False) as p_exe:
         try:
           str_result, _ = p_exe.communicate(input=str_tactics, timeout=60)
@@ -56,7 +59,8 @@ def run():
   t = obj['tactics']
   i = obj['initial']
   s = obj['safety']
-  err, res = verify(m, t, i, s)
+  d = obj['debug']
+  err, res = verify(m, t, i, s, d)
   http_code = 500 if err else 200
   return jsonify({
       'xml_model': m
