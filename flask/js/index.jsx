@@ -94,22 +94,26 @@ class App extends React.Component {
 
   handleOnClickSaveBtn(event) {
     event.preventDefault();
-    var save_path = 'test1.txt'
-    var save_str = window.defEditor.getValue();
-    request
-      .post('/save')
-      .send({
-        save_path: save_path,
-        save_str: save_str
-      })
-      .end(function(err, res) {
-        if (err) {
-          console.log("save error");
-          alert("save error!");
-        } else {
-          console.log("save success");
-        }
-      });
+    var save_path = document.getElementById("saveBtn").getAttribute("savePath");
+    if (save_path) {
+      var save_str = window.defEditor.getValue();
+      request
+        .post('/save')
+        .send({
+          save_path: save_path,
+          save_str: save_str
+        })
+        .end(function(err, res) {
+          if (err) {
+            console.log("save error");
+            alert("save error!");
+          } else {
+            console.log("save success");
+          }
+        });
+    } else {
+      alert("no file selected");
+    }
   }
 
   render() {
@@ -130,7 +134,7 @@ class App extends React.Component {
             value={this.state.xml_model}
             onLoad={this.handleOnLoadXmlAce}
           />
-          <input type="button" value="Save" onClick={this.handleOnClickSaveBtn}/>
+          <input id="saveBtn" type="button" value="Save" onClick={this.handleOnClickSaveBtn}/>
         </dd>
         <dt>Tactics</dt>
         <dd>
@@ -202,8 +206,9 @@ const tree = createTree('#tree', {
         if (err) {
           console.log("error!");
         } else {
-          console.log('result: \n', res.body.result);
+          console.log('xml: \n', res.body.xml_filename);
           window.defEditor.setValue(res.body.result);
+          document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_filename);
         }
       });
 
