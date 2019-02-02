@@ -117,13 +117,24 @@ def load():
   xml = obj['xml_filename']
   xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml)
   with open(xml_dir) as f:
-      str = f.read()
+    str = f.read()
 
-  http_code = 200
   return jsonify({
-      'xml_filename': xml
-    , 'result': str
-    }), http_code
+    'xml_filename': xml
+  , 'result': str
+  })
+
+@app.route('/save', methods=['POST'])
+def save():
+  obj = request.json
+  str = obj['save_str']
+  path = obj['save_path']
+  save_path = os.path.join(app.config['DATA_DIR_PATH'], path)
+  with open(save_path, mode='w') as f:
+    f.write(str)
+  return jsonify({
+    'save_path': path
+  })
 
 app.config['JSON_AS_ASCII'] = False
 app.config['DATA_DIR_PATH'] = '/home/opam/data'

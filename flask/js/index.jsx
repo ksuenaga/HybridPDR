@@ -34,7 +34,6 @@ class App extends React.Component {
     this.handleChangeInitial = this.handleChangeInitial.bind(this);
     this.handleChangeSafety = this.handleChangeSafety.bind(this);
     this.handleChangeResult = this.handleChangeResult.bind(this);
-    this.handleOnLoadAce = this.handleOnLoadAce.bind(this);
   }
 
   handleSubmit(event) {
@@ -89,8 +88,28 @@ class App extends React.Component {
     });
   }
 
-  handleOnLoadAce(editor) {
+  handleOnLoadXmlAce(editor) {
     window.defEditor = editor;
+  }
+
+  handleOnClickSaveBtn(event) {
+    event.preventDefault();
+    var save_path = 'test1.txt'
+    var save_str = window.defEditor.getValue();
+    request
+      .post('/save')
+      .send({
+        save_path: save_path,
+        save_str: save_str
+      })
+      .end(function(err, res) {
+        if (err) {
+          console.log("save error");
+          alert("save error!");
+        } else {
+          console.log("save success");
+        }
+      });
   }
 
   render() {
@@ -109,8 +128,9 @@ class App extends React.Component {
             width="650px" height="350px"
             onChange={this.handleChangeXmlmodel}
             value={this.state.xml_model}
-            onLoad={this.handleOnLoadAce}
+            onLoad={this.handleOnLoadXmlAce}
           />
+          <input type="button" value="Save" onClick={this.handleOnClickSaveBtn}/>
         </dd>
         <dt>Tactics</dt>
         <dd>
