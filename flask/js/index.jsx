@@ -15,6 +15,7 @@ import 'jquery.fancytree/dist/modules/jquery.fancytree.filter';
 
 
 import 'brace/mode/xml';
+import 'brace/mode/ocaml'
 import 'brace/theme/github';
 
 
@@ -171,7 +172,7 @@ class App extends React.Component {
         <dt>Tactics</dt>
         <dd>
           <AceEditor
-            mode="xml"
+            mode="ocaml"
             theme="github"
             name="tactics"
             width="650px" height="350px"
@@ -182,7 +183,6 @@ class App extends React.Component {
         <dt>Initial Condition</dt>
         <dd>
           <AceEditor
-            mode="xml"
             theme="github"
             name="initial"
             width="650px" height="50px"
@@ -193,7 +193,6 @@ class App extends React.Component {
         <dt>Safety Condition</dt>
         <dd>
           <AceEditor
-            mode="xml"
             theme="github"
             name="safety"
             width="650px" height="50px"
