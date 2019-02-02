@@ -31,11 +31,6 @@ class App extends React.Component {
       , readOnly: true
     };
     this.handleSubmit = this.handleSubmit.bind(this);
-    this.handleChangeXmlmodel = this.handleChangeXmlmodel.bind(this);
-    this.handleChangeTactics = this.handleChangeTactics.bind(this);
-    this.handleChangeInitial = this.handleChangeInitial.bind(this);
-    this.handleChangeSafety = this.handleChangeSafety.bind(this);
-    this.handleChangeResult = this.handleChangeResult.bind(this);
     this.handleOnClickSaveBtn = this.handleOnClickSaveBtn.bind(this);
     this.setTree = this.setTree.bind(this);
   }
@@ -59,39 +54,6 @@ class App extends React.Component {
           this.setState({result: res.body.result});
         }
       }.bind(this));
-  }
-
-  handleChangeXmlmodel(newValue) {
-    this.setState({
-      xml_model: newValue
-    });
-  }
-
-  handleChangeTactics(newValue) {
-    this.setState({
-      tactics: newValue
-    });
-  }
-
-  handleChangeInitial(newValue) {
-    this.setState({
-      initial: newValue
-    });
-  }
-
-  handleChangeSafety(newValue) {
-    this.setState({
-      safety: newValue
-    });
-  }
-
-  handleChangeResult(event) {
-    const target = event.target;
-    const value = target.type === 'checkbox' ? target.checked : target.value;
-    const name = target.name;
-    this.setState({
-      [name]: newValue
-    });
   }
 
   handleOnClickSaveBtn(event) {
@@ -165,7 +127,7 @@ class App extends React.Component {
             theme="github"
             name="xml_model"
             width="650px" height="350px"
-            onChange={this.handleChangeXmlmodel}
+            onChange={(val) => this.setState({ xml_model: val })}
             value={this.state.xml_model}
             onLoad={(editor) => this.defEditor = editor}
             readOnly={this.state.readOnly}
@@ -179,7 +141,7 @@ class App extends React.Component {
             theme="github"
             name="tactics"
             width="650px" height="350px"
-            onChange={this.handleChangeTactics}
+            onChange={(val) => this.setState({ tactics: val })}
             value={this.state.tactics}
           />
         </dd>
@@ -189,7 +151,7 @@ class App extends React.Component {
             theme="github"
             name="initial"
             width="650px" height="50px"
-            onChange={this.handleChangeInitial}
+            onChange={(val) => this.setState({ initial: val })}
             value={this.state.initial}
           />
         </dd>
@@ -199,7 +161,7 @@ class App extends React.Component {
             theme="github"
             name="safety"
             width="650px" height="50px"
-            onChange={this.handleChangeSafety}
+            onChange={(val) => this.setState({ safety: val })}
             value={this.state.safety}
           />
         </dd>
@@ -208,7 +170,6 @@ class App extends React.Component {
           <textarea cols="80" rows="20"
                     name="result"
                     value={this.state.result}
-                    onChange={this.handleChangeResult}
                     readOnly
             />
         </dd>
