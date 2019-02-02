@@ -111,7 +111,22 @@ def get_tree():
   files = directories + regular_files
   return jsonify(files)
 
+@app.route('/load', methods=['POST'])
+def load():
+  obj = request.json
+  xml = obj['xml_filename']
+  xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml)
+  with open(xml_dir) as f:
+      str = f.read()
+
+  http_code = 200
+  return jsonify({
+      'xml_filename': xml
+    , 'result': str
+    }), http_code
+
 app.config['JSON_AS_ASCII'] = False
+app.config['DATA_DIR_PATH'] = '/home/opam/data'
 if app.debug:
   app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 

@@ -34,6 +34,7 @@ class App extends React.Component {
     this.handleChangeInitial = this.handleChangeInitial.bind(this);
     this.handleChangeSafety = this.handleChangeSafety.bind(this);
     this.handleChangeResult = this.handleChangeResult.bind(this);
+    this.handleOnLoadAce = this.handleOnLoadAce.bind(this);
   }
 
   handleSubmit(event) {
@@ -88,10 +89,15 @@ class App extends React.Component {
     });
   }
 
+  handleOnLoadAce(editor) {
+    window.defEditor = editor;
+  }
+
   render() {
     return (
       <div>
       <div id="tree"></div>
+
       <form onSubmit={this.handleSubmit}>
         <dl>
         <dt>Definition</dt>
@@ -103,6 +109,7 @@ class App extends React.Component {
             width="650px" height="350px"
             onChange={this.handleChangeXmlmodel}
             value={this.state.xml_model}
+            onLoad={this.handleOnLoadAce}
           />
         </dd>
         <dt>Tactics</dt>
@@ -163,4 +170,23 @@ const tree = createTree('#tree', {
     url: "/getTree",
     cache: false
   },
+  selectMode: 1,
+  click: function(event, data) {
+    event.preventDefault();
+    request
+      .post('/load')
+      .send({
+        xml_filename: data.node.title
+      })
+      .end(function(err, res) {
+        if (err) {
+          console.log("error!");
+        } else {
+          console.log('result: \n', res.body.result);
+          window.defEditor.insert(res.body.result);
+        }
+      });
+
+    console.log("data.title", data.node.title);
+  }
 });
