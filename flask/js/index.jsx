@@ -183,7 +183,7 @@ const tree = createTree('#tree', {
           console.log("error!");
         } else {
           console.log('result: \n', res.body.result);
-          window.defEditor.insert(res.body.result);
+          window.defEditor.setValue(res.body.result);
         }
       });
 
