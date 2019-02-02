@@ -200,15 +200,15 @@ const tree = createTree('#tree', {
     request
       .post('/load')
       .send({
-        xml_filename: data.node.title
+        xml_path: data.node.key
       })
       .end(function(err, res) {
         if (err) {
           console.log("error!");
         } else {
-          console.log('xml: \n', res.body.xml_filename);
+          console.log('xml: \n', res.body.xml_path);
           window.defEditor.setValue(res.body.result);
-          document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_filename);
+          document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_path);
         }
       });
 

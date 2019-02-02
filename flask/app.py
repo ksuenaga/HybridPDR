@@ -97,12 +97,11 @@ def form():
 
 @app.route('/getTree', methods=['GET'])
 def get_tree():
-  data_dir_path = '/home/opam/data'
-  files = sorted(os.listdir(data_dir_path))
+  files = sorted(os.listdir(app.config['DATA_DIR_PATH']))
   regular_files = []
   directories = []
   for file in files:
-    if os.path.isdir(os.path.join(data_dir_path, file)):
+    if os.path.isdir(os.path.join(app.config['DATA_DIR_PATH'], file)):
       directories.append(file)
     else:
       regular_files.append(file)
@@ -114,13 +113,13 @@ def get_tree():
 @app.route('/load', methods=['POST'])
 def load():
   obj = request.json
-  xml = obj['xml_filename']
+  xml = obj['xml_path']
   xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml)
   with open(xml_dir) as f:
     str = f.read()
 
   return jsonify({
-    'xml_filename': xml
+    'xml_path': xml
   , 'result': str
   })
 
