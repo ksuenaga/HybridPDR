@@ -40,7 +40,6 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir):
         import traceback; traceback.print_exc()
       err = True
       str_result = 'Error'
-    os.remove(filename_model)
   except:
     if app.debug:
       import traceback; traceback.print_exc()
