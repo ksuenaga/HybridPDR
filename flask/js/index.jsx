@@ -38,6 +38,7 @@ class App extends React.Component {
 
   handleSubmit(event) {
     event.preventDefault();
+    var current_dir = document.getElementById("saveBtn").getAttribute("savePath");
     request
       .post('/run')
       .send({
@@ -45,6 +46,7 @@ class App extends React.Component {
         , tactics: this.state.tactics
         , initial: this.state.initial
         , safety: this.state.safety
+        , current_dir: current_dir
       })
       .end(function(err, res){
         if (err) {

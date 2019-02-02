@@ -10,12 +10,11 @@ import tempfile
 app = Flask(__name__)
 app.secret_key = b'5J\xa8\xf6\xc8%Im3[\xe6\xc3R\x88\x08\xc7'
 
-def verify(xml_model, str_tactics, str_initial, str_safety):
+def verify(xml_model, str_tactics, str_initial, str_safety, current_dir):
+  filename_model = os.path.join(app.config['DATA_DIR_PATH'], current_dir)
   try:
-    with tempfile.NamedTemporaryFile(delete = False, mode = 'w', suffix = '.xml') as tmp_model:
-      filename_model = tmp_model.name
-      tmp_model.write(xml_model)
-      tmp_model.close()
+    with open(filename_model, mode='w') as f:
+      f.write(xml_model)
     filename_exe = os.path.join(
       os.path.dirname(__file__),
       '../_build/default/src/hpdrMain.exe'
@@ -56,13 +55,15 @@ def run():
   t = obj['tactics']
   i = obj['initial']
   s = obj['safety']
-  err, res = verify(m, t, i, s)
+  c = obj['current_dir']
+  err, res = verify(m, t, i, s, c)
   http_code = 500 if err else 200
   return jsonify({
       'xml_model': m
     , 'tactics': t
     , 'initial': i
     , 'safety': s
+    , 'current_dir': c
     , 'status': 'error' if err else 'ok'
     , 'result': res
     }), http_code
