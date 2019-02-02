@@ -45,15 +45,17 @@ COPY --chown=opam:opam src src
 RUN . $HOME/.opam/opam-init/variables.sh \
     && dune build src/hpdrMain.exe --profile=release
 
+USER root
+VOLUME ["/home/opam/data/"]
 # Copy list of deps
-COPY --chown=opam:opam flask/requirements.txt flask/package.json flask/
+COPY flask/requirements.txt flask/package.json flask/
 
 # Install deps of flask app
 RUN pip3 install -r flask/requirements.txt \
     && npm install --prefix flask
 
 # Copy Flask app and build javascript
-COPY --chown=opam:opam flask flask
+COPY flask flask
 RUN npm run dev --prefix flask
 
 #ENTRYPOINT ["docker-entrypoint.sh"]

@@ -95,6 +95,22 @@ def form():
                          , safety = s
                          , result = res), http_code
 
+@app.route('/getTree', methods=['GET'])
+def get_tree():
+  data_dir_path = '/home/opam/data'
+  files = sorted(os.listdir(data_dir_path))
+  regular_files = []
+  directories = []
+  for file in files:
+    if os.path.isdir(os.path.join(data_dir_path, file)):
+      directories.append(file)
+    else:
+      regular_files.append(file)
+  directories = [{"title": dir + '/', "key": dir, "folder": True} for dir in directories]
+  regular_files = [{"title": file, "key": file} for file in regular_files]
+  files = directories + regular_files
+  return jsonify(files)
+
 app.config['JSON_AS_ASCII'] = False
 if app.debug:
   app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
