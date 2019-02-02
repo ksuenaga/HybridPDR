@@ -71,30 +71,6 @@ def run():
 def index():
   return render_template('index.html')
 
-@app.route('/form', methods=['GET', 'POST'])
-def form():
-  if request.method == 'POST':
-    form = request.form
-    m = form['xml_model']
-    t = form['tactics']
-    i = form['initial']
-    s = form['safety']
-    err, res = verify(m, t, i, s)
-  else:
-    m = ""
-    t = ""
-    i = ""
-    s = ""
-    res = ""
-    err = False
-  http_code = 500 if err else 200
-  return render_template('form.html'
-                         , xml_model = m
-                         , tactics = t
-                         , initial = i
-                         , safety = s
-                         , result = res), http_code
-
 @app.route('/getTree', methods=['GET'])
 def get_tree():
   files = sorted(os.listdir(app.config['DATA_DIR_PATH']))

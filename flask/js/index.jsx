@@ -107,10 +107,7 @@ class App extends React.Component {
         })
         .end(function(err, res) {
           if (err) {
-            console.log("save error");
             alert("save error!");
-          } else {
-            console.log("save success");
           }
         });
     } else {
@@ -137,16 +134,15 @@ class App extends React.Component {
             if (err) {
               console.log("error!");
             } else {
-              console.log('xml: \n', res.body.xml_path);
-              this.setState({
-                readOnly: false
-              });
+              if (this.state.readOnly == true) {
+                this.setState({
+                  readOnly: false
+                });
+              }
               this.defEditor.setValue(res.body.result);
               document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_path);
             }
           });
-
-        console.log("data.title", data.node.title);
       }
     })
   }
