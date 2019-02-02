@@ -27,6 +27,7 @@ class App extends React.Component {
       , initial: ""
       , safety: ""
       , result: ""
+      , readOnly: true
     };
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleChangeXmlmodel = this.handleChangeXmlmodel.bind(this);
@@ -34,6 +35,7 @@ class App extends React.Component {
     this.handleChangeInitial = this.handleChangeInitial.bind(this);
     this.handleChangeSafety = this.handleChangeSafety.bind(this);
     this.handleChangeResult = this.handleChangeResult.bind(this);
+    this.handleOnClickSaveBtn = this.handleOnClickSaveBtn.bind(this);
   }
 
   handleSubmit(event) {
@@ -90,15 +92,11 @@ class App extends React.Component {
     });
   }
 
-  handleOnLoadXmlAce(editor) {
-    window.defEditor = editor;
-  }
-
   handleOnClickSaveBtn(event) {
     event.preventDefault();
     var save_path = document.getElementById("saveBtn").getAttribute("savePath");
     if (save_path) {
-      var save_str = window.defEditor.getValue();
+      var save_str = this.defEditor.getValue();
       request
         .post('/save')
         .send({
@@ -118,6 +116,37 @@ class App extends React.Component {
     }
   }
 
+  componentDidMount() {
+    const defEditor = this.defEditor;
+    const tree = createTree('#tree', {
+      extensions: ['edit', 'filter'],
+      source: {
+        url: "/getTree",
+        cache: false
+      },
+      selectMode: 1,
+      click: (event, data) => {
+        event.preventDefault();
+        request
+          .post('/load')
+          .send({
+            xml_path: data.node.key
+          })
+          .end(function(err, res) {
+            if (err) {
+              console.log("error!");
+            } else {
+              console.log('xml: \n', res.body.xml_path);
+              defEditor.setValue(res.body.result);
+              document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_path);
+            }
+          });
+
+        console.log("data.title", data.node.title);
+      }
+    })
+  }
+
   render() {
     return (
       <div>
@@ -134,7 +163,8 @@ class App extends React.Component {
             width="650px" height="350px"
             onChange={this.handleChangeXmlmodel}
             value={this.state.xml_model}
-            onLoad={this.handleOnLoadXmlAce}
+            onLoad={(editor) => this.defEditor = editor}
+            readOnly={this.state.readOnly}
           />
           <input id="saveBtn" type="button" value="Save" onClick={this.handleOnClickSaveBtn}/>
         </dd>
@@ -189,31 +219,3 @@ class App extends React.Component {
 }
 
 render(<App />, document.getElementById('app'));
-
-const tree = createTree('#tree', {
-  extensions: ['edit', 'filter'],
-  source: {
-    url: "/getTree",
-    cache: false
-  },
-  selectMode: 1,
-  click: function(event, data) {
-    event.preventDefault();
-    request
-      .post('/load')
-      .send({
-        xml_path: data.node.key
-      })
-      .end(function(err, res) {
-        if (err) {
-          console.log("error!");
-        } else {
-          console.log('xml: \n', res.body.xml_path);
-          window.defEditor.setValue(res.body.result);
-          document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_path);
-        }
-      });
-
-    console.log("data.title", data.node.title);
-  }
-});
