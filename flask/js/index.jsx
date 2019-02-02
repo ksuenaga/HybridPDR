@@ -37,6 +37,7 @@ class App extends React.Component {
     this.handleChangeSafety = this.handleChangeSafety.bind(this);
     this.handleChangeResult = this.handleChangeResult.bind(this);
     this.handleOnClickSaveBtn = this.handleOnClickSaveBtn.bind(this);
+    this.setTree = this.setTree.bind(this);
   }
 
   handleSubmit(event) {
@@ -117,8 +118,7 @@ class App extends React.Component {
     }
   }
 
-  componentDidMount() {
-    const defEditor = this.defEditor;
+  setTree() {
     const tree = createTree('#tree', {
       extensions: ['edit', 'filter'],
       source: {
@@ -133,12 +133,15 @@ class App extends React.Component {
           .send({
             xml_path: data.node.key
           })
-          .end(function(err, res) {
+          .end((err, res) => {
             if (err) {
               console.log("error!");
             } else {
               console.log('xml: \n', res.body.xml_path);
-              defEditor.setValue(res.body.result);
+              this.setState({
+                readOnly: false
+              });
+              this.defEditor.setValue(res.body.result);
               document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_path);
             }
           });
@@ -146,6 +149,10 @@ class App extends React.Component {
         console.log("data.title", data.node.title);
       }
     })
+  }
+
+  componentDidMount() {
+    this.setTree();
   }
 
   render() {
