@@ -257,3 +257,7 @@ setup.log
 *~
 .DS_Store
 .merlin
+
+# ignore data
+data/*
+!sample.xml

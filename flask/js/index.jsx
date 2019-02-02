@@ -40,6 +40,7 @@ class App extends React.Component {
 
   handleSubmit(event) {
     event.preventDefault();
+    var current_dir = document.getElementById("saveBtn").getAttribute("savePath");
     request
       .post('/run')
       .send({
@@ -47,6 +48,7 @@ class App extends React.Component {
         , tactics: this.state.tactics
         , initial: this.state.initial
         , safety: this.state.safety
+        , current_dir: current_dir
         , debug: this.state.debug
       })
       .end(function(err, res){
@@ -97,10 +99,39 @@ class App extends React.Component {
     });
   }
 
+  handleOnLoadXmlAce(editor) {
+    window.defEditor = editor;
+  }
+
+  handleOnClickSaveBtn(event) {
+    event.preventDefault();
+    var save_path = document.getElementById("saveBtn").getAttribute("savePath");
+    if (save_path) {
+      var save_str = window.defEditor.getValue();
+      request
+        .post('/save')
+        .send({
+          save_path: save_path,
+          save_str: save_str
+        })
+        .end(function(err, res) {
+          if (err) {
+            console.log("save error");
+            alert("save error!");
+          } else {
+            console.log("save success");
+          }
+        });
+    } else {
+      alert("no file selected");
+    }
+  }
+
   render() {
     return (
       <div>
       <div id="tree"></div>
+
       <form onSubmit={this.handleSubmit}>
         <dl>
         <dt>Definition</dt>
@@ -112,7 +143,9 @@ class App extends React.Component {
             width="650px" height="350px"
             onChange={this.handleChangeXmlmodel}
             value={this.state.xml_model}
+            onLoad={this.handleOnLoadXmlAce}
           />
+          <input id="saveBtn" type="button" value="Save" onClick={this.handleOnClickSaveBtn}/>
         </dd>
         <dt>Tactics</dt>
         <dd>
@@ -170,11 +203,28 @@ render(<App />, document.getElementById('app'));
 
 const tree = createTree('#tree', {
   extensions: ['edit', 'filter'],
-  source: [
-    {title: "Node 1", key: "1"},
-    {title: "Folder 2", key: "2", folder: true, children: [
-      {title: "Node 2.1", key: "3"},
-      {title: "Node 2.2", key: "4"}
-    ]}
-  ],
+  source: {
+    url: "/getTree",
+    cache: false
+  },
+  selectMode: 1,
+  click: function(event, data) {
+    event.preventDefault();
+    request
+      .post('/load')
+      .send({
+        xml_path: data.node.key
+      })
+      .end(function(err, res) {
+        if (err) {
+          console.log("error!");
+        } else {
+          console.log('xml: \n', res.body.xml_path);
+          window.defEditor.setValue(res.body.result);
+          document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_path);
+        }
+      });
+
+    console.log("data.title", data.node.title);
+  }
 });
