@@ -26,6 +26,10 @@ class DirTree extends React.Component {
     this.setTree = this.setTree.bind(this);
   }
 
+  handleClickStart() {
+    console.log('start btn clicked');
+  }
+
   setTree() {
     const tree = createTree('#tree', {
       extensions: ['edit', 'filter'],
@@ -67,7 +71,7 @@ class DirTree extends React.Component {
       <div>
         <div id="tree"></div>
         <div>
-          <input type="button" name="startbtn" value="start" />
+          <input type="button" name="startbtn" value="start" onClick={this.handleClickStart} />
         </div>
         <div>
           <p>Preview - file : <span id="previewFileName"></span></p>
