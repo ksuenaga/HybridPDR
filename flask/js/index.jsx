@@ -102,7 +102,9 @@ class App extends React.Component {
                 });
               }
               this.defEditor.setValue(res.body.result);
-              document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_path);
+              $('#saveBtn').attr("savePath", res.body.xml_path);
+              $('#fileNameWindow').empty();
+              $('#fileNameWindow').prepend(data.node.title);
             }
           });
       }
@@ -120,7 +122,10 @@ class App extends React.Component {
 
       <form onSubmit={this.handleSubmit}>
         <dl>
-        <dt>Definition</dt>
+        <dt>
+          Definition --- selected file  :
+          <span id="fileNameWindow"></span>
+        </dt>
         <dd>
           <AceEditor
             mode="xml"
