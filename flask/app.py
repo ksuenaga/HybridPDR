@@ -50,6 +50,10 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir, debug):
     str_result = 'Error'
   return err, str_result
 
+@app.route('/', methods=['GET'])
+def index():
+  return render_template('app.html')
+
 @app.route('/run', methods=['POST'])
 def run():
   obj = request.json
@@ -70,10 +74,6 @@ def run():
     , 'status': 'error' if err else 'ok'
     , 'result': res
     }), http_code
-
-@app.route('/', methods=['GET'])
-def index():
-  return render_template('index.html')
 
 @app.route('/getTree', methods=['GET'])
 def get_tree():
