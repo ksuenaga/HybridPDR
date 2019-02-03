@@ -52,28 +52,7 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir, debug):
 
 @app.route('/', methods=['GET'])
 def index():
-  return render_template('app.html')
-
-@app.route('/run', methods=['POST'])
-def run():
-  obj = request.json
-  m = obj['xml_model']
-  t = obj['tactics']
-  i = obj['initial']
-  s = obj['safety']
-  c = obj['current_dir']
-  d = obj['debug']
-  err, res = verify(m, t, i, s, c, d)
-  http_code = 500 if err else 200
-  return jsonify({
-      'xml_model': m
-    , 'tactics': t
-    , 'initial': i
-    , 'safety': s
-    , 'current_dir': c
-    , 'status': 'error' if err else 'ok'
-    , 'result': res
-    }), http_code
+  return render_template('index.html')
 
 @app.route('/getTree', methods=['GET'])
 def get_tree():
@@ -89,6 +68,17 @@ def get_tree():
   regular_files = [{"title": file, "key": file} for file in regular_files]
   files = directories + regular_files
   return jsonify(files)
+
+@app.route('/preview', methods=['POST'])
+def load_preview():
+  obj = request.json
+  xml = obj['xml_path']
+  xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml)
+  with open(xml_dir) as f:
+      str = f.read()
+  return jsonify({
+    'result': str
+  })
 
 @app.route('/load', methods=['POST'])
 def load():
@@ -114,6 +104,28 @@ def save():
   return jsonify({
     'save_path': path
   })
+
+@app.route('/run', methods=['POST'])
+def run():
+  obj = request.json
+  m = obj['xml_model']
+  t = obj['tactics']
+  i = obj['initial']
+  s = obj['safety']
+  c = obj['current_dir']
+  d = obj['debug']
+  err, res = verify(m, t, i, s, c, d)
+  http_code = 500 if err else 200
+  return jsonify({
+      'xml_model': m
+    , 'tactics': t
+    , 'initial': i
+    , 'safety': s
+    , 'current_dir': c
+    , 'status': 'error' if err else 'ok'
+    , 'result': res
+    }), http_code
+
 
 app.config['JSON_AS_ASCII'] = False
 app.config['DATA_DIR_PATH'] = '/home/opam/data'
