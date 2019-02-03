@@ -28,6 +28,7 @@ class DirTree extends React.Component {
 
   handleClickStart() {
     console.log('start btn clicked');
+    window.open('/project');
   }
 
   setTree() {

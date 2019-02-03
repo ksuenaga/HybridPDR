@@ -80,6 +80,10 @@ def load_preview():
     'result': str
   })
 
+@app.route('/project')
+def project():
+  return render_template('app.html')
+
 @app.route('/load', methods=['POST'])
 def load():
   obj = request.json

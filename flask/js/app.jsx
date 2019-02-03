@@ -3,16 +3,7 @@ import { render } from 'react-dom';
 import brace from 'brace';
 import AceEditor from 'react-ace';
 import request from 'superagent';
-
 import $ from "jquery";
-
-import 'jquery.fancytree/dist/skin-lion/ui.fancytree.less';  // CSS or LESS
-
-import {createTree} from 'jquery.fancytree';
-
-import 'jquery.fancytree/dist/modules/jquery.fancytree.edit';
-import 'jquery.fancytree/dist/modules/jquery.fancytree.filter';
-
 
 import 'brace/mode/xml';
 import 'brace/mode/ocaml';
@@ -29,12 +20,10 @@ class App extends React.Component {
       , safety: ""
       , result: ""
       , debug: false
-      , readOnly: true
     };
     this.handleClick = this.handleClick.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
-    this.handleOnClickSaveBtn = this.handleOnClickSaveBtn.bind(this);
-    this.setTree = this.setTree.bind(this);
+    this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
   }
 
   handleSubmit(event) {
@@ -65,9 +54,9 @@ class App extends React.Component {
     });
   }
 
-  handleOnClickSaveBtn(event) {
+  handleClickSaveBtn(event) {
     event.preventDefault();
-    var save_path = document.getElementById("saveBtn").getAttribute("savePath");
+    var save_path = $('#saveBtn').attr("savePath");
     if (save_path) {
       var save_str = this.defEditor.getValue();
       request
@@ -86,112 +75,71 @@ class App extends React.Component {
     }
   }
 
-  setTree() {
-    const tree = createTree('#tree', {
-      extensions: ['edit', 'filter'],
-      source: {
-        url: "/getTree",
-        cache: false
-      },
-      selectMode: 1,
-      click: (event, data) => {
-        event.preventDefault();
-        request
-          .post('/load')
-          .send({
-            xml_path: data.node.key
-          })
-          .end((err, res) => {
-            if (err) {
-              console.log("error!");
-            } else {
-              if (this.state.readOnly == true) {
-                this.setState({
-                  readOnly: false
-                });
-              }
-              this.defEditor.setValue(res.body.result);
-              $('#saveBtn').attr("savePath", res.body.xml_path);
-              $('#fileNameWindow').empty();
-              $('#fileNameWindow').prepend(data.node.title);
-            }
-          });
-      }
-    })
-  }
-
-  componentDidMount() {
-    this.setTree();
-  }
-
   render() {
     return (
       <div>
-      <div id="tree"></div>
-
-      <form onSubmit={this.handleSubmit}>
-        <dl>
-        <dt>
-          Definition --- selected file  :
-          <span id="fileNameWindow"></span>
-        </dt>
-        <dd>
-          <AceEditor
-            mode="xml"
-            theme="github"
-            name="xml_model"
-            width="650px" height="350px"
-            onChange={(val) => this.setState({ xml_model: val })}
-            value={this.state.xml_model}
-            onLoad={(editor) => this.defEditor = editor}
-            readOnly={this.state.readOnly}
-          />
-          <input id="saveBtn" type="button" value="Save" onClick={this.handleOnClickSaveBtn}/>
-        </dd>
-        <dt>Tactics</dt>
-        <dd>
-          <AceEditor
-            mode="ocaml"
-            theme="github"
-            name="tactics"
-            width="650px" height="350px"
-            onChange={(val) => this.setState({ tactics: val })}
-            value={this.state.tactics}
-          />
-        </dd>
-        <dt>Initial Condition</dt>
-        <dd>
-          <AceEditor
-            theme="github"
-            name="initial"
-            width="650px" height="50px"
-            onChange={(val) => this.setState({ initial: val })}
-            value={this.state.initial}
-          />
-        </dd>
-        <dt>Safety Condition</dt>
-        <dd>
-          <AceEditor
-            theme="github"
-            name="safety"
-            width="650px" height="50px"
-            onChange={(val) => this.setState({ safety: val })}
-            value={this.state.safety}
-          />
-        </dd>
-        <dt>Result</dt>
-        <dd>
-          <textarea cols="80" rows="20"
-                    name="result"
-                    value={this.state.result}
-                    readOnly
+        <form onSubmit={this.handleSubmit}>
+          <dl>
+          <dt>
+            <p>Definition - file : <span id="fileNameWindow"></span></p>
+          </dt>
+          <dd>
+            <AceEditor
+              mode="xml"
+              theme="github"
+              name="xml_model"
+              width="650px" height="350px"
+              onChange={(val) => this.setState({ xml_model: val })}
+              value={this.state.xml_model}
+              onLoad={(editor) => this.defEditor = editor}
+              readOnly={this.state.readOnly}
             />
-        </dd>
-        </dl>
-        <input type="submit" value="Validate" />
-        <input type="checkbox" id="debug" onClick={this.handleClick} />
-        <label>debug mode</label>
-      </form>
+            <input id="saveBtn" type="button" value="Save" onClick={this.handleClickSaveBtn}/>
+          </dd>
+          <dt>Tactics</dt>
+          <dd>
+            <AceEditor
+              mode="ocaml"
+              theme="github"
+              name="tactics"
+              width="650px" height="350px"
+              onChange={(val) => this.setState({ tactics: val })}
+              value={this.state.tactics}
+            />
+          </dd>
+          <dt>Initial Condition</dt>
+          <dd>
+            <AceEditor
+              theme="github"
+              name="initial"
+              width="650px" height="50px"
+              onChange={(val) => this.setState({ initial: val })}
+              value={this.state.initial}
+            />
+          </dd>
+          <dt>Safety Condition</dt>
+          <dd>
+            <AceEditor
+              theme="github"
+              name="safety"
+              width="650px" height="50px"
+              onChange={(val) => this.setState({ safety: val })}
+              value={this.state.safety}
+            />
+          </dd>
+          <dt>Result</dt>
+          <dd>
+            <textarea cols="80" rows="20"
+                      name="result"
+                      value={this.state.result}
+                      readOnly
+              />
+          </dd>
+          </dl>
+          <input type="submit" value="Validate" />
+          <input type="checkbox" id="debug" onClick={this.handleClick} />
+          <label>debug mode</label>
+        </form>
       </div>
     );
   }
