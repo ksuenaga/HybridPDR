@@ -15,6 +15,7 @@ import 'jquery.fancytree/dist/modules/jquery.fancytree.filter';
 
 
 import 'brace/mode/xml';
+import 'brace/mode/ocaml'
 import 'brace/theme/github';
 
 
@@ -28,14 +29,12 @@ class App extends React.Component {
       , safety: ""
       , result: ""
       , debug: false
+      , readOnly: true
     };
-    this.handleSubmit = this.handleSubmit.bind(this);
-    this.handleChangeXmlmodel = this.handleChangeXmlmodel.bind(this);
-    this.handleChangeTactics = this.handleChangeTactics.bind(this);
-    this.handleChangeInitial = this.handleChangeInitial.bind(this);
-    this.handleChangeSafety = this.handleChangeSafety.bind(this);
-    this.handleChangeResult = this.handleChangeResult.bind(this);
     this.handleClick = this.handleClick.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+    this.handleOnClickSaveBtn = this.handleOnClickSaveBtn.bind(this);
+    this.setTree = this.setTree.bind(this);
   }
 
   handleSubmit(event) {
@@ -60,54 +59,17 @@ class App extends React.Component {
       }.bind(this));
   }
 
-  handleChangeXmlmodel(newValue) {
-    this.setState({
-      xml_model: newValue
-    });
-  }
-
-  handleChangeTactics(newValue) {
-    this.setState({
-      tactics: newValue
-    });
-  }
-
-  handleChangeInitial(newValue) {
-    this.setState({
-      initial: newValue
-    });
-  }
-
-  handleChangeSafety(newValue) {
-    this.setState({
-      safety: newValue
-    });
-  }
-
-  handleChangeResult(event) {
-    const target = event.target;
-    const value = target.type === 'checkbox' ? target.checked : target.value;
-    const name = target.name;
-    this.setState({
-      [name]: newValue
-    });
-  }
-
   handleClick(newValue) {
     this.setState({
       debug: document.getElementById('debug').checked
     });
   }
 
-  handleOnLoadXmlAce(editor) {
-    window.defEditor = editor;
-  }
-
   handleOnClickSaveBtn(event) {
     event.preventDefault();
     var save_path = document.getElementById("saveBtn").getAttribute("savePath");
     if (save_path) {
-      var save_str = window.defEditor.getValue();
+      var save_str = this.defEditor.getValue();
       request
         .post('/save')
         .send({
@@ -116,15 +78,50 @@ class App extends React.Component {
         })
         .end(function(err, res) {
           if (err) {
-            console.log("save error");
             alert("save error!");
-          } else {
-            console.log("save success");
           }
         });
     } else {
       alert("no file selected");
     }
+  }
+
+  setTree() {
+    const tree = createTree('#tree', {
+      extensions: ['edit', 'filter'],
+      source: {
+        url: "/getTree",
+        cache: false
+      },
+      selectMode: 1,
+      click: (event, data) => {
+        event.preventDefault();
+        request
+          .post('/load')
+          .send({
+            xml_path: data.node.key
+          })
+          .end((err, res) => {
+            if (err) {
+              console.log("error!");
+            } else {
+              if (this.state.readOnly == true) {
+                this.setState({
+                  readOnly: false
+                });
+              }
+              this.defEditor.setValue(res.body.result);
+              $('#saveBtn').attr("savePath", res.body.xml_path);
+              $('#fileNameWindow').empty();
+              $('#fileNameWindow').prepend(data.node.title);
+            }
+          });
+      }
+    })
+  }
+
+  componentDidMount() {
+    this.setTree();
   }
 
   render() {
@@ -134,49 +131,51 @@ class App extends React.Component {
 
       <form onSubmit={this.handleSubmit}>
         <dl>
-        <dt>Definition</dt>
+        <dt>
+          Definition --- selected file  :
+          <span id="fileNameWindow"></span>
+        </dt>
         <dd>
           <AceEditor
             mode="xml"
             theme="github"
             name="xml_model"
             width="650px" height="350px"
-            onChange={this.handleChangeXmlmodel}
+            onChange={(val) => this.setState({ xml_model: val })}
             value={this.state.xml_model}
-            onLoad={this.handleOnLoadXmlAce}
+            onLoad={(editor) => this.defEditor = editor}
+            readOnly={this.state.readOnly}
           />
           <input id="saveBtn" type="button" value="Save" onClick={this.handleOnClickSaveBtn}/>
         </dd>
         <dt>Tactics</dt>
         <dd>
           <AceEditor
-            mode="xml"
+            mode="ocaml"
             theme="github"
             name="tactics"
             width="650px" height="350px"
-            onChange={this.handleChangeTactics}
+            onChange={(val) => this.setState({ tactics: val })}
             value={this.state.tactics}
           />
         </dd>
         <dt>Initial Condition</dt>
         <dd>
           <AceEditor
-            mode="xml"
             theme="github"
             name="initial"
             width="650px" height="50px"
-            onChange={this.handleChangeInitial}
+            onChange={(val) => this.setState({ initial: val })}
             value={this.state.initial}
           />
         </dd>
         <dt>Safety Condition</dt>
         <dd>
           <AceEditor
-            mode="xml"
             theme="github"
             name="safety"
             width="650px" height="50px"
-            onChange={this.handleChangeSafety}
+            onChange={(val) => this.setState({ safety: val })}
             value={this.state.safety}
           />
         </dd>
@@ -185,7 +184,6 @@ class App extends React.Component {
           <textarea cols="80" rows="20"
                     name="result"
                     value={this.state.result}
-                    onChange={this.handleChangeResult}
                     readOnly
             />
         </dd>
@@ -200,31 +198,3 @@ class App extends React.Component {
 }
 
 render(<App />, document.getElementById('app'));
-
-const tree = createTree('#tree', {
-  extensions: ['edit', 'filter'],
-  source: {
-    url: "/getTree",
-    cache: false
-  },
-  selectMode: 1,
-  click: function(event, data) {
-    event.preventDefault();
-    request
-      .post('/load')
-      .send({
-        xml_path: data.node.key
-      })
-      .end(function(err, res) {
-        if (err) {
-          console.log("error!");
-        } else {
-          console.log('xml: \n', res.body.xml_path);
-          window.defEditor.setValue(res.body.result);
-          document.getElementById("saveBtn").setAttribute("savePath", res.body.xml_path);
-        }
-      });
-
-    console.log("data.title", data.node.title);
-  }
-});
