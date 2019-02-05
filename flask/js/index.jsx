@@ -5,6 +5,29 @@ import ListGroup from 'react-bootstrap/ListGroup'
 
 import '../css/index.css'
 
+const containerStyle = {
+  width: '980px',
+  margin: '0 auto',
+}
+
+const descContainrStyle = {
+  overflow: 'hidden',
+};
+
+const headingStyle = {
+  float: 'left',
+};
+
+const descStyle = {
+  height: '33px',
+  marginLeft: '15px',
+  marginBottom: '8px',
+  color: '#586069',
+  fontSize: '16px',
+  fontStyle: 'italic',
+  lineHeight: '34px',
+};
+
 class Explorer extends React.Component {
   constructor(props) {
     super(props);
@@ -61,7 +84,11 @@ class Explorer extends React.Component {
       <div>
         <header>
         </header>
-        <div className="container">
+        <div style={containerStyle}>
+          <div style={descContainrStyle}>
+            <h3 style={headingStyle}>HybridPDR</h3>
+            <em style={descStyle}>Select a definition file of a hybrid system.</em>
+          </div>
           <BreadcrumbList path={this.state.path} />
           <div onClick={this.handleClick}>
             <FileList items={this.state.items} />
