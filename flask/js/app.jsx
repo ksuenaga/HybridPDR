@@ -5,10 +5,18 @@ import AceEditor from 'react-ace';
 import request from 'superagent';
 
 import 'brace/mode/xml';
-import 'brace/mode/ocaml';
+import 'brace/mode/scheme';
 import 'brace/mode/plain_text';
 import 'brace/theme/github';
 
+const defaultTactics = `
+;; Tactic for circle.xml: Initial location: 1, Initial condition: (and (= x 0.0) (= y 0.0)), Safe region: (<= x 1.0)
+(and (= x 0.0) (= y 0.0))
+(and (= x 0.0) (= y 0.0))
+(and (= x 0.0) (= y 0.0))
+(and (= x 0.0) (= y 0.0))
+(and (= x 0.0) (= y 0.0))
+`
 
 class App extends React.Component {
   constructor(props) {
@@ -16,9 +24,9 @@ class App extends React.Component {
     this.state = {
         xml_path: selectedFilePath
       , xml_model: ""
-      , tactics: ""
-      , initial: ""
-      , safety: ""
+      , tactics: defaultTactics
+      , initial: "x == 0.0 & y == 0.0"
+      , safety: "x <= 1.0"
       , result: ""
       , debug: false
     };
@@ -117,7 +125,7 @@ class App extends React.Component {
           <dt>Tactics</dt>
           <dd>
             <AceEditor
-              mode="ocaml"
+              mode="scheme"
               theme="github"
               name="tactics"
               width="650px" height="350px"
