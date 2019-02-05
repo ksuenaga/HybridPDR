@@ -1,95 +1,75 @@
 import React from 'react';
 import { render } from 'react-dom';
 import request from 'superagent';
-import AceEditor from 'react-ace';
-import brace from 'brace';
-import $ from 'jquery';
 
-import 'jquery.fancytree/dist/skin-lion/ui.fancytree.less';  // CSS or LESS
-
-import { createTree } from 'jquery.fancytree';
-
-import 'brace/mode/xml';
-import 'brace/theme/github';
-import 'jquery.fancytree/dist/modules/jquery.fancytree.edit';
-import 'jquery.fancytree/dist/modules/jquery.fancytree.filter';
-
-
-class DirTree extends React.Component {
+class Explorer extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
-        selFile: "",
-        selFilePath: "",
-        selFileTxt: ""
-    };
-    this.setTree = this.setTree.bind(this);
-  }
-
-  handleClickStart() {
-    console.log('start btn clicked');
-    window.open('/project');
-  }
-
-  setTree() {
-    const tree = createTree('#tree', {
-      extensions: ['edit', 'filter'],
-      source: {
-        url: "/getTree",
-        cache: false
-      },
-      selectMode: 1,
-      click: (event, data) => {
-        event.preventDefault();
-        request
-          .post('/preview')
-          .send({
-            xml_path: data.node.key
-          })
-          .end((err, res) => {
-            if (err) {
-              console.log("load preview error!");
-            } else {
-              this.prevEditor.setValue(res.body.result);
-              this.setState({
-                selFile: data.node.title,
-                selFilePath: data.node.key
-              });
-              $('#previewFileName').empty();
-              $('#previewFileName').prepend(data.node.title);
-            }
-          });
-      }
-    })
+    this.state = {items: []};
+    this.path = "/";
+    this.handleClick = this.handleClick.bind(this);
+    this.handleLoad = this.handleLoad.bind(this);
   }
 
   componentDidMount() {
-    this.setTree();
+    window.addEventListener('load', this.handleLoad);
+  }
+
+  handleClick(e) {
+    e.preventDefault();
+    var elem = e.target;
+    if (elem.className === "directory") {
+      if (elem.textContent === "../") {
+        var pathArray = this.path.split('/');
+        this.path = "";
+        for (var i = 0; i < pathArray.length - 2; i++) {
+          this.path += pathArray[i];
+          this.path += "/";
+        }
+      } else {
+        this.path = this.path + elem.textContent;
+      }
+      this.move();
+    } else {
+      window.open('/project');
+    }
+  }
+
+  handleLoad(e) {
+    this.move();
+  }
+
+  move() {
+    request
+      .get('/ls' + (this.path === "/" ? "" : this.path))
+      .then(res => {
+        this.setState({items: res.body});
+      });
   }
 
   render() {
     return (
-      <div>
-        <div id="tree"></div>
-        <div>
-          <input type="button" name="startbtn" value="start" onClick={this.handleClickStart} />
-        </div>
-        <div>
-          <p>Preview - file : <span id="previewFileName"></span></p>
-        </div>
-        <AceEditor
-          mode="xml"
-          theme="github"
-          name="xmlPreview"
-          width="650px" height="350px"
-          value={this.state.selFileTxt}
-          onChange={(val) => this.setState({ selFileTxt: val })}
-          onLoad={(editor) => this.prevEditor = editor}
-          readOnly={true}
-        />
+      <div onClick={this.handleClick}>
+        <FileList items={this.state.items} />
       </div>
     );
   }
 }
 
-render(<DirTree />, document.getElementById('dirPage'));
+class FileList extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    return (
+      <ul>
+        {this.props.items.map(item => (
+          <li key={item.id}><a className={item.type}>{item.text}</a></li>
+        ))}
+      </ul>
+    );
+  }
+}
+
+render(<Explorer />, document.getElementById('dirPage'));
