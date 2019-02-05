@@ -1,0 +1,31 @@
+dl {
+  margin-left: 50px;
+}
+
+dd {
+  margin-left: 0;
+}
+
+.DefContainer {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.shortEditors {
+  margin-right: 50px;
+}
+
+.setMarginBtm {
+  margin-bottom: 50px;
+}
+
+.ResultContainer {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 50px;
+}
+
+.resultDl {
+  margin-right: 50px;
+}

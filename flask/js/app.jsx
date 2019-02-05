@@ -9,8 +9,10 @@ import 'brace/mode/scheme';
 import 'brace/mode/plain_text';
 import 'brace/theme/github';
 
-const defaultTactics = `
-;; Tactic for circle.xml: Initial location: 1, Initial condition: (and (= x 0.0) (= y 0.0)), Safe region: (<= x 1.0)
+import styles from '../css/app.css';
+
+const defaultTactics =
+`;; Tactic for circle.xml: Initial location: 1, Initial condition: (and (= x 0.0) (= y 0.0)), Safe region: (<= x 1.0)
 (and (= x 0.0) (= y 0.0))
 (and (= x 0.0) (= y 0.0))
 (and (= x 0.0) (= y 0.0))
@@ -105,68 +107,54 @@ class App extends React.Component {
     return (
       <div>
         <form onSubmit={this.handleSubmit}>
-          <dl>
-          <dt>
-            <p>System Definition - file : <span id="fileNameWindow"></span></p>
-          </dt>
-          <dd>
-            <AceEditor
-              mode="xml"
-              theme="github"
-              name="xml_model"
-              width="650px" height="350px"
-              onChange={(val) => this.setState({ xml_model: val })}
-              value={this.state.xml_model}
-              onLoad={(editor) => this.defEditor = editor}
-              readOnly={this.state.readOnly}
-            />
-            <input id="saveBtn" type="button" value="Save" onClick={this.handleClickSaveBtn}/>
-          </dd>
-          <dt>Tactics</dt>
-          <dd>
-            <AceEditor
-              mode="scheme"
-              theme="github"
-              name="tactics"
-              width="650px" height="350px"
-              onChange={(val) => this.setState({ tactics: val })}
-              value={this.state.tactics}
-            />
-          </dd>
-          <dt>Initial Condition</dt>
-          <dd>
-            <AceEditor
-              mode="plain_text"
-              theme="github"
-              name="initial"
-              width="650px" height="50px"
-              onChange={(val) => this.setState({ initial: val })}
-              value={this.state.initial}
-            />
-          </dd>
-          <dt>Safety Condition</dt>
-          <dd>
-            <AceEditor
-              mode="plain_text"
-              theme="github"
-              name="safety"
-              width="650px" height="50px"
-              onChange={(val) => this.setState({ safety: val })}
-              value={this.state.safety}
-            />
-          </dd>
-          <dt>Result</dt>
-          <dd>
-            <textarea cols="80" rows="20"
-                      name="result"
-                      value={this.state.result}
-                      readOnly
-              />
-          </dd>
-          </dl>
-          <input type="submit" value="Validate" />
-          <input type="checkbox" id="debug" onClick={this.handleClick} />
-          <label>debug mode</label>
+          <div className={styles.DefContainer}>
+            <dl>
+              <dt>
+                System Definition - file : <span id="fileNameWindow"></span>
+              </dt>
+              <dd>
+                <AceEditor name="xml_model" mode="xml" theme="github"
+                  width="650px" height="350px" value={this.state.xml_model}
+                  onChange={(val) => this.setState({ xml_model: val })}
+                  onLoad={(editor) => this.defEditor = editor}
+                  readOnly={this.state.readOnly} wrapEnabled={true} />
+                <input id="saveBtn" type="button" value="Save" onClick={this.handleClickSaveBtn}/>
+              </dd>
+            </dl>
+            <dl className={styles.shortEditors}>
+              <dt>Initial Condition</dt>
+              <dd className={styles.setMarginBtm}>
+                <AceEditor name="initial" mode="plain_text" theme="github"
+                  width="600px" height="50px" value={this.state.initial}
+                  onChange={(val) => this.setState({ initial: val })}
+                  wrapEnabled={true} />
+              </dd>
+              <dt>Safety Condition</dt>
+              <dd>
+                <AceEditor name="safety" mode="plain_text" theme="github"
+                  width="600px" height="50px" value={this.state.safety}
+                  onChange={(val) => this.setState({ safety: val })}
+                  wrapEnabled={true} />
+              </dd>
+            </dl>
+          </div>
+          <div className={styles.ResultContainer}>
+            <dl><dt>Tactics</dt>
+              <dd><AceEditor name="tactics" mode="scheme" theme="github"
+                    width="650px" height="350px" value={this.state.tactics}
+                    onChange={(val) => this.setState({ tactics: val })}
+                    wrapEnabled={true} />
+              </dd>
+              <input type="submit" value="Validate" />
+              <input type="checkbox" id="debug" onClick={this.handleClick} />
+              <label>debug mode</label>
+            </dl>
+            <dl className={styles.resultDl}><dt>Result</dt>
+              <dd><textarea cols="73" rows="20" name="result"
+                            value={this.state.result} readOnly />
+              </dd>
+            </dl>
+          </div>
         </form>
       </div>
     );
