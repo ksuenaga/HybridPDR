@@ -103,13 +103,18 @@ class FileList extends React.Component {
 
 const breadcrumbListContainerStyle = {
   overflow: 'hidden',
-  paddingLeft: '10px',
-  marginBottom: '10px',
+  height: '43px',
+  padding: '10px',
+  marginBottom: '-1px',
+  backgroundColor: '#f1f8ff',
+  border: '1px solid #c8e1ff',
+  borderTopLeftRadius: '3px',
+  borderTopRightRadius: '3px',
 };
 
 const breadcrumbListStyle = {
   float: 'left',
-  fontSize: '16px',
+  fontSize: '13px',
 };
 
 class BreadcrumbList extends React.Component {
