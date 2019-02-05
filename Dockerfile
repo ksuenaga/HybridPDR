@@ -58,6 +58,5 @@ RUN pip3 install -r flask/requirements.txt \
 COPY flask flask
 RUN npm run dev --prefix flask
 
-#ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 5000
 CMD ["flask", "run", "--host=0.0.0.0"]
