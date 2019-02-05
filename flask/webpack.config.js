@@ -1,8 +1,8 @@
 module.exports = {
-  entry: [
-    './js/index.jsx',
-    // './js/app.jsx'
-  ],
+  entry: {
+    index: './js/index.jsx',
+    app: './js/app.jsx'
+  },
   module: {
     rules: [
       {
@@ -37,6 +37,6 @@ module.exports = {
   },
   output: {
     path: __dirname + '/static',
-    filename: 'bundle.js'
+    filename: '[name].js'
   }
 };

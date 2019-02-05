@@ -3,10 +3,10 @@ import { render } from 'react-dom';
 import brace from 'brace';
 import AceEditor from 'react-ace';
 import request from 'superagent';
-import $ from "jquery";
 
 import 'brace/mode/xml';
 import 'brace/mode/ocaml';
+import 'brace/mode/plain_text';
 import 'brace/theme/github';
 
 
@@ -98,7 +98,7 @@ class App extends React.Component {
         <form onSubmit={this.handleSubmit}>
           <dl>
           <dt>
-            <p>Definition - file : <span id="fileNameWindow"></span></p>
+            <p>System Definition - file : <span id="fileNameWindow"></span></p>
           </dt>
           <dd>
             <AceEditor
@@ -127,6 +127,7 @@ class App extends React.Component {
           <dt>Initial Condition</dt>
           <dd>
             <AceEditor
+              mode="plain_text"
               theme="github"
               name="initial"
               width="650px" height="50px"
@@ -137,6 +138,7 @@ class App extends React.Component {
           <dt>Safety Condition</dt>
           <dd>
             <AceEditor
+              mode="plain_text"
               theme="github"
               name="safety"
               width="650px" height="50px"

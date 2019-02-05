@@ -95,6 +95,30 @@ def load_app():
   , 'result': str
   })
 
+@app.route('/ls/<path:subpath>', methods=['GET'])
+def ls(subpath):
+  base_path = os.path.join(app.config['DATA_DIR_PATH'], subpath)
+  files = sorted(os.listdir(base_path))
+  regular_files = []
+  if subpath == '':
+    directories = []
+  else:
+    directories = ['..']
+  for file in files:
+    if os.path.isdir(os.path.join(base_path, file)):
+      directories.append(file)
+    else:
+      regular_files.append(file)
+  directories = [{'type': 'directory', 'text': dir + '/'} for dir in directories]
+  regular_files = [{'type': 'regular_file', 'text': file} for file in regular_files]
+  files = directories + regular_files
+  files = [{'id': i, 'type': item['type'], 'text': item['text']} for i, item in enumerate(files)]
+  return jsonify(files)
+
+@app.route('/ls', methods=['GET'])
+def ls_root():
+  return ls('')
+
 @app.route('/save', methods=['POST'])
 def save():
   obj = request.json
