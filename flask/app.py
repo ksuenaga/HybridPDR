@@ -54,45 +54,19 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir, debug):
 def index():
   return render_template('index.html')
 
-@app.route('/getTree', methods=['GET'])
-def get_tree():
-  files = sorted(os.listdir(app.config['DATA_DIR_PATH']))
-  regular_files = []
-  directories = []
-  for file in files:
-    if os.path.isdir(os.path.join(app.config['DATA_DIR_PATH'], file)):
-      directories.append(file)
-    else:
-      regular_files.append(file)
-  directories = [{"title": dir + '/', "key": dir, "folder": True} for dir in directories]
-  regular_files = [{"title": file, "key": file} for file in regular_files]
-  files = directories + regular_files
-  return jsonify(files)
-
-@app.route('/preview', methods=['POST'])
-def load_preview():
-  obj = request.json
-  xml = obj['xml_path']
-  xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml)
-  with open(xml_dir) as f:
-      str = f.read()
-  return jsonify({
-    'result': str
-  })
-
-@app.route('/project/<file_path>')
+@app.route('/project/<path:file_path>')
 def project(file_path):
-  app.config['SELECTED_FILE_PATH'] = file_path
-  return render_template('app.html')
+  return render_template('app.html', selectedFilePath=file_path)
 
-@app.route('/loadapp', methods=['GET'])
+@app.route('/loadapp', methods=['POST'])
 def load_app():
-    selected_xml_dir = os.path.join(app.config['DATA_DIR_PATH'], app.config['SELECTED_FILE_PATH'])
+  obj = request.json
+  xml_path = obj['path']
+  selected_xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml_path)
   with open(selected_xml_dir) as f:
     str = f.read()
   return jsonify({
-    'path': app.config['SELECTED_FILE_PATH']
-  , 'result': str
+    'result': str
   })
 
 @app.route('/ls/<path:subpath>', methods=['GET'])
@@ -155,7 +129,6 @@ def run():
 
 app.config['JSON_AS_ASCII'] = False
 app.config['DATA_DIR_PATH'] = '/home/opam/data'
-app.config['SELECTED_FILE_PATH'] = ''
 if app.debug:
   app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 

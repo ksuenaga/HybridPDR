@@ -14,7 +14,7 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-        xml_path: ""
+        xml_path: selectedFilePath
       , xml_model: ""
       , tactics: ""
       , initial: ""
@@ -22,6 +22,7 @@ class App extends React.Component {
       , result: ""
       , debug: false
     };
+    this.handleLoad = this.handleLoad.bind(this);
     this.handleClick = this.handleClick.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
@@ -29,7 +30,6 @@ class App extends React.Component {
 
   handleSubmit(event) {
     event.preventDefault();
-    var current_dir = document.getElementById("saveBtn").getAttribute("savePath");
     request
       .post('/run')
       .send({
@@ -37,7 +37,7 @@ class App extends React.Component {
         , tactics: this.state.tactics
         , initial: this.state.initial
         , safety: this.state.safety
-        , current_dir: current_dir
+        , current_dir: this.state.xml_path
         , debug: this.state.debug
       })
       .end(function(err, res){
@@ -57,39 +57,40 @@ class App extends React.Component {
 
   handleClickSaveBtn(event) {
     event.preventDefault();
-    var save_path = $('#saveBtn').attr("savePath");
-    if (save_path) {
-      var save_str = this.defEditor.getValue();
-      request
-        .post('/save')
-        .send({
-          save_path: save_path,
-          save_str: save_str
-        })
-        .end(function(err, res) {
-          if (err) {
-            alert("save error!");
-          }
-        });
-    } else {
-      alert("no file selected");
-    }
+    var save_str = this.defEditor.getValue();
+    request
+      .post('/save')
+      .send({
+        save_path: this.state.xml_path,
+        save_str: save_str
+      })
+      .end(function(err, res) {
+        if (err) {
+          alert("save error!");
+        }
+      });
   }
 
-  componentDidMount() {
+  handleLoad() {
     request
-      .get('/loadapp')
-      .end(function(err, res) {
+      .post('/loadapp')
+      .send({
+        path: this.state.xml_path
+      })
+      .end((err, res) => {
         if (err) {
           console.log('load error');
         } else {
           this.setState({
-            xml_path: res.body.path,
             xml_model: res.body.result
           });
           this.defEditor.setValue(this.state.xml_model);
         }
-      }).bind(this);
+      });
+  }
+
+  componentDidMount() {
+    this.handleLoad();
   }
 
   render() {

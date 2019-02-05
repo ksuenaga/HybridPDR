@@ -31,7 +31,11 @@ class Explorer extends React.Component {
       }
       this.move();
     } else {
-      window.open('/project');
+      if (this.path === "/") {
+        window.open('/project/' + elem.textContent);
+      } else {
+        window.open('/project/' + this.path.slice(1) + '/' + elem.textContent);
+      }
     }
   }
 
