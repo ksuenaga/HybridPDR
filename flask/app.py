@@ -80,20 +80,18 @@ def load_preview():
     'result': str
   })
 
-@app.route('/project')
-def project():
+@app.route('/project/<file_path>')
+def project(file_path):
+  app.config['SELECTED_FILE_PATH'] = file_path
   return render_template('app.html')
 
-@app.route('/load', methods=['POST'])
-def load():
-  obj = request.json
-  xml = obj['xml_path']
-  xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml)
-  with open(xml_dir) as f:
+@app.route('/loadapp', methods=['GET'])
+def load_app():
+    selected_xml_dir = os.path.join(app.config['DATA_DIR_PATH'], app.config['SELECTED_FILE_PATH'])
+  with open(selected_xml_dir) as f:
     str = f.read()
-
   return jsonify({
-    'xml_path': xml
+    'path': app.config['SELECTED_FILE_PATH']
   , 'result': str
   })
 
@@ -133,6 +131,7 @@ def run():
 
 app.config['JSON_AS_ASCII'] = False
 app.config['DATA_DIR_PATH'] = '/home/opam/data'
+app.config['SELECTED_FILE_PATH'] = ''
 if app.debug:
   app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 

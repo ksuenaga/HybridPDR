@@ -24,11 +24,16 @@ class DirTree extends React.Component {
         selFileTxt: ""
     };
     this.setTree = this.setTree.bind(this);
+    this.handleClickStart = this.handleClickStart.bind(this);
   }
 
   handleClickStart() {
     console.log('start btn clicked');
-    window.open('/project');
+    if (this.state.selFilePath == "") {
+      alert('No file selected. Please select file.');
+    } else {
+      window.open('/project/' + this.state.selFilePath);
+    }
   }
 
   setTree() {

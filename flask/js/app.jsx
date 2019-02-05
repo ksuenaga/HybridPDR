@@ -14,7 +14,8 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-        xml_model: ""
+        xml_path: ""
+      , xml_model: ""
       , tactics: ""
       , initial: ""
       , safety: ""
@@ -73,6 +74,22 @@ class App extends React.Component {
     } else {
       alert("no file selected");
     }
+  }
+
+  componentDidMount() {
+    request
+      .get('/loadapp')
+      .end(function(err, res) {
+        if (err) {
+          console.log('load error');
+        } else {
+          this.setState({
+            xml_path: res.body.path,
+            xml_model: res.body.result
+          });
+          this.defEditor.setValue(this.state.xml_model);
+        }
+      }).bind(this);
   }
 
   render() {
