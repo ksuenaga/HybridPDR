@@ -3,6 +3,7 @@ import { render } from 'react-dom';
 import brace from 'brace';
 import AceEditor from 'react-ace';
 import request from 'superagent';
+import mousetrap from 'mousetrap';
 
 import 'brace/mode/xml';
 import 'brace/mode/scheme';
@@ -38,8 +39,15 @@ class App extends React.Component {
     this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
   }
 
-  handleSubmit(event) {
-    event.preventDefault();
+  componentWillMount() {
+    mousetrap.bind(['command+return', 'ctrl+enter', 'f5'], () => {
+      console.log('shortcut');
+      this.handleSubmit();
+      return false;
+    });
+  }
+
+  handleSubmit() {
     request
       .post('/run')
       .send({
