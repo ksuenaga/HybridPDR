@@ -3,30 +3,8 @@ import { render } from 'react-dom';
 import request from 'superagent';
 import ListGroup from 'react-bootstrap/ListGroup'
 
-import '../css/index.css'
+import styles from '../css/index.css'
 
-const containerStyle = {
-  width: '980px',
-  margin: '0 auto',
-}
-
-const descContainrStyle = {
-  overflow: 'hidden',
-};
-
-const headingStyle = {
-  float: 'left',
-};
-
-const descStyle = {
-  height: '33px',
-  marginLeft: '15px',
-  marginBottom: '8px',
-  color: '#586069',
-  fontSize: '16px',
-  fontStyle: 'italic',
-  lineHeight: '34px',
-};
 
 class Explorer extends React.Component {
   constructor(props) {
@@ -84,10 +62,10 @@ class Explorer extends React.Component {
       <div>
         <header>
         </header>
-        <div style={containerStyle}>
-          <div style={descContainrStyle}>
-            <h3 style={headingStyle}>HybridPDR</h3>
-            <em style={descStyle}>Select a definition file of a hybrid system.</em>
+        <div className={styles.containerStyle}>
+          <div className={styles.descContainrStyle}>
+            <h3 className={styles.headingStyle}>HybridPDR</h3>
+            <em className={styles.descStyle}>Select a definition file of a hybrid system.</em>
           </div>
           <BreadcrumbList path={this.state.path} />
           <div onClick={this.handleClick}>
@@ -100,27 +78,13 @@ class Explorer extends React.Component {
 }
 
 
-const listGroupStyle = {
-  border: '#dfe2e5',
-};
-
-const listGroupItemStyle = {
-  padding: '6px 10px',
-};
-
-const aStyle = {
-  color: '#0366d6',
-  fontSize: '14px',
-  cursor: 'pointer',
-};
-
 class FileList extends React.Component {
   render() {
     return (
-      <ListGroup style={listGroupStyle}>
+      <ListGroup className={styles.listGroupStyle}>
         {this.props.items.map(item => (
-          <ListGroup.Item key={item.id} style={listGroupItemStyle}>
-            <a className={item.type} style={aStyle}>{item.text}</a>
+          <ListGroup.Item key={item.id} className={styles.listGroupItemStyle}>
+            <a className={item.type+' '+styles.aStyle}>{item.text}</a>
           </ListGroup.Item>
         ))}
       </ListGroup>
@@ -128,21 +92,6 @@ class FileList extends React.Component {
   }
 }
 
-const breadcrumbListContainerStyle = {
-  overflow: 'hidden',
-  height: '43px',
-  padding: '10px',
-  marginBottom: '-1px',
-  backgroundColor: '#f1f8ff',
-  border: '1px solid #c8e1ff',
-  borderTopLeftRadius: '3px',
-  borderTopRightRadius: '3px',
-};
-
-const breadcrumbListStyle = {
-  float: 'left',
-  fontSize: '13px',
-};
 
 class BreadcrumbList extends React.Component {
   constructor(props) {
@@ -155,9 +104,9 @@ class BreadcrumbList extends React.Component {
 
   render() {
     return (
-      <div style={breadcrumbListContainerStyle}>
+      <div className={styles.breadcrumbListContainerStyle}>
         {this.props.path.split("/").slice(1).map((item, i) => (
-          <div key={i} style={breadcrumbListStyle}>
+          <div key={i} className={styles.breadcrumbListStyle}>
             <span onClick={this.handleClick}>/{item}</span>
           </div>
         ))}
