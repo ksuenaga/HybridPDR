@@ -250,8 +250,12 @@ class App extends React.Component {
                 <AceEditor name="xml_model" mode="xml" theme="github"
                   width="650px" height="350px" value={this.state.xml_model}
                   onChange={(val) => this.setState({ xml_model: val })}
-                  onLoad={(editor) => this.defEditor = editor}
-                  readOnly={this.state.readOnly} wrapEnabled={true} />
+                  onLoad={(editor) => this.defEditor = editor} wrapEnabled={true}
+                  commands={[{
+                    name: 'validate',
+                    bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
+                    exec: () => { $('#valbtn').click() }
+                  }]} />
                 <input id="saveBtn" type="button" value="Save" onClick={this.handleClickSaveBtn}/>
               </dd>
             </dl>
@@ -261,14 +265,24 @@ class App extends React.Component {
                 <AceEditor name="initial" mode="plain_text" theme="github"
                   width="600px" height="50px" value={this.state.initial}
                   onChange={(val) => this.setState({ initial: val })}
-                  wrapEnabled={true} />
+                  wrapEnabled={true}
+                  commands={[{
+                    name: 'validate',
+                    bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
+                    exec: () => { $('#valbtn').click() }
+                  }]} />
               </dd>
               <dt>Safety Condition</dt>
               <dd>
                 <AceEditor name="safety" mode="plain_text" theme="github"
                   width="600px" height="50px" value={this.state.safety}
                   onChange={(val) => this.setState({ safety: val })}
-                  wrapEnabled={true} />
+                  wrapEnabled={true}
+                  commands={[{
+                    name: 'validate',
+                    bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
+                    exec: () => { $('#valbtn').click() }
+                  }]} />
               </dd>
             </dl>
           </div>
@@ -277,7 +291,12 @@ class App extends React.Component {
               <dd><AceEditor name="tactics" mode="scheme" theme="github"
                     width="650px" height="350px" value={this.state.tactics}
                     onChange={(val) => this.setState({ tactics: val })}
-                    wrapEnabled={true} />
+                    wrapEnabled={true}
+                    commands={[{
+                      name: 'validate',
+                      bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
+                      exec: () => { $('#valbtn').click() }
+                    }]} />
               </dd>
               <input type="submit" value="Validate" id="valbtn"/>
               <input type="checkbox" id="debug" onClick={this.handleClick} />
