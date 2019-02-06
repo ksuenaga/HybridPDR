@@ -4,6 +4,7 @@ import brace from 'brace';
 import AceEditor from 'react-ace';
 import request from 'superagent';
 import mousetrap from 'mousetrap';
+import $ from 'jquery';
 
 import 'brace/mode/xml';
 import 'brace/mode/scheme';
@@ -147,6 +148,9 @@ class App extends React.Component {
       , safety: "x <= 1.0"
       , result: ""
       , debug: false
+      , status: ""
+      , retcode: 0
+      , resStyle: { color: '#00000' }
     };
     this.handleLoad = this.handleLoad.bind(this);
     this.handleClick = this.handleClick.bind(this);
@@ -157,12 +161,13 @@ class App extends React.Component {
   componentWillMount() {
     mousetrap.bind(['command+return', 'ctrl+enter', 'f5'], () => {
       console.log('shortcut');
-      this.handleSubmit();
+      this.handleSubmit;
       return false;
     });
   }
 
-  handleSubmit() {
+  handleSubmit(event) {
+    event.preventDefault();
     request
       .post('/run')
       .send({
@@ -173,13 +178,23 @@ class App extends React.Component {
         , current_dir: this.state.xml_path
         , debug: this.state.debug
       })
-      .end(function(err, res){
+      .end((err, res) => {
         if (err) {
-          this.setState({result: ""});
+          this.setState({
+            status: res.body.status,
+            retcode: res.body.retcode,
+            result: "ERROR\nretrun code:" + res.body.retcode + "\n" + res.body.result,
+            resStyle: { color: '#ff0000' }
+          });
         } else {
-          this.setState({result: res.body.result});
+          this.setState({
+            status: res.body.status,
+            retcode: res.body.retcode,
+            result: res.body.result,
+            resStyle: { color: '#000000' }
+          });
         }
-      }.bind(this));
+      });
   }
 
   handleClick(newValue) {
@@ -273,8 +288,8 @@ class App extends React.Component {
               <label>debug mode</label>
             </dl>
             <dl className={styles.resultDl}><dt>Result</dt>
-              <dd><textarea cols="73" rows="20" name="result"
-                            value={this.state.result} readOnly />
+              <dd><textarea cols="73" rows="20" name="result" readOnly
+                            value={this.state.result} style={this.state.resStyle} />
               </dd>
             </dl>
           </div>
