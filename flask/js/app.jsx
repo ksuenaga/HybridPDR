@@ -4,6 +4,7 @@ import brace from 'brace';
 import AceEditor from 'react-ace';
 import request from 'superagent';
 import mousetrap from 'mousetrap';
+import $ from 'jquery';
 
 import 'brace/mode/xml';
 import 'brace/mode/scheme';
@@ -147,6 +148,9 @@ class App extends React.Component {
       , safety: "x <= 1.0"
       , result: ""
       , debug: false
+      , status: ""
+      , retcode: 0
+      , resStyle: { color: '#00000' }
     };
     this.fontSize = 12;
     this.showPrintMargin = false;
@@ -158,15 +162,8 @@ class App extends React.Component {
     this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
   }
 
-  componentWillMount() {
-    mousetrap.bind(['command+return', 'ctrl+enter', 'f5'], () => {
-      console.log('shortcut');
-      this.handleSubmit();
-      return false;
-    });
-  }
-
-  handleSubmit() {
+  handleSubmit(event) {
+    event.preventDefault();
     request
       .post('/run')
       .send({
@@ -177,13 +174,23 @@ class App extends React.Component {
         , current_dir: this.state.xml_path
         , debug: this.state.debug
       })
-      .end(function(err, res){
+      .end((err, res) => {
         if (err) {
-          this.setState({result: ""});
+          this.setState({
+            status: res.body.status,
+            retcode: res.body.retcode,
+            result: "ERROR\nretrun code:" + res.body.retcode + "\n" + res.body.result,
+            resStyle: { color: '#ff0000' }
+          });
         } else {
-          this.setState({result: res.body.result});
+          this.setState({
+            status: res.body.status,
+            retcode: res.body.retcode,
+            result: res.body.result,
+            resStyle: { color: '#000000' }
+          });
         }
-      }.bind(this));
+      });
   }
 
   handleClick(newValue) {
@@ -222,12 +229,17 @@ class App extends React.Component {
             xml_model: res.body.result
           });
           this.defEditor.setValue(this.state.xml_model);
+          $('#fileNameWindow').append(this.state.xml_path);
         }
       });
   }
 
   componentDidMount() {
     this.handleLoad();
+    mousetrap.bind(['command+return', 'ctrl+enter', 'f5'], () => {
+      console.log('shortcut');
+      $('#valbtn').click();
+    });
   }
 
   render() {
@@ -247,8 +259,12 @@ class App extends React.Component {
                   fontSize={this.fontSize}
                   showPrintMargin={this.showPrintMargin}
                   onChange={(val) => this.setState({ xml_model: val })}
-                  onLoad={(editor) => this.defEditor = editor}
-                  readOnly={this.state.readOnly} wrapEnabled={true} />
+                  onLoad={(editor) => this.defEditor = editor} wrapEnabled={true}
+                  commands={[{
+                    name: 'validate',
+                    bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
+                    exec: () => { $('#valbtn').click() }
+                  }]} />
                 <input id="saveBtn" type="button" value="Save" onClick={this.handleClickSaveBtn}/>
               </dd>
             </dl>
@@ -260,7 +276,12 @@ class App extends React.Component {
                   showPrintMargin={this.showPrintMargin}
                   highlightActiveLine={this.highlightActiveLine}
                   onChange={(val) => this.setState({ initial: val })}
-                  wrapEnabled={true} />
+                  wrapEnabled={true}
+                  commands={[{
+                    name: 'validate',
+                    bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
+                    exec: () => { $('#valbtn').click() }
+                  }]} />
               </dd>
               <dt><h4>Safety Condition</h4></dt>
               <dd>
@@ -269,7 +290,12 @@ class App extends React.Component {
                   showPrintMargin={this.showPrintMargin}
                   highlightActiveLine={this.highlightActiveLine}
                   onChange={(val) => this.setState({ safety: val })}
-                  wrapEnabled={true} />
+                  wrapEnabled={true}
+                  commands={[{
+                    name: 'validate',
+                    bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
+                    exec: () => { $('#valbtn').click() }
+                  }]} />
               </dd>
             </dl>
           </div>
@@ -279,16 +305,21 @@ class App extends React.Component {
                     width="650px" height="350px" value={this.state.tactics}
                   showPrintMargin={this.showPrintMargin}
                     onChange={(val) => this.setState({ tactics: val })}
-                    wrapEnabled={true} />
+                    wrapEnabled={true}
+                    commands={[{
+                      name: 'validate',
+                      bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
+                      exec: () => { $('#valbtn').click() }
+                    }]} />
               </dd>
-              <input type="submit" value="Validate" />
+              <input type="submit" value="Validate" id="valbtn"/>
               <input type="checkbox" id="debug" onClick={this.handleClick} />
               <label>debug mode</label>
             </dl>
             <dl className={styles.resultDl}><dt><h4>Result</h4></dt>
-              <dd><textarea cols="73" rows="20" name="result"
+              <dd><textarea cols="73" rows="20" name="result" readOnly
                             style={this.textareaStyle}
-                            value={this.state.result} readOnly />
+                            value={this.state.result} style={this.state.resStyle} />
               </dd>
             </dl>
           </div>

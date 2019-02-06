@@ -43,12 +43,14 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir, debug):
         import traceback; traceback.print_exc()
       err = True
       str_result = 'Error'
+      retcode = -1
   except:
     if app.debug:
       import traceback; traceback.print_exc()
     err = True
     str_result = 'Error'
-  return err, str_result
+    retcode = -1
+  return err, str_result, retcode
 
 @app.route('/', methods=['GET'])
 def index():
@@ -114,15 +116,11 @@ def run():
   s = obj['safety']
   c = obj['current_dir']
   d = obj['debug']
-  err, res = verify(m, t, i, s, c, d)
+  err, res, code = verify(m, t, i, s, c, d)
   http_code = 500 if err else 200
   return jsonify({
-      'xml_model': m
-    , 'tactics': t
-    , 'initial': i
-    , 'safety': s
-    , 'current_dir': c
-    , 'status': 'error' if err else 'ok'
+      'status': 'error' if err else 'ok'
+    , 'retcode': code
     , 'result': res
     }), http_code
 

@@ -6,3 +6,56 @@ header {
 body {
   color: #24292e;
 }
+
+.containerStyle {
+  width: 980px;
+  margin: 0 auto;
+}
+
+.descContainrStyle {
+  overflow: hidden;
+}
+
+.headingStyle {
+  float: left;
+}
+
+.descStyle {
+  height: 33px;
+  margin-left: 15px;
+  margin-bottom: 8px;
+  color: #586069;
+  font-size: 16px;
+  font-style: italic;
+  line-height: 34px;
+}
+
+.listGroupStyle {
+  border: #dfe2e5;
+}
+
+.listGroupItemStyle {
+  padding: 6px 10px;
+}
+
+.aStyle {
+  color: #0366d6;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.breadcrumbListContainerStyle {
+  overflow: hidden;
+  height: 43px;
+  padding: 10px;
+  margin-bottom: -1px;
+  background-color: #f1f8ff;
+  border: 1px solid #c8e1ff;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
+.breadcrumbListStyle {
+  float: left;
+  font-size: 13px;
+}
