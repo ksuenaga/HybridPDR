@@ -1,3 +1,9 @@
+h4 {
+  margin-bottom: 0.5rem;
+  color: #24292e;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
 dl {
   margin-left: 50px;
 }

@@ -8,7 +8,7 @@ import mousetrap from 'mousetrap';
 import 'brace/mode/xml';
 import 'brace/mode/scheme';
 import 'brace/mode/plain_text';
-import 'brace/theme/github';
+import '../theme/github';
 
 import styles from '../css/app.css';
 
@@ -148,6 +148,10 @@ class App extends React.Component {
       , result: ""
       , debug: false
     };
+    this.fontSize = 12;
+    this.showPrintMargin = false;
+    this.highlightActiveLine = false;
+    this.textareaStyle = {border: '1px solid #ddd'};
     this.handleLoad = this.handleLoad.bind(this);
     this.handleClick = this.handleClick.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
@@ -233,11 +237,15 @@ class App extends React.Component {
           <div className={styles.DefContainer}>
             <dl>
               <dt>
-                System Definition - file : <span id="fileNameWindow"></span>
+                <h4>
+                Definition - file : <span id="fileNameWindow"></span>
+                </h4>
               </dt>
               <dd>
                 <AceEditor name="xml_model" mode="xml" theme="github"
                   width="650px" height="350px" value={this.state.xml_model}
+                  fontSize={this.fontSize}
+                  showPrintMargin={this.showPrintMargin}
                   onChange={(val) => this.setState({ xml_model: val })}
                   onLoad={(editor) => this.defEditor = editor}
                   readOnly={this.state.readOnly} wrapEnabled={true} />
@@ -245,26 +253,31 @@ class App extends React.Component {
               </dd>
             </dl>
             <dl className={styles.shortEditors}>
-              <dt>Initial Condition</dt>
+              <dt><h4>Initial Condition</h4></dt>
               <dd className={styles.setMarginBtm}>
                 <AceEditor name="initial" mode="plain_text" theme="github"
-                  width="600px" height="50px" value={this.state.initial}
+                  width="600px" height="48px" value={this.state.initial}
+                  showPrintMargin={this.showPrintMargin}
+                  highlightActiveLine={this.highlightActiveLine}
                   onChange={(val) => this.setState({ initial: val })}
                   wrapEnabled={true} />
               </dd>
-              <dt>Safety Condition</dt>
+              <dt><h4>Safety Condition</h4></dt>
               <dd>
                 <AceEditor name="safety" mode="plain_text" theme="github"
-                  width="600px" height="50px" value={this.state.safety}
+                  width="600px" height="48px" value={this.state.safety}
+                  showPrintMargin={this.showPrintMargin}
+                  highlightActiveLine={this.highlightActiveLine}
                   onChange={(val) => this.setState({ safety: val })}
                   wrapEnabled={true} />
               </dd>
             </dl>
           </div>
           <div className={styles.ResultContainer}>
-            <dl><dt>Tactics</dt>
+            <dl><dt><h4>Tactics</h4></dt>
               <dd><AceEditor name="tactics" mode="scheme" theme="github"
                     width="650px" height="350px" value={this.state.tactics}
+                  showPrintMargin={this.showPrintMargin}
                     onChange={(val) => this.setState({ tactics: val })}
                     wrapEnabled={true} />
               </dd>
@@ -272,8 +285,9 @@ class App extends React.Component {
               <input type="checkbox" id="debug" onClick={this.handleClick} />
               <label>debug mode</label>
             </dl>
-            <dl className={styles.resultDl}><dt>Result</dt>
+            <dl className={styles.resultDl}><dt><h4>Result</h4></dt>
               <dd><textarea cols="73" rows="20" name="result"
+                            style={this.textareaStyle}
                             value={this.state.result} readOnly />
               </dd>
             </dl>
