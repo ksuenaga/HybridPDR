@@ -225,6 +225,7 @@ class App extends React.Component {
             xml_model: res.body.result
           });
           this.defEditor.setValue(this.state.xml_model);
+          $('#fileNameWindow').append(this.state.xml_path);
         }
       });
   }
