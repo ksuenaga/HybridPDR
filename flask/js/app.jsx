@@ -158,14 +158,6 @@ class App extends React.Component {
     this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
   }
 
-  componentWillMount() {
-    mousetrap.bind(['command+return', 'ctrl+enter', 'f5'], () => {
-      console.log('shortcut');
-      this.handleSubmit;
-      return false;
-    });
-  }
-
   handleSubmit(event) {
     event.preventDefault();
     request
@@ -239,6 +231,10 @@ class App extends React.Component {
 
   componentDidMount() {
     this.handleLoad();
+    mousetrap.bind(['command+return', 'ctrl+enter', 'f5'], () => {
+      console.log('shortcut');
+      $('#valbtn').click();
+    });
   }
 
   render() {
@@ -283,7 +279,7 @@ class App extends React.Component {
                     onChange={(val) => this.setState({ tactics: val })}
                     wrapEnabled={true} />
               </dd>
-              <input type="submit" value="Validate" />
+              <input type="submit" value="Validate" id="valbtn"/>
               <input type="checkbox" id="debug" onClick={this.handleClick} />
               <label>debug mode</label>
             </dl>
