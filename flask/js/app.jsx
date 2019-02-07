@@ -5,6 +5,7 @@ import AceEditor from 'react-ace';
 import request from 'superagent';
 import mousetrap from 'mousetrap';
 import $ from 'jquery';
+import Button from 'react-bootstrap/Button'
 
 import 'brace/mode/xml';
 import 'brace/mode/scheme';
@@ -155,7 +156,51 @@ class App extends React.Component {
     this.fontSize = 12;
     this.showPrintMargin = false;
     this.highlightActiveLine = false;
-    this.textareaStyle = {border: '1px solid #ddd'};
+    this.textareaStyle = {
+      width: '424px',
+      height: '350px',
+      padding: '0px 4px',
+      border: '1px solid #ddd',
+      borderRadius: '3px',
+      fontFamily: 'SFMono-Regular,Consolas,Liberation Mono,Menlo,Courier,monospace',
+      fontSize: '12px',
+      color: '#000',
+      lineHeight: '14px',
+      resize: 'none',
+    };
+    this.buttonContainerStyle = {
+      overflow: 'hidden',
+    };
+    this.debugStyle = {
+      display: 'flex',
+      alignItems: 'center',
+      float: 'left',
+      marginTop: '10px',
+      marginLeft: '370px',
+      width: '150px',
+      height: '35px',
+    };
+    this.checkboxStyle = {
+      marginRight: '8px',
+    };
+    this.labelStyle = {
+      padding: '.375rem .75rem',
+      marginBottom: '0',
+      fontSize: '14px',
+      fontWeight: '400',
+      lineHeight: '14px',
+    };
+    this.buttonStyle = {
+      float: 'right',
+      marginTop: '10px',
+      width: '80px',
+      height: '35px',
+      backgroundColor: '#28a745',
+      backgroundImage: 'linear-gradient(-180deg,#34d058,#28a745 90%)',
+      fontWeight: '600',
+      fontSize: '14px',
+      lineHeight: '14px',
+    };
     this.handleLoad = this.handleLoad.bind(this);
     this.handleClick = this.handleClick.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
@@ -179,7 +224,7 @@ class App extends React.Component {
           this.setState({
             status: res.body.status,
             retcode: res.body.retcode,
-            result: "ERROR\nretrun code:" + res.body.retcode + "\n" + res.body.result,
+            result: "ERROR\nreturn code:" + res.body.retcode + "\n" + res.body.result,
             resStyle: { color: '#ff0000' }
           });
         } else {
@@ -228,7 +273,7 @@ class App extends React.Component {
           this.setState({
             xml_model: res.body.result
           });
-          this.defEditor.setValue(this.state.xml_model);
+          this.defEditor.setValue(this.state.xml_model, -1);
           $('#fileNameWindow').append(this.state.xml_path);
         }
       });
@@ -245,17 +290,19 @@ class App extends React.Component {
   render() {
     return (
       <div>
-        <form onSubmit={this.handleSubmit}>
+        <header>
+        </header>
+        <form>
           <div className={styles.DefContainer}>
             <dl>
               <dt>
-                <h4>
+                <h5>
                 Definition - file : <span id="fileNameWindow"></span>
-                </h4>
+                </h5>
               </dt>
               <dd>
                 <AceEditor name="xml_model" mode="xml" theme="github"
-                  width="650px" height="350px" value={this.state.xml_model}
+                  width="598px" height="350px" value={this.state.xml_model}
                   fontSize={this.fontSize}
                   showPrintMargin={this.showPrintMargin}
                   onChange={(val) => this.setState({ xml_model: val })}
@@ -265,14 +312,18 @@ class App extends React.Component {
                     bindKey: { win: 'Ctrl-Enter|f5', mac: 'Command-Return|Ctrl-Return|f5' },
                     exec: () => { $('#valbtn').click() }
                   }]} />
-                <input id="saveBtn" type="button" value="Save" onClick={this.handleClickSaveBtn}/>
+                <Button variant="success" onClick={this.handleClickSaveBtn}
+                  style={this.buttonStyle}>
+                  Save
+                </Button>
               </dd>
             </dl>
             <dl className={styles.shortEditors}>
-              <dt><h4>Initial Condition</h4></dt>
+              <dt><h5>Initial Condition</h5></dt>
               <dd className={styles.setMarginBtm}>
                 <AceEditor name="initial" mode="plain_text" theme="github"
-                  width="600px" height="48px" value={this.state.initial}
+                  width="428px" height="48px" value={this.state.initial}
+                  fontSize={this.fontSize}
                   showPrintMargin={this.showPrintMargin}
                   highlightActiveLine={this.highlightActiveLine}
                   onChange={(val) => this.setState({ initial: val })}
@@ -283,10 +334,11 @@ class App extends React.Component {
                     exec: () => { $('#valbtn').click() }
                   }]} />
               </dd>
-              <dt><h4>Safety Condition</h4></dt>
+              <dt><h5>Safety Condition</h5></dt>
               <dd>
                 <AceEditor name="safety" mode="plain_text" theme="github"
-                  width="600px" height="48px" value={this.state.safety}
+                  width="428px" height="48px" value={this.state.safety}
+                  fontSize={this.fontSize}
                   showPrintMargin={this.showPrintMargin}
                   highlightActiveLine={this.highlightActiveLine}
                   onChange={(val) => this.setState({ safety: val })}
@@ -300,10 +352,11 @@ class App extends React.Component {
             </dl>
           </div>
           <div className={styles.ResultContainer}>
-            <dl><dt><h4>Tactics</h4></dt>
+            <dl><dt><h5>Tactics</h5></dt>
               <dd><AceEditor name="tactics" mode="scheme" theme="github"
-                    width="650px" height="350px" value={this.state.tactics}
-                  showPrintMargin={this.showPrintMargin}
+                    width="598px" height="350px" value={this.state.tactics}
+                    fontSize={this.fontSize}
+                    showPrintMargin={this.showPrintMargin}
                     onChange={(val) => this.setState({ tactics: val })}
                     wrapEnabled={true}
                     commands={[{
@@ -312,14 +365,24 @@ class App extends React.Component {
                       exec: () => { $('#valbtn').click() }
                     }]} />
               </dd>
-              <input type="submit" value="Validate" id="valbtn"/>
-              <input type="checkbox" id="debug" onClick={this.handleClick} />
-              <label>debug mode</label>
+              <div style={this.buttonContainerStyle}>
+                <div style={this.debugStyle}>
+                  
+                  <label style={this.labelStyle}>
+                    <input type="checkbox" id="debug" onClick={this.handleClick}
+                      style={this.checkboxStyle}/>
+                    debug mode
+                  </label>
+                </div>
+                <Button id="valbtn" variant="success" style={this.buttonStyle} onClick={this.handleSubmit}>
+                  Validate
+                </Button>
+              </div>
             </dl>
-            <dl className={styles.resultDl}><dt><h4>Result</h4></dt>
-              <dd><textarea cols="73" rows="20" name="result" readOnly
+            <dl className={styles.resultDl}><dt><h5>Result</h5></dt>
+              <dd><textarea name="result" readOnly
                             style={this.textareaStyle}
-                            value={this.state.result} style={this.state.resStyle} />
+                            value={this.state.result} />
               </dd>
             </dl>
           </div>

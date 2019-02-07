@@ -12,6 +12,7 @@ border: 1px solid #ddd;\
 border-radius: 3px;\
 background: #fff;\
 color: #000;\
+font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,Courier,monospace;\
 font-size: 12px;\
 }\
 .ace-github .ace_keyword {\

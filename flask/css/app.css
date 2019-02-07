@@ -1,25 +1,35 @@
-h4 {
+body {
+  color: #24292e;
+}
+
+header {
+  height: 40px;
+  border-bottom: 1px;
+}
+
+h5 {
   margin-bottom: 0.5rem;
   color: #24292e;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 dl {
-  margin-left: 50px;
+  float: left;
 }
 
 dd {
   margin-left: 0;
+  margin-bottom: 0;
 }
 
 .DefContainer {
-  display: flex;
-  justify-content: center;
+  width: 1080px;
+  overflow: hidden;
+  margin: 0 auto;
   margin-bottom: 15px;
 }
 
 .shortEditors {
-  margin-right: 50px;
+  margin-left: 50px;
 }
 
 .setMarginBtm {
@@ -27,11 +37,12 @@ dd {
 }
 
 .ResultContainer {
-  display: flex;
-  justify-content: center;
+  width: 1080px;
+  overflow: hidden;
+  margin: 0 auto;
   margin-bottom: 50px;
 }
 
 .resultDl {
-  margin-right: 50px;
+  margin-left: 50px;
 }
