@@ -86,3 +86,28 @@ a:not([href]):not([tabindex]).delete:hover {
   float: left;
   font-size: 13px;
 }
+
+.modalStyle {
+  position: absolute;
+  top: 80px;
+  left: 120px;
+  right: 120px;
+  bottom: 400px;
+  border: 1px solid #ccc;
+  background: #fff;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+  outline: none;
+  padding: 20px;
+  margin: 0 auto;
+}
+
+.modalOverlayStyle {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cccccc;
+}

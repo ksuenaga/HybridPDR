@@ -7,14 +7,24 @@ import Modal from 'react-modal';
 
 import styles from '../css/index.css'
 
+
 Modal.setAppElement('#dirPage');
 
 class Explorer extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {items: [], path: "/"};
+    this.state = {
+        items: []
+      , path: "/"
+      , modalIsOpen: false
+      , renameVal: "rename.txt"
+    };
     this.handleClick = this.handleClick.bind(this);
     this.handleLoad = this.handleLoad.bind(this);
+    this.handleRenameFile = this.handleRenameFile.bind(this);
+    this.openModal = this.openModal.bind(this);
+    this.afterOpenModal = this.afterOpenModal.bind(this);
+    this.closeModal = this.closeModal.bind(this);
   }
 
   componentDidMount() {
@@ -60,6 +70,22 @@ class Explorer extends React.Component {
       });
   }
 
+  handleRenameFile() {
+    console.log('none');
+  }
+
+  openModal() {
+    this.setState({ modalIsOpen: true });
+  }
+
+  afterOpenModal() {
+    console.log('open modal');
+  }
+
+  closeModal() {
+    this.setState({ modalIsOpen: false });
+  }
+
   render() {
     return (
       <div>
@@ -72,7 +98,21 @@ class Explorer extends React.Component {
           </div>
           <BreadcrumbList path={this.state.path} />
           <div>
-            <FileList items={this.state.items} clickFile={this.handleClick} />
+            <FileList items={this.state.items} clickFile={this.handleClick} rename={this.openModal}/>
+            <Modal contentLabel="rename modal"
+              className={styles.modalStyle} overlayClassName={this.modalOverlayStyle}
+              isOpen={this.state.modalIsOpen}
+              onAfterOpen={this.afterOpenModal}
+              onRequestClose={this.closeModal} >
+              <div>
+                <p>rename file</p>
+                <button onClick={this.closeModal}>close</button>
+              </div>
+              <form onSubmit={this.handleRenameFile}>
+                <input type="text" value={this.state.renameVal} onChange={(e) => this.setState({ renameVal: e.target.value })} />
+                <input type="submit" value="rename" />
+              </form>
+            </Modal>
           </div>
         </div>
       </div>
@@ -89,7 +129,7 @@ class FileList extends React.Component {
           <ListGroup.Item key={item.id} className={styles.listGroupItemStyle}>
             <a className={item.type+' '+styles.aStyle} onClick={this.props.clickFile}>{item.text}</a>
             <div className={styles.rdBox}>
-              <a className={styles.rename}>Rename</a>
+              <a className={styles.rename} onClick={this.props.rename}>Rename</a>
               <a className={styles.delete}>Delete</a>
             </div>
           </ListGroup.Item>
@@ -99,7 +139,8 @@ class FileList extends React.Component {
   }
 }
 FileList.propTypes = {
-  clickFile: PropTypes.func
+  clickFile: PropTypes.func,
+  rename: PropTypes.func
 };
 
 
