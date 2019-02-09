@@ -1,10 +1,13 @@
 import React from 'react';
 import { render } from 'react-dom';
+import PropTypes from 'prop-types';
 import request from 'superagent';
 import ListGroup from 'react-bootstrap/ListGroup'
+import Modal from 'react-modal';
 
 import styles from '../css/index.css'
 
+Modal.setAppElement('#dirPage');
 
 class Explorer extends React.Component {
   constructor(props) {
@@ -68,8 +71,8 @@ class Explorer extends React.Component {
             <em className={styles.descStyle}>Select a definition file of a hybrid system.</em>
           </div>
           <BreadcrumbList path={this.state.path} />
-          <div onClick={this.handleClick}>
-            <FileList items={this.state.items} />
+          <div>
+            <FileList items={this.state.items} clickFile={this.handleClick} />
           </div>
         </div>
       </div>
@@ -84,13 +87,20 @@ class FileList extends React.Component {
       <ListGroup className={styles.listGroupStyle}>
         {this.props.items.map(item => (
           <ListGroup.Item key={item.id} className={styles.listGroupItemStyle}>
-            <a className={item.type+' '+styles.aStyle}>{item.text}</a>
+            <a className={item.type+' '+styles.aStyle} onClick={this.props.clickFile}>{item.text}</a>
+            <div className={styles.rdBox}>
+              <a className={styles.rename}>Rename</a>
+              <a className={styles.delete}>Delete</a>
+            </div>
           </ListGroup.Item>
         ))}
       </ListGroup>
     );
   }
 }
+FileList.propTypes = {
+  clickFile: PropTypes.func
+};
 
 
 class BreadcrumbList extends React.Component {

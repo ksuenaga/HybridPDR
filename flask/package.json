@@ -21,10 +21,12 @@
     "less": "^3.0.0",
     "less-loader": "",
     "mousetrap": "^1.6.2",
+    "prop-types": "^15.6.2",
     "react": "^16.7.0",
     "react-ace": "^6.3.2",
     "react-bootstrap": "",
     "react-dom": "^16.7.0",
+    "react-modal": "^3.8.1",
     "style-loader": "",
     "superagent": "^4.1.0"
   }

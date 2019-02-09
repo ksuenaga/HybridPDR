@@ -38,10 +38,37 @@ body {
   padding: 6px 10px;
 }
 
-.aStyle {
+a:not([href]):not([tabindex]).aStyle {
   color: #0366d6;
   font-size: 14px;
   cursor: pointer;
+}
+
+.rdBox {
+  float: right;
+}
+
+a:not([href]):not([tabindex]).rename {
+  margin-right: 14px;
+  color: #a0d8ef;
+  font-size: 14px;
+  cursor: pointer;
+  float: left;
+}
+
+a:not([href]):not([tabindex]).rename:hover {
+  color: #60c7f0;
+}
+
+a:not([href]):not([tabindex]).delete {
+  color: #a0d8ef;
+  font-size: 14px;
+  cursor: pointer;
+  float: left;
+}
+
+a:not([href]):not([tabindex]).delete:hover {
+  color: #60c7f0;
 }
 
 .breadcrumbListContainerStyle {
