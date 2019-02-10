@@ -142,6 +142,7 @@ class Explorer extends React.Component {
           alert('delete error');
         } else {
           console.log('delete succeed');
+          $('#cancelBtn').click();
         }
       });
   }
@@ -265,7 +266,7 @@ class Explorer extends React.Component {
                 <Button variant="warning" onClick={this.handleDeleteFile}>
                   delete
                 </Button>
-                <Button variant="light" onClick={this.handleCloseDeleteModal}>
+                <Button id="cancelBtn" variant="light" onClick={this.handleCloseDeleteModal}>
                   cancel
                 </Button>
               </Modal.Footer>
