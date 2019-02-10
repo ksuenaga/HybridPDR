@@ -156,51 +156,6 @@ class App extends React.Component {
     this.fontSize = 12;
     this.showPrintMargin = false;
     this.highlightActiveLine = false;
-    this.textareaStyle = {
-      width: '424px',
-      height: '350px',
-      padding: '0px 4px',
-      border: '1px solid #ddd',
-      borderRadius: '3px',
-      fontFamily: 'SFMono-Regular,Consolas,Liberation Mono,Menlo,Courier,monospace',
-      fontSize: '12px',
-      color: '#000',
-      lineHeight: '14px',
-      resize: 'none',
-    };
-    this.buttonContainerStyle = {
-      overflow: 'hidden',
-    };
-    this.debugStyle = {
-      display: 'flex',
-      alignItems: 'center',
-      float: 'left',
-      marginTop: '10px',
-      marginLeft: '370px',
-      width: '150px',
-      height: '35px',
-    };
-    this.checkboxStyle = {
-      marginRight: '8px',
-    };
-    this.labelStyle = {
-      padding: '.375rem .75rem',
-      marginBottom: '0',
-      fontSize: '14px',
-      fontWeight: '400',
-      lineHeight: '14px',
-    };
-    this.buttonStyle = {
-      float: 'right',
-      marginTop: '10px',
-      width: '80px',
-      height: '35px',
-      backgroundColor: '#28a745',
-      backgroundImage: 'linear-gradient(-180deg,#34d058,#28a745 90%)',
-      fontWeight: '600',
-      fontSize: '14px',
-      lineHeight: '14px',
-    };
     this.handleLoad = this.handleLoad.bind(this);
     this.handleClick = this.handleClick.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
@@ -313,7 +268,7 @@ class App extends React.Component {
                     exec: () => { $('#valbtn').click() }
                   }]} />
                 <Button variant="success" onClick={this.handleClickSaveBtn}
-                  style={this.buttonStyle}>
+                  className={styles.buttonStyle}>
                   Save
                 </Button>
               </dd>
@@ -365,23 +320,24 @@ class App extends React.Component {
                       exec: () => { $('#valbtn').click() }
                     }]} />
               </dd>
-              <div style={this.buttonContainerStyle}>
-                <div style={this.debugStyle}>
-                  
-                  <label style={this.labelStyle}>
+              <div className={styles.buttonContainerStyle}>
+                <div className={styles.debugStyle}>
+
+                  <label className={styles.labelStyle}>
                     <input type="checkbox" id="debug" onClick={this.handleClick}
-                      style={this.checkboxStyle}/>
+                      className={styles.checkboxStyle}/>
                     debug mode
                   </label>
                 </div>
-                <Button id="valbtn" variant="success" style={this.buttonStyle} onClick={this.handleSubmit}>
+                <Button id="valbtn" variant="success" className={styles.buttonStyle} onClick={this.handleSubmit}>
                   Validate
                 </Button>
               </div>
             </dl>
             <dl className={styles.resultDl}><dt><h5>Result</h5></dt>
               <dd><textarea name="result" readOnly
-                            style={this.textareaStyle}
+                            className={styles.textareaStyle}
+                            style={this.state.resStyle}
                             value={this.state.result} />
               </dd>
             </dl>
