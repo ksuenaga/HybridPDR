@@ -191,6 +191,7 @@ class Explorer extends React.Component {
     this.setState({
         showCreateModal: true
       , crudPath: this.state.path.slice(1)
+      , createVal: ""
     });
   }
 
