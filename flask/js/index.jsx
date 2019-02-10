@@ -17,7 +17,8 @@ class Explorer extends React.Component {
         items: []
       , path: "/"
       , modalIsOpen: false
-      , renameVal: "rename.txt"
+      , renameVal: ""
+      , crudPath: ""
     };
     this.handleClick = this.handleClick.bind(this);
     this.handleLoad = this.handleLoad.bind(this);
@@ -72,15 +73,35 @@ class Explorer extends React.Component {
 
   handleRenameFile(e) {
     e.preventDefault();
-    console.log('none');
+    if (this.state.renameVal !== this.state.crudPath) {
+      request
+        .post('/rename')
+        .send({
+          newname: this.state.renameVal,
+          oldname: this.state.crudPath
+        })
+        .end((err, res) => {
+          if (err) {
+            alert('rename error');
+          } else {
+            console.log('rename succeed');
+          }
+        });
+    }
   }
 
   openModal(e) {
     var fname = e.target.parentNode.previousSibling.textContent;
     if (this.state.path === "/") {
-      this.setState({ renameVal: fname});
+      this.setState({
+          renameVal: fname
+        , crudPath: fname
+      });
     } else {
-      this.setState({ renameVal: this.state.path.slice(1) + fname });
+      this.setState({
+          renameVal: this.state.path.slice(1) + fname
+        , crudPath: this.state.path.slice(1) + fname
+      });
     }
 
     this.setState({ modalIsOpen: true });
@@ -92,6 +113,7 @@ class Explorer extends React.Component {
 
   closeModal() {
     this.setState({ modalIsOpen: false });
+    this.move();
   }
 
   render() {

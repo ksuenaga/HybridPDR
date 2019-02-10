@@ -3,7 +3,7 @@
 from flask import Flask
 from flask import flash, redirect, render_template, request, url_for
 from flask import json, jsonify
-import os, sys
+import os, sys, shutil
 from subprocess import PIPE, Popen, STDOUT, TimeoutExpired
 import tempfile
 
@@ -60,17 +60,6 @@ def index():
 def project(file_path):
   return render_template('app.html', selectedFilePath=file_path)
 
-@app.route('/loadapp', methods=['POST'])
-def load_app():
-  obj = request.json
-  xml_path = obj['path']
-  selected_xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml_path)
-  with open(selected_xml_dir) as f:
-    str = f.read()
-  return jsonify({
-    'result': str
-  })
-
 @app.route('/ls/<path:subpath>', methods=['GET'])
 def ls(subpath):
   base_path = os.path.join(app.config['DATA_DIR_PATH'], subpath)
@@ -94,6 +83,32 @@ def ls(subpath):
 @app.route('/ls', methods=['GET'])
 def ls_root():
   return ls('')
+
+@app.route('/rename', methods=['POST'])
+def rename():
+  obj = request.json
+  newname = obj['newname']
+  oldname = obj['oldname']
+  newname_dir = os.path.split(newname)[0]
+  oldname_dir = os.path.split(oldname)[0]
+  newpath = os.path.join(app.config['DATA_DIR_PATH'], newname)
+  oldpath = os.path.join(app.config['DATA_DIR_PATH'], oldname)
+  if newname_dir == oldname_dir:
+    os.rename(oldpath, newpath)
+  else:
+    shutil.move(oldpath, newpath)
+  return ''
+
+@app.route('/loadapp', methods=['POST'])
+def load_app():
+  obj = request.json
+  xml_path = obj['path']
+  selected_xml_dir = os.path.join(app.config['DATA_DIR_PATH'], xml_path)
+  with open(selected_xml_dir) as f:
+    str = f.read()
+  return jsonify({
+    'result': str
+  })
 
 @app.route('/save', methods=['POST'])
 def save():
