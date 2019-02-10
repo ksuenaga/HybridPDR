@@ -2,12 +2,13 @@ import React from 'react';
 import { render } from 'react-dom';
 import PropTypes from 'prop-types';
 import request from 'superagent';
+import $ from 'jquery';
 import ListGroup from 'react-bootstrap/ListGroup';
 import InputGroup from 'react-bootstrap/InputGroup';
-import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import FormControl from 'react-bootstrap/FormControl';
+import FormCheck from 'react-bootstrap/FormCheck';
 
 import styles from '../css/index.css'
 
@@ -20,18 +21,25 @@ class Explorer extends React.Component {
       , path: "/"
       , showRenameModal: false
       , showDeleteModal: false
+      , showCreateModal: false
+      , createVal: ""
       , renameVal: ""
       , crudPath: ""
+      , radioChecked: 0
     };
     this.handleClick = this.handleClick.bind(this);
     this.handleLoad = this.handleLoad.bind(this);
     this.handleRenameFile = this.handleRenameFile.bind(this);
     this.handleDeleteFile = this.handleDeleteFile.bind(this);
+    this.handleCreateFile = this.handleCreateFile.bind(this);
     this.handleChangeTxtArea = this.handleChangeTxtArea.bind(this);
+    this.handleChangeRadio = this.handleChangeRadio.bind(this);
     this.handleShowRenameModal = this.handleShowRenameModal.bind(this);
     this.handleCloseRenameModal = this.handleCloseRenameModal.bind(this);
     this.handleShowDeleteModal = this.handleShowDeleteModal.bind(this);
     this.handleCloseDeleteModal = this.handleCloseDeleteModal.bind(this);
+    this.handleShowCreateModal = this.handleShowCreateModal.bind(this);
+    this.handleCloseCreateModal = this.handleCloseCreateModal.bind(this);
   }
 
   componentDidMount() {
@@ -154,6 +162,43 @@ class Explorer extends React.Component {
     this.move();
   }
 
+  handleCreateFile(e) {
+    e.preventDefault();
+    request
+      .post('/create')
+      .send({
+        createfile: this.state.crudPath + this.state.createVal,
+        f_or_d: this.state.radioChecked
+      })
+      .end((err, res) => {
+        if (err) {
+          alert('create error');
+        } else {
+          console.log('create succeed');
+        }
+      });
+  }
+
+  handleChangeRadio() {
+    if (this.state.radioChecked === 0) {
+      this.setState({ radioChecked: 1 });
+    } else {
+      this.setState({ radioChecked: 0 });
+    }
+  }
+
+  handleShowCreateModal() {
+    this.setState({
+        showCreateModal: true
+      , crudPath: this.state.path.slice(1)
+    });
+  }
+
+  handleCloseCreateModal() {
+    this.setState({ showCreateModal: false });
+    this.move();
+  }
+
   render() {
     return (
       <div>
@@ -164,7 +209,29 @@ class Explorer extends React.Component {
             <h3 className={styles.headingStyle}>HybridPDR</h3>
             <em className={styles.descStyle}>Select a definition file of a hybrid system.</em>
           </div>
-          <BreadcrumbList path={this.state.path} />
+          <BreadcrumbList path={this.state.path} create={this.handleShowCreateModal}/>
+          <Modal show={this.state.showCreateModal} onHide={this.handleCloseCreateModal}>
+            <Modal.Header closeButton>
+              <Modal.Title>Create File</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <div key="radio" className="mb-3">
+                <FormCheck inline label="file" type="radio" name="formHorizontalRadios" value="file" checked={this.state.radioChecked === 0 ? true : false} onChange={this.handleChangeRadio}/>
+                <FormCheck inline label="directory" type="radio" name="formHorizontalRadios" value="directory" checked={this.state.radioChecked === 1 ? true : false} onChange={this.handleChangeRadio} />
+              </div>
+              <InputGroup className="mb-3">
+                <InputGroup.Prepend>
+                  <InputGroup.Text>{this.state.crudPath}</InputGroup.Text>
+                </InputGroup.Prepend>
+                <FormControl type="text" placeholder="New File or Directory" value={this.state.createVal} onChange={(e) => this.setState({ createVal: e.target.value })}/>
+                <InputGroup.Append>
+                  <Button variant="success" onClick={this.handleCreateFile}>
+                    create
+                  </Button>
+                </InputGroup.Append>
+              </InputGroup>
+            </Modal.Body>
+          </Modal>
           <div>
             <FileList items={this.state.items} clickFile={this.handleClick} rename={this.handleShowRenameModal} delete={this.handleShowDeleteModal}/>
             {/*
@@ -175,16 +242,14 @@ class Explorer extends React.Component {
                 <Modal.Title>Rename File</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                <Form>
-                  <InputGroup className="mb-3">
-                    <Form.Control type="text" value={this.state.renameVal} onChange={(e) => this.setState({ renameVal: e.target.value })}/>
-                    <InputGroup.Append>
-                      <Button variant="info" onClick={this.handleRenameFile}>
-                        rename
-                      </Button>
-                    </InputGroup.Append>
-                  </InputGroup>
-                </Form>
+                <InputGroup className="mb-3">
+                  <FormControl type="text" value={this.state.renameVal} onChange={(e) => this.setState({ renameVal: e.target.value })}/>
+                  <InputGroup.Append>
+                    <Button variant="info" onClick={this.handleRenameFile}>
+                      rename
+                    </Button>
+                  </InputGroup.Append>
+                </InputGroup>
               </Modal.Body>
             </Modal>
             <Modal show={this.state.showDeleteModal} onHide={this.handleCloseDeleteModal}>
@@ -253,10 +318,16 @@ class BreadcrumbList extends React.Component {
             <span onClick={this.handleClick}>/{item}</span>
           </div>
         ))}
+        <div className={styles.newDiv}>
+          <a className={styles.new} onClick={this.props.create}>new</a>
+        </div>
       </div>
     );
   }
 }
+BreadcrumbList.propTypes = {
+  create: PropTypes.func
+};
 
 /*
 class RenameModal extends React.Component {

@@ -87,6 +87,21 @@ a:not([href]):not([tabindex]).delete:hover {
   font-size: 13px;
 }
 
+.newDiv {
+  float: right;
+  margin-right: 15px;
+}
+
+a:not([href]):not([tabindex]).new {
+  color: #a0d8ef;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+a:not([href]):not([tabindex]).new:hover {
+  color: #60c7f0;
+}
+
 .modalStyle {
   position: absolute;
   top: 80px;

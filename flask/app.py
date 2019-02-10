@@ -84,6 +84,19 @@ def ls(subpath):
 def ls_root():
   return ls('')
 
+@app.route('/create', methods=['POST'])
+def create():
+  obj = request.json
+  createname = obj['createfile']
+  f_or_d = obj['f_or_d']
+  createpath = os.path.join(app.config['DATA_DIR_PATH'], createname)
+  if f_or_d == 1:
+    os.mkdir(createpath)
+  elif f_or_d == 0:
+    f = open(createpath, 'w')
+    f.close()
+  return ''
+
 @app.route('/rename', methods=['POST'])
 def rename():
   obj = request.json
