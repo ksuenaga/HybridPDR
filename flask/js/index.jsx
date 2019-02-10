@@ -6,12 +6,10 @@ import ListGroup from 'react-bootstrap/ListGroup'
 import InputGroup from 'react-bootstrap/InputGroup'
 import Form from 'react-bootstrap/Form'
 import Button from 'react-bootstrap/Button'
-import Modal from 'react-modal'
+import Modal from 'react-bootstrap/Modal'
 
 import styles from '../css/index.css'
 
-
-Modal.setAppElement('#dirPage');
 
 class Explorer extends React.Component {
   constructor(props) {
@@ -19,16 +17,16 @@ class Explorer extends React.Component {
     this.state = {
         items: []
       , path: "/"
-      , modalIsOpen: false
-      , renameVal: ""
+      , showModal: false
+      , renameVal: "rename.txt"
       , crudPath: ""
     };
     this.handleClick = this.handleClick.bind(this);
     this.handleLoad = this.handleLoad.bind(this);
     this.handleRenameFile = this.handleRenameFile.bind(this);
-    this.openModal = this.openModal.bind(this);
-    this.afterOpenModal = this.afterOpenModal.bind(this);
-    this.closeModal = this.closeModal.bind(this);
+    this.handleChangeTxtArea = this.handleChangeTxtArea.bind(this);
+    this.handleShowModal = this.handleShowModal.bind(this);
+    this.handleCloseModal = this.handleCloseModal.bind(this);
   }
 
   componentDidMount() {
@@ -93,7 +91,11 @@ class Explorer extends React.Component {
     }
   }
 
-  openModal(e) {
+  handleChangeTxtArea(val) {
+    this.setState({ renameVal: val });
+  }
+
+  handleShowModal(e) {
     var fname = e.target.parentNode.previousSibling.textContent;
     if (this.state.path === "/") {
       this.setState({
@@ -107,15 +109,11 @@ class Explorer extends React.Component {
       });
     }
 
-    this.setState({ modalIsOpen: true });
+    this.setState({ showModal: true });
   }
 
-  afterOpenModal() {
-    console.log('open modal');
-  }
-
-  closeModal() {
-    this.setState({ modalIsOpen: false });
+  handleCloseModal() {
+    this.setState({ showModal: false });
     this.move();
   }
 
@@ -131,24 +129,26 @@ class Explorer extends React.Component {
           </div>
           <BreadcrumbList path={this.state.path} />
           <div>
-            <FileList items={this.state.items} clickFile={this.handleClick} rename={this.openModal}/>
-            <Modal contentLabel="rename modal"
-              className={styles.modalStyle} overlayClassName={this.modalOverlayStyle}
-              isOpen={this.state.modalIsOpen}
-              onAfterOpen={this.afterOpenModal}
-              onRequestClose={this.closeModal} >
-              <input type="button" className={'fas '+styles.closeBtn} value="&#xf00d;" onClick={this.closeModal} />
-              <Form>
-                <Form.Label>rename file</Form.Label>
-                <InputGroup className="mb-3">
-                  <Form.Control type="text" value={this.state.renameVal} onChange={(val) => this.setState({ renameVal: val })}/>
-                  <InputGroup.Append>
-                    <Button variant="info" onClick={this.handleRenameFile}>
-                      rename
-                    </Button>
-                  </InputGroup.Append>
-                </InputGroup>
-              </Form>
+            <FileList items={this.state.items} clickFile={this.handleClick} rename={this.handleShowModal}/>
+            {/*
+            <RenameModal show={this.state.showModal} onHide={this.handleCloseModal} renamefile={this.handleRenameFile} changetxt={this.handleChangeTxtArea} />
+            */}
+            <Modal show={this.state.showModal} onHide={this.handleCloseModal}>
+              <Modal.Header closeButton>
+                <Modal.Title>Rename File</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <Form>
+                  <InputGroup className="mb-3">
+                    <Form.Control type="text" value={this.state.renameVal} onChange={(e) => this.setState({ renameVal: e.target.value })}/>
+                    <InputGroup.Append>
+                      <Button variant="info" onClick={this.handleRenameFile}>
+                        rename
+                      </Button>
+                    </InputGroup.Append>
+                  </InputGroup>
+                </Form>
+              </Modal.Body>
             </Modal>
           </div>
         </div>
@@ -202,5 +202,35 @@ class BreadcrumbList extends React.Component {
     );
   }
 }
+
+/*
+class RenameModal extends React.Component {
+  render() {
+    return (
+      <Modal {...this.props} size="lg" aria-labelledby="contained-modal-title-vcenter" centered renameval={this.props.renameVal}>
+        <Modal.Header closeButton>
+          <Modal.Title id="contained-modal-title-vcenter">Rename File</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <InputGroup className="mb-3">
+              <Form.Control type="text" value={renameval} onChange={this.props.changetxt}/>
+              <InputGroup.Append>
+                <Button variant="info" onClick={this.props.renamefile}>
+                  rename
+                </Button>
+              </InputGroup.Append>
+            </InputGroup>
+          </Form>
+        </Modal.Body>
+      </Modal>
+    );
+  }
+}
+RenameModal.propTypes = {
+  renamefile: PropTypes.func,
+  changetxt: PropTypes.func
+};
+*/
 
 render(<Explorer />, document.getElementById('dirPage'));
