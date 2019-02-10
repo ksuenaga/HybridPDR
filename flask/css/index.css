@@ -111,3 +111,11 @@ a:not([href]):not([tabindex]).delete:hover {
   bottom: 0;
   background-color: #cccccc;
 }
+
+.closeBtn {
+  float: right;
+}
+
+.renameBox {
+  width: 400px;
+}

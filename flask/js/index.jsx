@@ -3,6 +3,9 @@ import { render } from 'react-dom'
 import PropTypes from 'prop-types'
 import request from 'superagent'
 import ListGroup from 'react-bootstrap/ListGroup'
+import InputGroup from 'react-bootstrap/InputGroup'
+import Form from 'react-bootstrap/Form'
+import Button from 'react-bootstrap/Button'
 import Modal from 'react-modal'
 
 import styles from '../css/index.css'
@@ -134,14 +137,18 @@ class Explorer extends React.Component {
               isOpen={this.state.modalIsOpen}
               onAfterOpen={this.afterOpenModal}
               onRequestClose={this.closeModal} >
-              <div>
-                <p>rename file</p>
-                <button onClick={this.closeModal}>close</button>
-              </div>
-              <form onSubmit={this.handleRenameFile}>
-                <input type="text" value={this.state.renameVal} onChange={(e) => this.setState({ renameVal: e.target.value })} />
-                <input type="submit" value="rename" />
-              </form>
+              <input type="button" className={'fas '+styles.closeBtn} value="&#xf00d;" onClick={this.closeModal} />
+              <Form>
+                <Form.Label>rename file</Form.Label>
+                <InputGroup className="mb-3">
+                  <Form.Control type="text" value={this.state.renameVal} onChange={(val) => this.setState({ renameVal: val })}/>
+                  <InputGroup.Append>
+                    <Button variant="info" onClick={this.handleRenameFile}>
+                      rename
+                    </Button>
+                  </InputGroup.Append>
+                </InputGroup>
+              </Form>
             </Modal>
           </div>
         </div>
