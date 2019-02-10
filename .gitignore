@@ -260,4 +260,3 @@ setup.log
 
 # ignore data
 data/*
-!sample.xml
