@@ -1,12 +1,13 @@
-import React from 'react'
-import { render } from 'react-dom'
-import PropTypes from 'prop-types'
-import request from 'superagent'
-import ListGroup from 'react-bootstrap/ListGroup'
-import InputGroup from 'react-bootstrap/InputGroup'
-import Form from 'react-bootstrap/Form'
-import Button from 'react-bootstrap/Button'
-import Modal from 'react-bootstrap/Modal'
+import React from 'react';
+import { render } from 'react-dom';
+import PropTypes from 'prop-types';
+import request from 'superagent';
+import ListGroup from 'react-bootstrap/ListGroup';
+import InputGroup from 'react-bootstrap/InputGroup';
+import Form from 'react-bootstrap/Form';
+import Button from 'react-bootstrap/Button';
+import Modal from 'react-bootstrap/Modal';
+import FormControl from 'react-bootstrap/FormControl';
 
 import styles from '../css/index.css'
 
@@ -191,7 +192,8 @@ class Explorer extends React.Component {
                 <Modal.Title>Delete File</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                <p>Are you OK to delete this file</p>
+                <p>Are you sure to delete this file or directory?</p>
+                <FormControl type="text" value={this.state.crudPath} readOnly />
               </Modal.Body>
               <Modal.Footer>
                 <Button variant="warning" onClick={this.handleDeleteFile}>
