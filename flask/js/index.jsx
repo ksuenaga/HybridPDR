@@ -32,7 +32,6 @@ class Explorer extends React.Component {
     this.handleRenameFile = this.handleRenameFile.bind(this);
     this.handleDeleteFile = this.handleDeleteFile.bind(this);
     this.handleCreateFile = this.handleCreateFile.bind(this);
-    this.handleChangeTxtArea = this.handleChangeTxtArea.bind(this);
     this.handleChangeRadio = this.handleChangeRadio.bind(this);
     this.handleShowRenameModal = this.handleShowRenameModal.bind(this);
     this.handleCloseRenameModal = this.handleCloseRenameModal.bind(this);
@@ -102,10 +101,6 @@ class Explorer extends React.Component {
           }
         });
     }
-  }
-
-  handleChangeTxtArea(val) {
-    this.setState({ renameVal: val });
   }
 
   handleShowRenameModal(e) {
@@ -236,9 +231,6 @@ class Explorer extends React.Component {
           </Modal>
           <div>
             <FileList items={this.state.items} clickFile={this.handleClick} rename={this.handleShowRenameModal} delete={this.handleShowDeleteModal}/>
-            {/*
-            <RenameModal show={this.state.showRenameModal} onHide={this.handleCloseRenameModal} renamefile={this.handleRenameFile} changetxt={this.handleChangeTxtArea} />
-            */}
             <Modal show={this.state.showRenameModal} onHide={this.handleCloseRenameModal}>
               <Modal.Header closeButton>
                 <Modal.Title>Rename File</Modal.Title>
@@ -330,35 +322,5 @@ class BreadcrumbList extends React.Component {
 BreadcrumbList.propTypes = {
   create: PropTypes.func
 };
-
-/*
-class RenameModal extends React.Component {
-  render() {
-    return (
-      <Modal {...this.props} size="lg" aria-labelledby="contained-modal-title-vcenter" centered renameval={this.props.renameVal}>
-        <Modal.Header closeButton>
-          <Modal.Title id="contained-modal-title-vcenter">Rename File</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <InputGroup className="mb-3">
-              <Form.Control type="text" value={renameval} onChange={this.props.changetxt}/>
-              <InputGroup.Append>
-                <Button variant="info" onClick={this.props.renamefile}>
-                  rename
-                </Button>
-              </InputGroup.Append>
-            </InputGroup>
-          </Form>
-        </Modal.Body>
-      </Modal>
-    );
-  }
-}
-RenameModal.propTypes = {
-  renamefile: PropTypes.func,
-  changetxt: PropTypes.func
-};
-*/
 
 render(<Explorer />, document.getElementById('dirPage'));
