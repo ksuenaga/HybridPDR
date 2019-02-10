@@ -1,9 +1,9 @@
-import React from 'react';
-import { render } from 'react-dom';
-import PropTypes from 'prop-types';
-import request from 'superagent';
+import React from 'react'
+import { render } from 'react-dom'
+import PropTypes from 'prop-types'
+import request from 'superagent'
 import ListGroup from 'react-bootstrap/ListGroup'
-import Modal from 'react-modal';
+import Modal from 'react-modal'
 
 import styles from '../css/index.css'
 
@@ -70,11 +70,19 @@ class Explorer extends React.Component {
       });
   }
 
-  handleRenameFile() {
+  handleRenameFile(e) {
+    e.preventDefault();
     console.log('none');
   }
 
-  openModal() {
+  openModal(e) {
+    var fname = e.target.parentNode.previousSibling.textContent;
+    if (this.state.path === "/") {
+      this.setState({ renameVal: fname});
+    } else {
+      this.setState({ renameVal: this.state.path.slice(1) + fname });
+    }
+
     this.setState({ modalIsOpen: true });
   }
 
