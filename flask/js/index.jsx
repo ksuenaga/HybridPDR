@@ -17,16 +17,20 @@ class Explorer extends React.Component {
     this.state = {
         items: []
       , path: "/"
-      , showModal: false
-      , renameVal: "rename.txt"
+      , showRenameModal: false
+      , showDeleteModal: false
+      , renameVal: ""
       , crudPath: ""
     };
     this.handleClick = this.handleClick.bind(this);
     this.handleLoad = this.handleLoad.bind(this);
     this.handleRenameFile = this.handleRenameFile.bind(this);
+    this.handleDeleteFile = this.handleDeleteFile.bind(this);
     this.handleChangeTxtArea = this.handleChangeTxtArea.bind(this);
-    this.handleShowModal = this.handleShowModal.bind(this);
-    this.handleCloseModal = this.handleCloseModal.bind(this);
+    this.handleShowRenameModal = this.handleShowRenameModal.bind(this);
+    this.handleCloseRenameModal = this.handleCloseRenameModal.bind(this);
+    this.handleShowDeleteModal = this.handleShowDeleteModal.bind(this);
+    this.handleCloseDeleteModal = this.handleCloseDeleteModal.bind(this);
   }
 
   componentDidMount() {
@@ -95,7 +99,7 @@ class Explorer extends React.Component {
     this.setState({ renameVal: val });
   }
 
-  handleShowModal(e) {
+  handleShowRenameModal(e) {
     var fname = e.target.parentNode.previousSibling.textContent;
     if (this.state.path === "/") {
       this.setState({
@@ -109,11 +113,43 @@ class Explorer extends React.Component {
       });
     }
 
-    this.setState({ showModal: true });
+    this.setState({ showRenameModal: true });
   }
 
-  handleCloseModal() {
-    this.setState({ showModal: false });
+  handleCloseRenameModal() {
+    this.setState({ showRenameModal: false });
+    this.move();
+  }
+
+  handleDeleteFile(e) {
+    e.preventDefault();
+    request
+      .post('/delete')
+      .send({
+        deletefile: this.state.crudPath
+      })
+      .end((err, res) => {
+        if (err) {
+          alert('delete error');
+        } else {
+          console.log('delete succeed');
+        }
+      });
+  }
+
+  handleShowDeleteModal(e) {
+    var fname = e.target.parentNode.previousSibling.textContent;
+    if (this.state.path === "/") {
+      this.setState({ crudPath: fname });
+    } else {
+      this.setState({ crudPath: this.state.path.slice(1) + fname });
+    }
+
+    this.setState({ showDeleteModal: true });
+  }
+
+  handleCloseDeleteModal() {
+    this.setState({ showDeleteModal: false });
     this.move();
   }
 
@@ -129,11 +165,11 @@ class Explorer extends React.Component {
           </div>
           <BreadcrumbList path={this.state.path} />
           <div>
-            <FileList items={this.state.items} clickFile={this.handleClick} rename={this.handleShowModal}/>
+            <FileList items={this.state.items} clickFile={this.handleClick} rename={this.handleShowRenameModal} delete={this.handleShowDeleteModal}/>
             {/*
-            <RenameModal show={this.state.showModal} onHide={this.handleCloseModal} renamefile={this.handleRenameFile} changetxt={this.handleChangeTxtArea} />
+            <RenameModal show={this.state.showRenameModal} onHide={this.handleCloseRenameModal} renamefile={this.handleRenameFile} changetxt={this.handleChangeTxtArea} />
             */}
-            <Modal show={this.state.showModal} onHide={this.handleCloseModal}>
+            <Modal show={this.state.showRenameModal} onHide={this.handleCloseRenameModal}>
               <Modal.Header closeButton>
                 <Modal.Title>Rename File</Modal.Title>
               </Modal.Header>
@@ -149,6 +185,22 @@ class Explorer extends React.Component {
                   </InputGroup>
                 </Form>
               </Modal.Body>
+            </Modal>
+            <Modal show={this.state.showDeleteModal} onHide={this.handleCloseDeleteModal}>
+              <Modal.Header closeButton>
+                <Modal.Title>Delete File</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <p>Are you OK to delete this file</p>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="warning" onClick={this.handleDeleteFile}>
+                  delete
+                </Button>
+                <Button variant="light" onClick={this.handleCloseDeleteModal}>
+                  cancel
+                </Button>
+              </Modal.Footer>
             </Modal>
           </div>
         </div>
@@ -167,7 +219,7 @@ class FileList extends React.Component {
             <a className={item.type+' '+styles.aStyle} onClick={this.props.clickFile}>{item.text}</a>
             <div className={styles.rdBox}>
               <a className={styles.rename} onClick={this.props.rename}>Rename</a>
-              <a className={styles.delete}>Delete</a>
+              <a className={styles.delete} onClick={this.props.delete}>Delete</a>
             </div>
           </ListGroup.Item>
         ))}
@@ -177,7 +229,8 @@ class FileList extends React.Component {
 }
 FileList.propTypes = {
   clickFile: PropTypes.func,
-  rename: PropTypes.func
+  rename: PropTypes.func,
+  delete: PropTypes.func
 };
 
 

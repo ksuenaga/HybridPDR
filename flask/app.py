@@ -99,6 +99,17 @@ def rename():
     shutil.move(oldpath, newpath)
   return ''
 
+@app.route('/delete', methods=['POST'])
+def delete():
+  obj = request.json
+  deletefile = obj['deletefile']
+  deletepath = os.path.join(app.config['DATA_DIR_PATH'], deletefile)
+  if os.path.isdir(deletepath):
+    os.rmdir(deletepath)
+  else:
+    os.remove(deletepath)
+  return ''
+
 @app.route('/loadapp', methods=['POST'])
 def load_app():
   obj = request.json
