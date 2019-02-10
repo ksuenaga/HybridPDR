@@ -118,7 +118,7 @@ def delete():
   deletefile = obj['deletefile']
   deletepath = os.path.join(app.config['DATA_DIR_PATH'], deletefile)
   if os.path.isdir(deletepath):
-    os.rmdir(deletepath)
+    shutil.rmtree(deletepath)
   else:
     os.remove(deletepath)
   return ''
