@@ -179,7 +179,7 @@ class App extends React.Component {
           this.setState({
             status: res.body.status,
             retcode: res.body.retcode,
-            result: "ERROR\nreturn code:" + res.body.retcode + "\n" + res.body.result,
+            result: "ERROR\nreturn code:" + res.body.retcode + "\n\n" + res.body.err_res,
             resStyle: { color: '#ff0000' }
           });
         } else {

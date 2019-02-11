@@ -32,10 +32,10 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir, debug):
       with Popen(command, stdin = PIPE, stdout = PIPE, stderr = STDOUT
                  , universal_newlines = True, shell = False) as p_exe:
         try:
-          str_result, _ = p_exe.communicate(input=str_tactics, timeout=60)
+          str_result, err_result = p_exe.communicate(input=str_tactics, timeout=60)
         except TimeoutExpired:
           p_exe.kill()
-          str_result, _ = p_exe.communicate()
+          str_result, err_result = p_exe.communicate()
         retcode = p_exe.returncode
       err = False if retcode == 0 else True
     except:
@@ -43,14 +43,16 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir, debug):
         import traceback; traceback.print_exc()
       err = True
       str_result = 'Error'
+      err_result = ''
       retcode = -1
   except:
     if app.debug:
       import traceback; traceback.print_exc()
     err = True
     str_result = 'Error'
+    err_result = ''
     retcode = -1
-  return err, str_result, retcode
+  return err, str_result, err_result, retcode
 
 @app.route('/', methods=['GET'])
 def index():
@@ -155,12 +157,13 @@ def run():
   s = obj['safety']
   c = obj['current_dir']
   d = obj['debug']
-  err, res, code = verify(m, t, i, s, c, d)
+  err, res, eres, code = verify(m, t, i, s, c, d)
   http_code = 500 if err else 200
   return jsonify({
       'status': 'error' if err else 'ok'
     , 'retcode': code
     , 'result': res
+    , 'err_res': eres
     }), http_code
 
 
