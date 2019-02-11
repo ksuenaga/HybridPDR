@@ -92,7 +92,8 @@ a:not([href]):not([tabindex]).delete:hover {
 }
 
 .newDiv {
-  float: right;
+  /* float: right; */
+  margin-left: auto;
 }
 
 a:not([href]):not([tabindex]).new {

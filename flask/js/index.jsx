@@ -3,7 +3,7 @@ import { render } from 'react-dom';
 import PropTypes from 'prop-types';
 import request from 'superagent';
 import $ from 'jquery';
-import { ListGroup, InputGroup, Button, Modal, FormControl, FormCheck, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { ListGroup, InputGroup, Button, Modal, FormControl, FormCheck, OverlayTrigger, Tooltip, Breadcrumb } from 'react-bootstrap';
 
 import styles from '../css/index.css'
 
@@ -77,6 +77,10 @@ class Explorer extends React.Component {
       .then(res => {
         this.setState({items: res.body});
       });
+  }
+
+  handleBreadcrumbMove() {
+    this.setState({ path: "/" });
   }
 
   handleRenameFile(e) {
@@ -281,12 +285,29 @@ class BreadcrumbList extends React.Component {
   }
 
   render() {
+    // return (
+    //   <div className={styles.breadcrumbListContainerStyle}>
+    //     {this.props.path.split("/").slice(1).map((item, i) => (
+    //       <div key={i} className={styles.breadcrumbListStyle}>
+    //         <span onClick={this.handleClick}>/{item}</span>
+    //       </div>
+    //     ))}
+    //     <div className={styles.newDiv}>
+    //       <OverlayTrigger placement="top"
+    //         overlay={
+    //           <Tooltip>Add new file or directory</Tooltip>
+    //         }>
+    //         <a className={styles.new} onClick={this.props.create}><i className="fas fa-plus"></i></a>
+    //       </OverlayTrigger>
+    //     </div>
+    //   </div>
+    // );
+    var breadPath = this.props.path.split("/").slice(1);
     return (
-      <div className={styles.breadcrumbListContainerStyle}>
-        {this.props.path.split("/").slice(1).map((item, i) => (
-          <div key={i} className={styles.breadcrumbListStyle}>
-            <span onClick={this.handleClick}>/{item}</span>
-          </div>
+      <Breadcrumb>
+        {breadPath[0] === "" ? <Breadcrumb.Item active>data</Breadcrumb.Item> : <Breadcrumb.Item>data</Breadcrumb.Item>}
+        {breadPath.map((item, i, array) => (
+          i === array.length-2 ? <Breadcrumb.Item key={i} active>{item}</Breadcrumb.Item> : <Breadcrumb.Item key={i} onClick={this.handleClick}>{item}</Breadcrumb.Item>
         ))}
         <div className={styles.newDiv}>
           <OverlayTrigger placement="top"
@@ -296,7 +317,7 @@ class BreadcrumbList extends React.Component {
             <a className={styles.new} onClick={this.props.create}><i className="fas fa-plus"></i></a>
           </OverlayTrigger>
         </div>
-      </div>
+      </Breadcrumb>
     );
   }
 }
