@@ -24,6 +24,7 @@ class Explorer extends React.Component {
     };
     this.handleClick = this.handleClick.bind(this);
     this.handleLoad = this.handleLoad.bind(this);
+    this.handleBreadcrumbMove = this.handleBreadcrumbMove.bind(this);
     this.handleRenameFile = this.handleRenameFile.bind(this);
     this.handleDeleteFile = this.handleDeleteFile.bind(this);
     this.handleCreateFile = this.handleCreateFile.bind(this);
@@ -79,8 +80,8 @@ class Explorer extends React.Component {
       });
   }
 
-  handleBreadcrumbMove() {
-    this.setState({ path: "/" });
+  handleBreadcrumbMove(dirpath) {
+    this.setState({ path: dirpath }, this.move);
   }
 
   handleRenameFile(e) {
@@ -205,7 +206,7 @@ class Explorer extends React.Component {
             <h3 className={styles.headingStyle}>HybridPDR</h3>
             <em className={styles.descStyle}>Select a definition file of a hybrid system.</em>
           </div>
-          <BreadcrumbList path={this.state.path} create={this.handleShowCreateModal}/>
+          <BreadcrumbList path={this.state.path} create={this.handleShowCreateModal} move={this.handleBreadcrumbMove}/>
 
           <Modal show={this.state.showCreateModal} onHide={this.handleCloseCreateModal}>
             <Modal.Header closeButton>
@@ -278,36 +279,30 @@ class Explorer extends React.Component {
 class BreadcrumbList extends React.Component {
   constructor(props) {
     super(props);
+    this.handleClickHome = this.handleClickHome.bind(this);
+    this.handleClickDir = this.handleClickDir.bind(this);
   }
 
-  handleClick(e) {
+  handleClickHome(e) {
     e.stopPropagation();
+    this.props.move("/");
+  }
+
+  handleClickDir(e) {
+    e.stopPropagation();
+    var itemtxt = e.target.textContent;
+    console.log(itemtxt);
+    console.log(this.props.path);
+    this.props.move(this.props.path.split(itemtxt)[0] + itemtxt + "/");
   }
 
   render() {
-    // return (
-    //   <div className={styles.breadcrumbListContainerStyle}>
-    //     {this.props.path.split("/").slice(1).map((item, i) => (
-    //       <div key={i} className={styles.breadcrumbListStyle}>
-    //         <span onClick={this.handleClick}>/{item}</span>
-    //       </div>
-    //     ))}
-    //     <div className={styles.newDiv}>
-    //       <OverlayTrigger placement="top"
-    //         overlay={
-    //           <Tooltip>Add new file or directory</Tooltip>
-    //         }>
-    //         <a className={styles.new} onClick={this.props.create}><i className="fas fa-plus"></i></a>
-    //       </OverlayTrigger>
-    //     </div>
-    //   </div>
-    // );
     var breadPath = this.props.path.split("/").slice(1);
     return (
-      <Breadcrumb>
-        {breadPath[0] === "" ? <Breadcrumb.Item active>data</Breadcrumb.Item> : <Breadcrumb.Item>data</Breadcrumb.Item>}
+      <Breadcrumb className={styles.breadcrumbListContainerStyle}>
+        {breadPath[0] === "" ? <Breadcrumb.Item active>data</Breadcrumb.Item> : <Breadcrumb.Item onClick={this.handleClickHome}>data</Breadcrumb.Item>}
         {breadPath.map((item, i, array) => (
-          i === array.length-2 ? <Breadcrumb.Item key={i} active>{item}</Breadcrumb.Item> : <Breadcrumb.Item key={i} onClick={this.handleClick}>{item}</Breadcrumb.Item>
+          i === array.length-2 ? <Breadcrumb.Item key={i} active>{item}</Breadcrumb.Item> : <Breadcrumb.Item key={i} onClick={this.handleClickDir}>{item}</Breadcrumb.Item>
         ))}
         <div className={styles.newDiv}>
           <OverlayTrigger placement="top"
@@ -322,7 +317,8 @@ class BreadcrumbList extends React.Component {
   }
 }
 BreadcrumbList.propTypes = {
-  create: PropTypes.func
+    create: PropTypes.func
+  , move: PropTypes.func
 };
 
 
@@ -361,9 +357,9 @@ class FileList extends React.Component {
   }
 }
 FileList.propTypes = {
-  clickFile: PropTypes.func,
-  rename: PropTypes.func,
-  delete: PropTypes.func
+    clickFile: PropTypes.func
+  , rename: PropTypes.func
+  , delete: PropTypes.func
 };
 
 

@@ -38,6 +38,11 @@ body {
   padding: 6px 10px;
 }
 
+.listGroupItemStyle:first-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
 a:not([href]):not([tabindex]).aStyle {
   color: #0366d6;
   font-size: 14px;
@@ -75,24 +80,17 @@ a:not([href]):not([tabindex]).delete:hover {
   color: #60c7f0;
 }
 
-.breadcrumbListContainerStyle {
-  overflow: hidden;
-  height: 43px;
-  padding: 10px;
-  margin-bottom: -1px;
+.breadcrumbListContainerStyle > ol {
   background-color: #f1f8ff;
+  margin-bottom: -1px;
   border: 1px solid #c8e1ff;
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
-}
-
-.breadcrumbListStyle {
-  float: left;
-  font-size: 13px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .newDiv {
-  /* float: right; */
   margin-left: auto;
 }
 
