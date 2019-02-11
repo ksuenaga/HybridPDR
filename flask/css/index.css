@@ -93,7 +93,6 @@ a:not([href]):not([tabindex]).delete:hover {
 
 .newDiv {
   float: right;
-  margin-right: 15px;
 }
 
 a:not([href]):not([tabindex]).new {
@@ -137,4 +136,8 @@ a:not([href]):not([tabindex]).new:hover {
 
 .renameBox {
   width: 400px;
+}
+
+.invisibleSpan {
+  display: none;
 }

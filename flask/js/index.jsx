@@ -3,7 +3,7 @@ import { render } from 'react-dom';
 import PropTypes from 'prop-types';
 import request from 'superagent';
 import $ from 'jquery';
-import { ListGroup, InputGroup, Button, Modal, FormControl, FormCheck } from 'react-bootstrap';
+import { ListGroup, InputGroup, Button, Modal, FormControl, FormCheck, OverlayTrigger, Tooltip } from 'react-bootstrap';
 
 import styles from '../css/index.css'
 
@@ -99,7 +99,7 @@ class Explorer extends React.Component {
   }
 
   handleShowRenameModal(e) {
-    var fname = e.target.parentNode.previousSibling.textContent;
+    var fname = e.target.nextSibling.textContent;
     if (this.state.path === "/") {
       this.setState({
           renameVal: fname
@@ -138,7 +138,7 @@ class Explorer extends React.Component {
   }
 
   handleShowDeleteModal(e) {
-    var fname = e.target.parentNode.previousSibling.textContent;
+    var fname = e.target.nextSibling.textContent;
     if (this.state.path === "/") {
       this.setState({ crudPath: fname });
     } else {
@@ -271,30 +271,6 @@ class Explorer extends React.Component {
 }
 
 
-class FileList extends React.Component {
-  render() {
-    return (
-      <ListGroup className={styles.listGroupStyle}>
-        {this.props.items.map(item => (
-          <ListGroup.Item key={item.id} className={styles.listGroupItemStyle}>
-            <a className={item.type+' '+styles.aStyle} onClick={this.props.clickFile}>{item.text}</a>
-            <div className={styles.rdBox}>
-              <a className={styles.rename} onClick={this.props.rename}>Rename</a>
-              <a className={styles.delete} onClick={this.props.delete}>Delete</a>
-            </div>
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
-    );
-  }
-}
-FileList.propTypes = {
-  clickFile: PropTypes.func,
-  rename: PropTypes.func,
-  delete: PropTypes.func
-};
-
-
 class BreadcrumbList extends React.Component {
   constructor(props) {
     super(props);
@@ -313,7 +289,12 @@ class BreadcrumbList extends React.Component {
           </div>
         ))}
         <div className={styles.newDiv}>
-          <a className={styles.new} onClick={this.props.create}>New</a>
+          <OverlayTrigger placement="top"
+            overlay={
+              <Tooltip>Add new file or directory</Tooltip>
+            }>
+            <a className={styles.new} onClick={this.props.create}><i className="fas fa-plus"></i></a>
+          </OverlayTrigger>
         </div>
       </div>
     );
@@ -322,5 +303,47 @@ class BreadcrumbList extends React.Component {
 BreadcrumbList.propTypes = {
   create: PropTypes.func
 };
+
+
+class FileList extends React.Component {
+  render() {
+    return (
+      <ListGroup className={styles.listGroupStyle}>
+        {this.props.items.map(item => (
+          <ListGroup.Item key={item.id} className={styles.listGroupItemStyle}>
+            {item.type==='directory' ? <span><i className="far fa-folder"></i>&ensp;</span> : <span>&thinsp;<i className="far fa-file-code"></i>&ensp;</span>}
+            <a className={item.type+' '+styles.aStyle} onClick={this.props.clickFile}>{item.text}</a>
+            <div className={styles.rdBox}>
+              <OverlayTrigger placement="top"
+                overlay={
+                  <Tooltip>Rename file or directory</Tooltip>
+                }>
+                <a className={styles.rename} onClick={this.props.rename}>
+                  <i className="fas fa-pen"></i>
+                  <span className={styles.invisibleSpan}>{item.text}</span>
+                </a>
+              </OverlayTrigger>
+              <OverlayTrigger placement="top"
+                overlay={
+                  <Tooltip>Delete file or directory</Tooltip>
+                }>
+                <a className={styles.delete} onClick={this.props.delete}>
+                  <i className="far fa-trash-alt"></i>
+                  <span className={styles.invisibleSpan}>{item.text}</span>
+                </a>
+              </OverlayTrigger>
+            </div>
+          </ListGroup.Item>
+        ))}
+      </ListGroup>
+    );
+  }
+}
+FileList.propTypes = {
+  clickFile: PropTypes.func,
+  rename: PropTypes.func,
+  delete: PropTypes.func
+};
+
 
 render(<Explorer />, document.getElementById('dirPage'));
