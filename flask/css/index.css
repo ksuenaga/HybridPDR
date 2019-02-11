@@ -44,6 +44,10 @@ a:not([href]):not([tabindex]).aStyle {
   cursor: pointer;
 }
 
+a:not([href]):not([tabindex]).aStyle:hover {
+  color: #013066;
+}
+
 .rdBox {
   float: right;
 }

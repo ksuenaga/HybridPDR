@@ -3,12 +3,7 @@ import { render } from 'react-dom';
 import PropTypes from 'prop-types';
 import request from 'superagent';
 import $ from 'jquery';
-import ListGroup from 'react-bootstrap/ListGroup';
-import InputGroup from 'react-bootstrap/InputGroup';
-import Button from 'react-bootstrap/Button';
-import Modal from 'react-bootstrap/Modal';
-import FormControl from 'react-bootstrap/FormControl';
-import FormCheck from 'react-bootstrap/FormCheck';
+import { ListGroup, InputGroup, Button, Modal, FormControl, FormCheck } from 'react-bootstrap';
 
 import styles from '../css/index.css'
 
@@ -207,6 +202,7 @@ class Explorer extends React.Component {
             <em className={styles.descStyle}>Select a definition file of a hybrid system.</em>
           </div>
           <BreadcrumbList path={this.state.path} create={this.handleShowCreateModal}/>
+
           <Modal show={this.state.showCreateModal} onHide={this.handleCloseCreateModal}>
             <Modal.Header closeButton>
               <Modal.Title>Create File</Modal.Title>
@@ -229,8 +225,10 @@ class Explorer extends React.Component {
               </InputGroup>
             </Modal.Body>
           </Modal>
+
           <div>
             <FileList items={this.state.items} clickFile={this.handleClick} rename={this.handleShowRenameModal} delete={this.handleShowDeleteModal}/>
+
             <Modal show={this.state.showRenameModal} onHide={this.handleCloseRenameModal}>
               <Modal.Header closeButton>
                 <Modal.Title>Rename File</Modal.Title>
@@ -246,6 +244,7 @@ class Explorer extends React.Component {
                 </InputGroup>
               </Modal.Body>
             </Modal>
+
             <Modal show={this.state.showDeleteModal} onHide={this.handleCloseDeleteModal}>
               <Modal.Header closeButton>
                 <Modal.Title>Delete File</Modal.Title>
@@ -263,6 +262,7 @@ class Explorer extends React.Component {
                 </Button>
               </Modal.Footer>
             </Modal>
+
           </div>
         </div>
       </div>
@@ -313,7 +313,7 @@ class BreadcrumbList extends React.Component {
           </div>
         ))}
         <div className={styles.newDiv}>
-          <a className={styles.new} onClick={this.props.create}>new</a>
+          <a className={styles.new} onClick={this.props.create}>New</a>
         </div>
       </div>
     );

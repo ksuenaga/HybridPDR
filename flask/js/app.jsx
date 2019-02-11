@@ -5,7 +5,7 @@ import AceEditor from 'react-ace';
 import request from 'superagent';
 import mousetrap from 'mousetrap';
 import $ from 'jquery';
-import Button from 'react-bootstrap/Button'
+import Button from 'react-bootstrap/Button';
 
 import 'brace/mode/xml';
 import 'brace/mode/scheme';
@@ -153,11 +153,8 @@ class App extends React.Component {
       , retcode: 0
       , resStyle: { color: '#00000' }
     };
-    this.fontSize = 12;
-    this.showPrintMargin = false;
-    this.highlightActiveLine = false;
     this.handleLoad = this.handleLoad.bind(this);
-    this.handleClick = this.handleClick.bind(this);
+    this.handleCheckDebug = this.handleCheckDebug.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
   }
@@ -177,23 +174,23 @@ class App extends React.Component {
       .end((err, res) => {
         if (err) {
           this.setState({
-            status: res.body.status,
-            retcode: res.body.retcode,
-            result: "ERROR\nreturn code:" + res.body.retcode + "\n\n" + res.body.err_res,
-            resStyle: { color: '#ff0000' }
+              status: res.body.status
+            , retcode: res.body.retcode
+            , result: "ERROR\nreturn code:" + res.body.retcode + "\n\n" + res.body.err_res
+            , resStyle: { color: '#ff0000' }
           });
         } else {
           this.setState({
-            status: res.body.status,
-            retcode: res.body.retcode,
-            result: res.body.result,
-            resStyle: { color: '#000000' }
+              status: res.body.status
+            , retcode: res.body.retcode
+            , result: res.body.result
+            , resStyle: { color: '#000000' }
           });
         }
       });
   }
 
-  handleClick(newValue) {
+  handleCheckDebug() {
     this.setState({
       debug: document.getElementById('debug').checked
     });
@@ -205,10 +202,10 @@ class App extends React.Component {
     request
       .post('/save')
       .send({
-        save_path: this.state.xml_path,
-        save_str: save_str
+          save_path: this.state.xml_path
+        , save_str: save_str
       })
-      .end(function(err, res) {
+      .end((err, res) => {
         if (err) {
           alert("save error!");
         }
@@ -243,6 +240,10 @@ class App extends React.Component {
   }
 
   render() {
+    let fontSize = 12;
+    let showPrintMargin = false;
+    let highlightActiveLine = false;
+
     return (
       <div>
         <header>
@@ -251,15 +252,13 @@ class App extends React.Component {
           <div className={styles.DefContainer}>
             <dl>
               <dt>
-                <h5>
-                Definition - file : <span id="fileNameWindow"></span>
-                </h5>
+                <h5>Definition - file : <span id="fileNameWindow"></span></h5>
               </dt>
               <dd>
                 <AceEditor name="xml_model" mode="xml" theme="github"
                   width="598px" height="350px" value={this.state.xml_model}
-                  fontSize={this.fontSize}
-                  showPrintMargin={this.showPrintMargin}
+                  fontSize={fontSize}
+                  showPrintMargin={showPrintMargin}
                   onChange={(val) => this.setState({ xml_model: val })}
                   onLoad={(editor) => this.defEditor = editor} wrapEnabled={true}
                   commands={[{
@@ -278,9 +277,9 @@ class App extends React.Component {
               <dd className={styles.setMarginBtm}>
                 <AceEditor name="initial" mode="plain_text" theme="github"
                   width="428px" height="48px" value={this.state.initial}
-                  fontSize={this.fontSize}
-                  showPrintMargin={this.showPrintMargin}
-                  highlightActiveLine={this.highlightActiveLine}
+                  fontSize={fontSize}
+                  showPrintMargin={showPrintMargin}
+                  highlightActiveLine={highlightActiveLine}
                   onChange={(val) => this.setState({ initial: val })}
                   wrapEnabled={true}
                   commands={[{
@@ -293,9 +292,9 @@ class App extends React.Component {
               <dd>
                 <AceEditor name="safety" mode="plain_text" theme="github"
                   width="428px" height="48px" value={this.state.safety}
-                  fontSize={this.fontSize}
-                  showPrintMargin={this.showPrintMargin}
-                  highlightActiveLine={this.highlightActiveLine}
+                  fontSize={fontSize}
+                  showPrintMargin={showPrintMargin}
+                  highlightActiveLine={highlightActiveLine}
                   onChange={(val) => this.setState({ safety: val })}
                   wrapEnabled={true}
                   commands={[{
@@ -310,8 +309,8 @@ class App extends React.Component {
             <dl><dt><h5>Tactics</h5></dt>
               <dd><AceEditor name="tactics" mode="scheme" theme="github"
                     width="598px" height="350px" value={this.state.tactics}
-                    fontSize={this.fontSize}
-                    showPrintMargin={this.showPrintMargin}
+                    fontSize={fontSize}
+                    showPrintMargin={showPrintMargin}
                     onChange={(val) => this.setState({ tactics: val })}
                     wrapEnabled={true}
                     commands={[{
@@ -324,7 +323,7 @@ class App extends React.Component {
                 <div className={styles.debugStyle}>
 
                   <label className={styles.labelStyle}>
-                    <input type="checkbox" id="debug" onClick={this.handleClick}
+                    <input type="checkbox" id="debug" onClick={this.handleCheckDebug}
                       className={styles.checkboxStyle}/>
                     debug mode
                   </label>
