@@ -379,7 +379,7 @@ class App extends React.Component {
               </dd>
               <Button variant="success" onClick={this.handleShowSaveModal}
                 className={styles.buttonStyle}>
-                Save
+                Export
               </Button>
 
               <Modal show={this.state.showSaveModal} onHide={this.handleCloseSaveModal}>
@@ -394,7 +394,7 @@ class App extends React.Component {
                     <FormControl type="text" placeholder="Result File Name" value={this.state.resFname} onChange={(e) => this.setState({ resFname: e.target.value })}/>
                     <InputGroup.Append>
                       <Button variant="success" onClick={this.handleSaveResult}>
-                        Save
+                        Export
                       </Button>
                     </InputGroup.Append>
                   </InputGroup>
