@@ -159,11 +159,12 @@ class App extends React.Component {
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
     this.handleCloseRunningModal = this.handleCloseRunningModal.bind(this);
+    this.handleStopValidate = this.handleStopValidate.bind(this);
   }
 
-  handleSubmit(event) {
+  handleSubmit(e) {
     this.setState({ showRunningModal: true });
-    event.preventDefault();
+    e.preventDefault();
     request
       .post('/run')
       .send({
@@ -201,8 +202,8 @@ class App extends React.Component {
     });
   }
 
-  handleClickSaveBtn(event) {
-    event.preventDefault();
+  handleClickSaveBtn(e) {
+    e.preventDefault();
     var save_str = this.defEditor.getValue();
     request
       .post('/save')
@@ -238,6 +239,18 @@ class App extends React.Component {
 
   handleCloseRunningModal() {
     this.setState({ showRunningModal: false });
+  }
+
+  handleStopValidate(e) {
+    e.preventDefault();
+    request
+      .get('/stop')
+      .end((err, res) => {
+        if (err) {
+          console.log('stop error');
+        }
+      });
+    $('#closeModalBtn').click();
   }
 
   componentDidMount() {
@@ -348,8 +361,11 @@ class App extends React.Component {
                   <Modal.Body>
                     <i className="fas fa-spinner fa-spin"></i>
                     &emsp; Running HybridPDR ...
-                    <input type="button" id="closeModalBtn" style={{ display: 'none' }} onClick={this.handleCloseRunningModal}/>
+                    <input type="button" id="closeModalBtn" style={{ display: 'none' }} onClick={this.handleCloseRunningModal} />
                   </Modal.Body>
+                  <Modal.Footer>
+                    <Button id="stopValidateBtn" variant="danger" onClick={this.handleStopValidate}>Cancel</Button>
+                  </Modal.Footer>
                 </Modal>
 
               </div>
