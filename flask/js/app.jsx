@@ -5,7 +5,7 @@ import AceEditor from 'react-ace';
 import request from 'superagent';
 import mousetrap from 'mousetrap';
 import $ from 'jquery';
-import Button from 'react-bootstrap/Button';
+import { Button, Modal } from 'react-bootstrap';
 
 import 'brace/mode/xml';
 import 'brace/mode/scheme';
@@ -152,14 +152,17 @@ class App extends React.Component {
       , status: ""
       , retcode: 0
       , resStyle: { color: '#00000' }
+      , showRunningModal: false
     };
     this.handleLoad = this.handleLoad.bind(this);
     this.handleCheckDebug = this.handleCheckDebug.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
+    this.handleCloseRunningModal = this.handleCloseRunningModal.bind(this);
   }
 
   handleSubmit(event) {
+    this.setState({ showRunningModal: true });
     event.preventDefault();
     request
       .post('/run')
@@ -179,6 +182,7 @@ class App extends React.Component {
             , result: "ERROR\nreturn code:" + res.body.retcode + "\n\n" + res.body.err_res
             , resStyle: { color: '#ff0000' }
           });
+          $('#closeModalBtn').click();
         } else {
           this.setState({
               status: res.body.status
@@ -186,6 +190,7 @@ class App extends React.Component {
             , result: res.body.result
             , resStyle: { color: '#000000' }
           });
+          $('#closeModalBtn').click();
         }
       });
   }
@@ -229,6 +234,10 @@ class App extends React.Component {
           $('#fileNameWindow').append(this.state.xml_path);
         }
       });
+  }
+
+  handleCloseRunningModal() {
+    this.setState({ showRunningModal: false });
   }
 
   componentDidMount() {
@@ -331,6 +340,18 @@ class App extends React.Component {
                 <Button id="valbtn" variant="success" className={styles.buttonStyle} onClick={this.handleSubmit}>
                   Validate
                 </Button>
+
+                <Modal show={this.state.showRunningModal} onHide={this.handleCloseRunningModal} backdrop="static" centered>
+                  <Modal.Header>
+                    <Modal.Title>Validating</Modal.Title>
+                  </Modal.Header>
+                  <Modal.Body>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    &emsp; Running HybridPDR ...
+                    <input type="button" id="closeModalBtn" style={{ display: 'none' }} onClick={this.handleCloseRunningModal}/>
+                  </Modal.Body>
+                </Modal>
+
               </div>
             </dl>
             <dl className={styles.resultDl}><dt><h5>Result</h5></dt>
