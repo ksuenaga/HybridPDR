@@ -144,9 +144,17 @@ def save():
   save_path = os.path.join(app.config['DATA_DIR_PATH'], path)
   with open(save_path, mode='w') as f:
     f.write(str)
-  return jsonify({
-    'save_path': path
-  })
+  return ''
+
+@app.route('/saveResult', methods=['POST'])
+def save_res():
+  obj = request.json
+  str = obj['save_str']
+  path = obj['save_path']
+  save_path = os.path.join(app.config['DATA_DIR_PATH'], path)
+  with open(save_path, mode='w') as f:
+    f.write(str)
+  return ''
 
 @app.route('/run', methods=['POST'])
 def run():

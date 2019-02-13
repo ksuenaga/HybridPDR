@@ -5,7 +5,7 @@ import AceEditor from 'react-ace';
 import request from 'superagent';
 import mousetrap from 'mousetrap';
 import $ from 'jquery';
-import Button from 'react-bootstrap/Button';
+import { Button, Modal, InputGroup, FormControl } from 'react-bootstrap';
 
 import 'brace/mode/xml';
 import 'brace/mode/scheme';
@@ -152,11 +152,17 @@ class App extends React.Component {
       , status: ""
       , retcode: 0
       , resStyle: { color: '#00000' }
+      , showSaveModal: false
+      , cpath: "/"
+      , resFname: ""
     };
     this.handleLoad = this.handleLoad.bind(this);
     this.handleCheckDebug = this.handleCheckDebug.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleClickSaveBtn = this.handleClickSaveBtn.bind(this);
+    this.handleSaveResult = this.handleSaveResult.bind(this);
+    this.handleShowSaveModal = this.handleShowSaveModal.bind(this);
+    this.handleCloseSaveModal = this.handleCloseSaveModal.bind(this);
   }
 
   handleSubmit(event) {
@@ -210,6 +216,39 @@ class App extends React.Component {
           alert("save error!");
         }
       });
+  }
+
+  handleSaveResult(e) {
+    e.preventDefault();
+    request
+      .post('/saveResult')
+      .send({
+          save_path: this.state.cpath + this.state.resFname
+        , save_str: this.state.result
+      })
+      .end((err, res) => {
+        if (err) {
+          alert("save error!");
+        }
+      });
+    $('#closeSaveModalBtn').click();
+  }
+
+  handleShowSaveModal() {
+    var path = "";
+    this.state.xml_path.split("/").map((item, i, array) => {
+      if (i !== array.length-1) {
+        path += item + "/";
+      }
+    });
+    this.setState({
+        showSaveModal: true
+      , cpath: path
+    });
+  }
+
+  handleCloseSaveModal() {
+    this.setState({ showSaveModal: false });
   }
 
   handleLoad() {
@@ -334,11 +373,35 @@ class App extends React.Component {
               </div>
             </dl>
             <dl className={styles.resultDl}><dt><h5>Result</h5></dt>
-              <dd><textarea name="result" readOnly
-                            className={styles.textareaStyle}
-                            style={this.state.resStyle}
-                            value={this.state.result} />
+              <dd>
+                <textarea name="result" value={this.state.result} readOnly
+                  className={styles.textareaStyle} style={this.state.resStyle} />
               </dd>
+              <Button variant="success" onClick={this.handleShowSaveModal}
+                className={styles.buttonStyle}>
+                Save
+              </Button>
+
+              <Modal show={this.state.showSaveModal} onHide={this.handleCloseSaveModal}>
+                <Modal.Header closeButton>
+                  <Modal.Title>Save Result to File</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                  <InputGroup className="mb-3">
+                    <InputGroup.Prepend>
+                      <InputGroup.Text>{this.state.cpath}</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl type="text" placeholder="Result File Name" value={this.state.resFname} onChange={(e) => this.setState({ resFname: e.target.value })}/>
+                    <InputGroup.Append>
+                      <Button variant="success" onClick={this.handleSaveResult}>
+                        Save
+                      </Button>
+                    </InputGroup.Append>
+                  </InputGroup>
+                  <input type="button" id="closeSaveModalBtn" style={{ display: 'none' }} onClick={this.handleCloseSaveModal} />
+                </Modal.Body>
+              </Modal>
+
             </dl>
           </div>
         </form>
