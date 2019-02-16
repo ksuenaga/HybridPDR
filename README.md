@@ -1,8 +1,6 @@
 HybridPDR
 ===
 
-Overview
-
 Hybrid system verification using PDR/IC3.
 
 Docs: https://docs.google.com/document/d/1G0OhwpYI8uOxTetlJraxnlrS_JhVBSNzRiQR2elZQRg/edit#
@@ -43,6 +41,7 @@ You can export result to text file using Export button.
 If HybridPDR returns error, it shows return code in result window.
 
 Return code:
+
 | code | status |
 :---:|:---
 | 0 | normal termination
