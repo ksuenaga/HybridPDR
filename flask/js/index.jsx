@@ -328,7 +328,7 @@ class FileList extends React.Component {
       <ListGroup className={styles.listGroupStyle}>
         {this.props.items.map(item => (
           <ListGroup.Item key={item.id} className={styles.listGroupItemStyle}>
-            {item.type==='directory' ? <span><i className="far fa-folder"></i>&ensp;</span> : <span>&thinsp;<i className="far fa-file-code"></i>&ensp;</span>}
+            {item.type==='directory' ? <span><i className="far fa-folder"></i>&ensp;</span> : <span>&thinsp;<i class="far fa-file"></i>&ensp;</span>}
             <a className={item.type+' '+styles.aStyle} onClick={this.props.clickFile}>{item.text}</a>
             <div className={styles.rdBox}>
               <OverlayTrigger placement="top"
