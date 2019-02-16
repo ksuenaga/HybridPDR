@@ -92,7 +92,7 @@ class Explorer extends React.Component {
         .send({
             newname: this.state.renameVal
           , oldname: this.state.crudPath
-          , current_dir: this.state.path.slice(1) 
+          , current_dir: this.state.path.slice(1)
         })
         .end((err, res) => {
           if (err) {
@@ -259,7 +259,7 @@ class Explorer extends React.Component {
                 <FormControl type="text" value={this.state.crudPath} readOnly />
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="warning" onClick={this.handleDeleteFile}>
+                <Button variant="danger" onClick={this.handleDeleteFile}>
                   delete
                 </Button>
                 <Button id="cancelBtn" variant="light" onClick={this.handleCloseDeleteModal}>
