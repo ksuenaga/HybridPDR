@@ -104,14 +104,12 @@ def rename():
   obj = request.json
   newname = obj['newname']
   oldname = obj['oldname']
-  newname_dir = os.path.split(newname)[0]
-  oldname_dir = os.path.split(oldname)[0]
-  newpath = os.path.join(app.config['DATA_DIR_PATH'], newname)
-  oldpath = os.path.join(app.config['DATA_DIR_PATH'], oldname)
-  if newname_dir == oldname_dir:
-    os.rename(oldpath, newpath)
-  else:
-    shutil.move(oldpath, newpath)
+  current_dir = obj['current_dir']
+  newname_path = os.path.join(current_dir, newname)
+  oldname_path = os.path.join(current_dir, oldname)
+  newpath = os.path.join(app.config['DATA_DIR_PATH'], newname_path)
+  oldpath = os.path.join(app.config['DATA_DIR_PATH'], oldname_path)
+  os.rename(oldpath, newpath)
   return ''
 
 @app.route('/delete', methods=['POST'])

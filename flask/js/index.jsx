@@ -90,8 +90,9 @@ class Explorer extends React.Component {
       request
         .post('/rename')
         .send({
-          newname: this.state.renameVal,
-          oldname: this.state.crudPath
+            newname: this.state.renameVal
+          , oldname: this.state.crudPath
+          , current_dir: this.state.path.slice(1) 
         })
         .end((err, res) => {
           if (err) {
@@ -106,19 +107,11 @@ class Explorer extends React.Component {
 
   handleShowRenameModal(e) {
     var fname = e.target.nextSibling.textContent;
-    if (this.state.path === "/") {
-      this.setState({
-          renameVal: fname
-        , crudPath: fname
-      });
-    } else {
-      this.setState({
-          renameVal: this.state.path.slice(1) + fname
-        , crudPath: this.state.path.slice(1) + fname
-      });
-    }
-
-    this.setState({ showRenameModal: true });
+    this.setState({
+        renameVal: fname
+      , crudPath: fname
+      , showRenameModal: true
+    });
   }
 
   handleCloseRenameModal() {
@@ -243,6 +236,9 @@ class Explorer extends React.Component {
               </Modal.Header>
               <Modal.Body>
                 <InputGroup className="mb-3">
+                  <InputGroup.Prepend>
+                    <InputGroup.Text>{this.state.path.slice(1)}</InputGroup.Text>
+                  </InputGroup.Prepend>
                   <FormControl type="text" value={this.state.renameVal} onChange={(e) => this.setState({ renameVal: e.target.value })}/>
                   <InputGroup.Append>
                     <Button variant="info" onClick={this.handleRenameFile}>
