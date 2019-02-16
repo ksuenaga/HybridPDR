@@ -98,6 +98,7 @@ class Explorer extends React.Component {
             alert('rename error');
           } else {
             console.log('rename succeed');
+            $('#closeRenameBtn').click();
           }
         });
     }
@@ -171,6 +172,7 @@ class Explorer extends React.Component {
           alert('create error');
         } else {
           console.log('create succeed');
+          $('#closeCreateBtn').click();
         }
       });
   }
@@ -228,6 +230,7 @@ class Explorer extends React.Component {
                   </Button>
                 </InputGroup.Append>
               </InputGroup>
+              <input type="button" id="closeCreateBtn" style={{ display: 'none' }} onClick={this.handleCloseCreateModal} />
             </Modal.Body>
           </Modal>
 
@@ -247,6 +250,7 @@ class Explorer extends React.Component {
                     </Button>
                   </InputGroup.Append>
                 </InputGroup>
+                <input type="button" id="closeRenameBtn" style={{ display: 'none' }} onClick={this.handleCloseRenameModal} />
               </Modal.Body>
             </Modal>
 
@@ -328,7 +332,7 @@ class FileList extends React.Component {
       <ListGroup className={styles.listGroupStyle}>
         {this.props.items.map(item => (
           <ListGroup.Item key={item.id} className={styles.listGroupItemStyle}>
-            {item.type==='directory' ? <span><i className="far fa-folder"></i>&ensp;</span> : <span>&thinsp;<i class="far fa-file"></i>&ensp;</span>}
+            {item.type==='directory' ? <span><i className="far fa-folder"></i>&ensp;</span> : <span>&thinsp;<i className="far fa-file"></i>&ensp;</span>}
             <a className={item.type+' '+styles.aStyle} onClick={this.props.clickFile}>{item.text}</a>
             <div className={styles.rdBox}>
               <OverlayTrigger placement="top"
