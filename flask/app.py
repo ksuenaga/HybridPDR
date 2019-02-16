@@ -21,23 +21,14 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir, debug):
       os.path.dirname(__file__),
       '../_build/default/src/hpdrMain.exe'
       )
-    # command = [
-    #       filename_exe,
-    #       '-model', filename_model,
-    #       '-init', str_initial,
-    #       '-safe', str_safety,
-    #       '-initid', '1',
-    #       ]
     command = filename_exe + ' -model ' + filename_model + ' -init \"' + str_initial + '\" -safe \"' + str_safety + '\" -initid 1'
     if debug:
-      # command.append('-debug')
       command = command + ' -debug'
     try:
       with Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT
                  , universal_newlines=True, shell=True, preexec_fn=os.setsid) as p_exe:
         try:
           app.config['VERIFY_ID'] = os.getpgid(p_exe.pid)
-          sleep(5)
           str_result, err_result = p_exe.communicate(input=str_tactics, timeout=60)
         except TimeoutExpired:
           p_exe.kill()
