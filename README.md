@@ -33,7 +33,7 @@ Access `localhost:5000` on a web browser to use HybridPDR.
 
 ## Usage
 
-HybridPDR first window is file explorer and it refers `data`.
+When you open HybridPDR, it'll show file explorer refers `data`.
 You can create, rename, and delete files and directories here.
 
 Click file to open project.
