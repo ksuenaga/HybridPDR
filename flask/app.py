@@ -6,6 +6,8 @@ from flask import json, jsonify
 import os, sys, shutil
 from subprocess import PIPE, Popen, STDOUT, TimeoutExpired
 import tempfile
+from time import sleep
+import signal
 
 app = Flask(__name__)
 app.secret_key = b'5J\xa8\xf6\xc8%Im3[\xe6\xc3R\x88\x08\xc7'
@@ -19,19 +21,14 @@ def verify(xml_model, str_tactics, str_initial, str_safety, current_dir, debug):
       os.path.dirname(__file__),
       '../_build/default/src/hpdrMain.exe'
       )
-    command = [
-          filename_exe,
-          '-model', filename_model,
-          '-init', str_initial,
-          '-safe', str_safety,
-          '-initid', '1',
-          ]
+    command = filename_exe + ' -model ' + filename_model + ' -init \"' + str_initial + '\" -safe \"' + str_safety + '\" -initid 1'
     if debug:
-      command.append('-debug')
+      command = command + ' -debug'
     try:
-      with Popen(command, stdin = PIPE, stdout = PIPE, stderr = STDOUT
-                 , universal_newlines = True, shell = False) as p_exe:
+      with Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT
+                 , universal_newlines=True, shell=True, preexec_fn=os.setsid) as p_exe:
         try:
+          app.config['VERIFY_ID'] = os.getpgid(p_exe.pid)
           str_result, err_result = p_exe.communicate(input=str_tactics, timeout=60)
         except TimeoutExpired:
           p_exe.kill()
@@ -174,9 +171,14 @@ def run():
     , 'err_res': eres
     }), http_code
 
+@app.route('/stop', methods=['GET'])
+def stop():
+  os.killpg(app.config['VERIFY_ID'], signal.SIGTERM)
+  return ''
 
 app.config['JSON_AS_ASCII'] = False
 app.config['DATA_DIR_PATH'] = '/home/opam/data'
+app.config['VERIFY_ID'] = 0
 if app.debug:
   app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 

@@ -155,6 +155,7 @@ class App extends React.Component {
       , showSaveModal: false
       , cpath: "/"
       , resFname: ""
+      , showRunningModal: false
     };
     this.handleLoad = this.handleLoad.bind(this);
     this.handleCheckDebug = this.handleCheckDebug.bind(this);
@@ -163,10 +164,13 @@ class App extends React.Component {
     this.handleSaveResult = this.handleSaveResult.bind(this);
     this.handleShowSaveModal = this.handleShowSaveModal.bind(this);
     this.handleCloseSaveModal = this.handleCloseSaveModal.bind(this);
+    this.handleCloseRunningModal = this.handleCloseRunningModal.bind(this);
+    this.handleStopValidate = this.handleStopValidate.bind(this);
   }
 
-  handleSubmit(event) {
-    event.preventDefault();
+  handleSubmit(e) {
+    this.setState({ showRunningModal: true });
+    e.preventDefault();
     request
       .post('/run')
       .send({
@@ -185,6 +189,7 @@ class App extends React.Component {
             , result: "ERROR\nreturn code:" + res.body.retcode + "\n\n" + res.body.err_res
             , resStyle: { color: '#ff0000' }
           });
+          $('#closeModalBtn').click();
         } else {
           this.setState({
               status: res.body.status
@@ -192,6 +197,7 @@ class App extends React.Component {
             , result: res.body.result
             , resStyle: { color: '#000000' }
           });
+          $('#closeModalBtn').click();
         }
       });
   }
@@ -202,8 +208,8 @@ class App extends React.Component {
     });
   }
 
-  handleClickSaveBtn(event) {
-    event.preventDefault();
+  handleClickSaveBtn(e) {
+    e.preventDefault();
     var save_str = this.defEditor.getValue();
     request
       .post('/save')
@@ -268,6 +274,22 @@ class App extends React.Component {
           $('#fileNameWindow').append(this.state.xml_path);
         }
       });
+  }
+
+  handleCloseRunningModal() {
+    this.setState({ showRunningModal: false });
+  }
+
+  handleStopValidate(e) {
+    e.preventDefault();
+    request
+      .get('/stop')
+      .end((err, res) => {
+        if (err) {
+          console.log('stop error');
+        }
+      });
+    $('#closeModalBtn').click();
   }
 
   componentDidMount() {
@@ -370,6 +392,21 @@ class App extends React.Component {
                 <Button id="valbtn" variant="success" className={styles.buttonStyle} onClick={this.handleSubmit}>
                   Validate
                 </Button>
+
+                <Modal show={this.state.showRunningModal} onHide={this.handleCloseRunningModal} backdrop="static" centered>
+                  <Modal.Header>
+                    <Modal.Title>Validating</Modal.Title>
+                  </Modal.Header>
+                  <Modal.Body>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    &emsp; Running HybridPDR ...
+                    <input type="button" id="closeModalBtn" style={{ display: 'none' }} onClick={this.handleCloseRunningModal} />
+                  </Modal.Body>
+                  <Modal.Footer>
+                    <Button id="stopValidateBtn" variant="danger" onClick={this.handleStopValidate}>Cancel</Button>
+                  </Modal.Footer>
+                </Modal>
+
               </div>
             </dl>
             <dl className={styles.resultDl}><dt><h5>Result</h5></dt>
