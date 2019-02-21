@@ -90,14 +90,16 @@ class Explorer extends React.Component {
       request
         .post('/rename')
         .send({
-          newname: this.state.renameVal,
-          oldname: this.state.crudPath
+            newname: this.state.renameVal
+          , oldname: this.state.crudPath
+          , current_dir: this.state.path.slice(1)
         })
         .end((err, res) => {
           if (err) {
             alert('rename error');
           } else {
             console.log('rename succeed');
+            $('#closeRenameBtn').click();
           }
         });
     }
@@ -105,19 +107,11 @@ class Explorer extends React.Component {
 
   handleShowRenameModal(e) {
     var fname = e.target.nextSibling.textContent;
-    if (this.state.path === "/") {
-      this.setState({
-          renameVal: fname
-        , crudPath: fname
-      });
-    } else {
-      this.setState({
-          renameVal: this.state.path.slice(1) + fname
-        , crudPath: this.state.path.slice(1) + fname
-      });
-    }
-
-    this.setState({ showRenameModal: true });
+    this.setState({
+        renameVal: fname
+      , crudPath: fname
+      , showRenameModal: true
+    });
   }
 
   handleCloseRenameModal() {
@@ -171,6 +165,7 @@ class Explorer extends React.Component {
           alert('create error');
         } else {
           console.log('create succeed');
+          $('#closeCreateBtn').click();
         }
       });
   }
@@ -228,6 +223,7 @@ class Explorer extends React.Component {
                   </Button>
                 </InputGroup.Append>
               </InputGroup>
+              <input type="button" id="closeCreateBtn" style={{ display: 'none' }} onClick={this.handleCloseCreateModal} />
             </Modal.Body>
           </Modal>
 
@@ -240,6 +236,9 @@ class Explorer extends React.Component {
               </Modal.Header>
               <Modal.Body>
                 <InputGroup className="mb-3">
+                  <InputGroup.Prepend>
+                    <InputGroup.Text>{this.state.path.slice(1)}</InputGroup.Text>
+                  </InputGroup.Prepend>
                   <FormControl type="text" value={this.state.renameVal} onChange={(e) => this.setState({ renameVal: e.target.value })}/>
                   <InputGroup.Append>
                     <Button variant="info" onClick={this.handleRenameFile}>
@@ -247,6 +246,7 @@ class Explorer extends React.Component {
                     </Button>
                   </InputGroup.Append>
                 </InputGroup>
+                <input type="button" id="closeRenameBtn" style={{ display: 'none' }} onClick={this.handleCloseRenameModal} />
               </Modal.Body>
             </Modal>
 
@@ -259,7 +259,7 @@ class Explorer extends React.Component {
                 <FormControl type="text" value={this.state.crudPath} readOnly />
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="warning" onClick={this.handleDeleteFile}>
+                <Button variant="danger" onClick={this.handleDeleteFile}>
                   delete
                 </Button>
                 <Button id="cancelBtn" variant="light" onClick={this.handleCloseDeleteModal}>
@@ -328,7 +328,7 @@ class FileList extends React.Component {
       <ListGroup className={styles.listGroupStyle}>
         {this.props.items.map(item => (
           <ListGroup.Item key={item.id} className={styles.listGroupItemStyle}>
-            {item.type==='directory' ? <span><i className="far fa-folder"></i>&ensp;</span> : <span>&thinsp;<i className="far fa-file-code"></i>&ensp;</span>}
+            {item.type==='directory' ? <span><i className="far fa-folder"></i>&ensp;</span> : <span>&thinsp;<i className="far fa-file"></i>&ensp;</span>}
             <a className={item.type+' '+styles.aStyle} onClick={this.props.clickFile}>{item.text}</a>
             <div className={styles.rdBox}>
               <OverlayTrigger placement="top"
