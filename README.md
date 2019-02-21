@@ -1,22 +1,77 @@
-# HybridPDR
-Hybrid system verification using PDR/IC3
+HybridPDR
+===
 
-Docs: https://docs.google.com/document/d/1G0OhwpYI8uOxTetlJraxnlrS_JhVBSNzRiQR2elZQRg/edit#
+## Overview
 
-TODO:
+Hybrid system verification using PDR/IC3.
 
-アルゴリズムの formalization
-ハイブリッドオートマトンの定義
-https://www.cs.colorado.edu/~xich8622/papers/rtss12.pdf の 3 節 A に沿ってやる．
-GPDR の定義
-性質の証明
-GPDR の論文にそってやる
-実装と実験
-方針: 最初からすごいことをしようとしない
-Conflict で非自明な interpolant を求めようとしない
-すでに持っている述語をつかって interpolant を作る
-Induction はすでに持っている述語を伝播させるだけ
-Flow* に比べてよくなれるか
-一つでも bounded でない invariant が求まればよい．
-時間の bound がない invariant が求まるモデル検査器は他にあるか．
-関連研究の調査
+This system is web application.
+Access `localhost:5000` on your web browser to use this system.
+
+## Requirements
+
+HybridPDR runs on Docker.
+You should install Docker.
+
+#### Optional Requirements
+You can also use Mathematica if you have it's license.
+
+## Quick Start
+
+Pull docker image from Docker Hub.
+```
+docker pull ksuenaga/hybridpdr
+```
+
+To start HybridPDR, run docker container.
+```
+cd HybridPDR
+docker run --rm -it -v $PWD/data:/home/opam/data -p 5000:5000 hybridpdr
+```
+
+Access `localhost:5000` on a web browser to use HybridPDR.
+
+## Usage
+
+When you open HybridPDR, it'll show file explorer refers `data`.
+You can create, rename, and delete files and directories here.
+
+Click file to open project.
+
+In project page, you should input Definition, Initial Condition, Safety Condition, and Tactics.
+
+Click Validate button to run HybridPDR.
+Result will be shown on Result window.
+You can export result to text file using Export button.
+
+If HybridPDR returns error, it will show return code in Result window.
+
+Return code:
+
+| code | status |
+:---:|:---
+| 0 | normal termination
+| 1 | known abnormal termination
+| 2 | unknown abnormal termination
+
+If you want to run HybridPDR in debug mode, you should check debug mode checkbox.
+(To. 末永先生 デバッグモードによって出力がどう変わるかの記入をお願いします)
+
+Also you can save your Definition with Save button below Definition editor.
+
+## Install Mathematica
+
+If you have Mathematica license, you can use Mathematica in HybridPDR.
+
+To install Mathematica in HybridPDR, get installer from
+-https://www.wolfram.com/index.en.html?source=footer-.
+(To. 末永先生 MathematicaのインストーラのDLリンクに変更していただきたいです)
+Put your installer in `HybridPDR`.
+
+Execute
+```
+sh setup.sh
+```
+and you can install Mathematica automatically.
+
+activate??
