@@ -1,4 +1,4 @@
-FROM hybridpdrcore
+FROM hybridpdr:core
 
 USER root
 VOLUME ["/home/opam/data/"]
