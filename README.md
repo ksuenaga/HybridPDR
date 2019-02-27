@@ -4,16 +4,15 @@ HybridPDR
 ## Overview
 
 Hybrid system verification using PDR/IC3.
-
-This system is web application.
-Access `localhost:5000` on your web browser to use this system.
+This system is an Web application, working on localhost.
 
 ## Requirements
 
-HybridPDR runs on Docker.
+HybridPDR works on Docker.
 You should install Docker.
 
 #### Optional Requirements
+
 You can also use Mathematica if you have it's license.
 
 ## Quick Start
@@ -29,16 +28,16 @@ cd HybridPDR
 docker run --rm -it -v $PWD/data:/home/opam/data -p 5000:5000 hybridpdr
 ```
 
-Access `localhost:5000` on a web browser to use HybridPDR.
+Access `localhost:5000` on a Web browser to use HybridPDR.
 
 ## Usage
 
-When you open HybridPDR, it'll show file explorer refers `data`.
+When you open HybridPDR, it'll show a file explorer refering to `data`.
 You can create, rename, and delete files and directories here.
 
-Click file to open project.
+Click file to open a project.
 
-In project page, you should input Definition, Initial Condition, Safety Condition, and Tactics.
+In a project page, you should input Definition, Initial Condition, Safety Condition, and Tactics.
 
 Click Validate button to run HybridPDR.
 Result will be shown on Result window.
@@ -65,12 +64,13 @@ If you need to build docker image of this system in your environment, follow thi
 
 Clone git repository.
 ```
-git clone -b dgrid https://github.com/aiueogawa/HybridPDR.git
+git clone -b dgrid https://github.com/ksuenaga/HybridPDR.git
 ```
-Then build docker image.
+Then build docker images in two stages.
 ```
 cd HybridPDR
-docker build -t hybridpdr .
+docker build -t hybridpdr:core -f Dockerfile.core . # to build an executable
+docker build -t hybridpdr . # to build an Web application
 ```
 Run docker container to start HybridPDR.
 ```
