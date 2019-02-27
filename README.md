@@ -59,6 +59,24 @@ If you want to run HybridPDR in debug mode, you should check debug mode checkbox
 
 Also you can save your Definition with Save button below Definition editor.
 
+## Build HybridPDR
+
+If you need to build docker image of this system in your environment, follow this procedure.
+
+Clone git repository.
+```
+git clone -b dgrid https://github.com/aiueogawa/HybridPDR.git
+```
+Then build docker image.
+```
+cd HybridPDR
+docker build -t hybridpdr .
+```
+Run docker container to start HybridPDR.
+```
+docker run --rm -it -v $PWD/data:/home/opam/data -p 5000:5000 hybridpdr
+```
+
 ## Install Mathematica
 
 If you have Mathematica license, you can use Mathematica in HybridPDR.
