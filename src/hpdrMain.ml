@@ -11,10 +11,15 @@ let parse_verif_task_from_file ?(initial_condition=Z3Intf.mk_true) ?(safety_regi
    *)
   let input_stream =
     try In_channel.create input_file
-    with Not_found_s _ -> E.raise (E.of_string "Input model not found.")
+    with Not_found_s _ ->
+      E.raise (E.of_string "Input model not found.")
   in
-  let model = SpaceexComponent.parse_from_channel input_stream in
+  let model =
+    SpaceexComponent.parse_from_channel input_stream
+  in
+
   (* (model, !initial_condition, !safety_region) *)
+
   model
 
 let () =
@@ -43,8 +48,10 @@ let () =
     in
     let ts =
       match !input_file with
-        None -> E.raise (E.of_string "Model file not specified")
-      | Some s -> parse_verif_task_from_file s
+      | None ->
+         E.raise (E.of_string "Model file not specified")
+      | Some s ->
+         parse_verif_task_from_file s;
     in
     let model = List.hd_exn ts in
     let init =
@@ -68,10 +75,13 @@ let () =
     | Some s -> printf "New location for srcroot"   (*Sys.command "srcroot_newLocation_script"*)
   in*)
     let () = Hpdr.main ~model ~init ~safe ~init_id in
+    let () = printf "Done.@." in
     exit 0
   with
   | Pdr.NoTactic ->
      printf "No further tactic is available.";
      exit 3
-  | _ -> exit 2
+  | exn ->
+     printf "Some error: %s.@." (Exn.to_string exn);
+     exit 2
 ;;

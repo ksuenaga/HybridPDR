@@ -86,10 +86,13 @@ let find_trans ~src ~tgt t =
 
 let malformed_error_xml id x =
   let s = Xml.to_string_fmt x in
-  E.raise (E.of_string (sprintf "%s: Malformed:@\n%s@\n" id s))
+  let s = sprintf "%s: Malformed:@\n%s@\n" id s in
+  printf "Error: %s@." s;
+  E.raise (E.of_string s)
 let malformed_error_xmls id xs =
   let s = List.fold_left ~init:"" ~f:(fun s x -> s ^ (Xml.to_string_fmt x)) xs in
-  E.raise (E.of_string (sprintf "%s: Malformed:@\n%s@\n" id s))
+  let s = sprintf "%s: Malformed:@\n%s@\n" id s in
+  E.raise (E.of_string s)
 
 let get_child_pcdata (x:Xml.xml) : string =
   match Xml.children x with
@@ -181,14 +184,21 @@ let locations (t:t) = Env.domain t.locations
   
 let rec parse_from_channel (inchan : In_channel.t) : t list =
   let open Xml in
-  let xml =
-    try
-      parse_in inchan
-    with
-    | Error e -> failwith (error e)
-    | File_not_found s -> failwith ("File not found" ^ s)
-  in
-  top xml
+  try
+    let xml = parse_in inchan in
+    let ret = top xml in
+    ret
+  with
+  | Error e ->
+     Format.printf "Error in parsing model: %s@." (error e);
+     raise (Error e)
+  | File_not_found s ->
+     Format.printf "%s@." ("File not found" ^ s);
+     raise (File_not_found s)
+  | exn ->
+     printf "Some error: %s.@." (Exn.to_string exn);
+     raise exn
+(* top xml *)
 
 let%test_module _ =
   (module struct
