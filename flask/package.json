@@ -1,0 +1,33 @@
+{
+  "scripts": {
+    "dev": "webpack --mode development",
+    "start": "webpack --mode development --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "devDependencies": {
+    "@babel/core": "^7.2.2",
+    "@babel/preset-env": "^7.3.1",
+    "@babel/preset-react": "^7.0.0",
+    "babel-loader": "^8.0.5",
+    "webpack": "^4.29.0",
+    "webpack-cli": "^3.2.1"
+  },
+  "dependencies": {
+    "bootstrap": "",
+    "css-loader": "",
+    "file-loader": "",
+    "jquery.fancytree": "",
+    "less": "^3.0.0",
+    "less-loader": "",
+    "mousetrap": "^1.6.2",
+    "prop-types": "^15.6.2",
+    "react": "^16.7.0",
+    "react-ace": "^6.3.2",
+    "react-bootstrap": "",
+    "react-dom": "^16.7.0",
+    "react-modal": "^3.8.1",
+    "style-loader": "",
+    "superagent": "^4.1.0"
+  }
+}

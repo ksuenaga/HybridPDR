@@ -1,0 +1,142 @@
+header {
+  height: 40px;
+  border-bottom: 1px;
+}
+
+body {
+  color: #24292e;
+}
+
+.containerStyle {
+  width: 980px;
+  margin: 0 auto;
+}
+
+.descContainrStyle {
+  overflow: hidden;
+}
+
+.headingStyle {
+  float: left;
+}
+
+.descStyle {
+  height: 33px;
+  margin-left: 15px;
+  margin-bottom: 8px;
+  color: #586069;
+  font-size: 16px;
+  font-style: italic;
+  line-height: 34px;
+}
+
+.listGroupStyle {
+  border: #dfe2e5;
+}
+
+.listGroupItemStyle {
+  padding: 6px 10px;
+}
+
+.listGroupItemStyle:first-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+a:not([href]):not([tabindex]).aStyle {
+  color: #0366d6;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+a:not([href]):not([tabindex]).aStyle:hover {
+  color: #013066;
+}
+
+.rdBox {
+  float: right;
+}
+
+a:not([href]):not([tabindex]).rename {
+  margin-right: 14px;
+  color: #a0d8ef;
+  font-size: 14px;
+  cursor: pointer;
+  float: left;
+}
+
+a:not([href]):not([tabindex]).rename:hover {
+  color: #60c7f0;
+}
+
+a:not([href]):not([tabindex]).delete {
+  color: #a0d8ef;
+  font-size: 14px;
+  cursor: pointer;
+  float: left;
+}
+
+a:not([href]):not([tabindex]).delete:hover {
+  color: #60c7f0;
+}
+
+.breadcrumbListContainerStyle > ol {
+  background-color: #f1f8ff;
+  margin-bottom: -1px;
+  border: 1px solid #c8e1ff;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.newDiv {
+  margin-left: auto;
+}
+
+a:not([href]):not([tabindex]).new {
+  color: #a0d8ef;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+a:not([href]):not([tabindex]).new:hover {
+  color: #60c7f0;
+}
+
+.modalStyle {
+  position: absolute;
+  top: 80px;
+  left: 120px;
+  right: 120px;
+  bottom: 400px;
+  border: 1px solid #ccc;
+  background: #fff;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+  outline: none;
+  padding: 20px;
+  margin: 0 auto;
+}
+
+.modalOverlayStyle {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cccccc;
+}
+
+.closeBtn {
+  float: right;
+}
+
+.renameBox {
+  width: 400px;
+}
+
+.invisibleSpan {
+  display: none;
+}

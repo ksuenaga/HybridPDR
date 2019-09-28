@@ -1,0 +1,6 @@
+;; Tactic for circle.xml: Initial location: 1, Initial condition: (and (= x 0.0) (= y 0.0)), Safe region: (<= x 1.0)
+(and (= x 0.0) (= y 0.0))
+(and (= x 0.0) (= y 0.0))
+(and (= x 0.0) (= y 0.0))
+(and (= x 0.0) (= y 0.0))
+(and (= x 0.0) (= y 0.0))

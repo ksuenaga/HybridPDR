@@ -1,0 +1,23 @@
+(jbuild_version 1)
+
+; (library
+;  (
+;  (name hpdrlib)
+;  (libraries (core xml-light z3 mparser sexplib mparser.re odepack bau))
+;  (inline_tests)
+;  (preprocess (pps (ppx_inline_test ppx_deriving.show)))
+;  )
+; )
+
+(executable
+ (
+ (name hpdrMain)
+ (libraries (core xml-light z3 mparser sexplib mparser.re odepack bau ppx_inline_test.runner.lib))
+ (preprocess (pps (ppx_inline_test ppx_deriving.show ppx_jane ppx_driver.runner (-inline-test-lib hpdrMain))))
+ )
+)
+
+; (alias
+;   ((name    runtest)
+;   (deps    (hpdrMain.exe))
+;   (action  (run ${<} inline-test-runner hpdrlib))))

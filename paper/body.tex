@@ -1,0 +1,35 @@
+% Edit here.
+
+\section{Introduction}
+
+\section{Preliminaly}
+
+\subsection{Syntax}
+
+\section{Hybrid automaton}
+
+% Defintion
+
+%%%%% Assume that DE is Lipsitz continuous.
+
+% Definition of run.
+
+\section{Standard PDR}
+
+\section{Hybrid PDR}
+
+\begin{align*}
+  \begin{array}{lll}
+    \Initialize & \Longrightarrow \System{\epsilon}{[N \Subst 0, R_0 \Subst \PredTrans(false)]} &  \\
+    \Valid & \System{M}{A} \Longrightarrow \Valid & \If \models R_{i-1} \subseteq R_{i}, i < N \\
+    \Unfold & \System{M}{A} \Longrightarrow \System{\epsilon}{A[R_{N+1} \Subst true, N \Subst N+1]} & \If \models R_N \implies S 
+  \end{array}
+\end{align*}
+
+\section{Correctness}
+
+\section{Experiments}
+
+\section{Related work}
+
+\section{Conclusion}
